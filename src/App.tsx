@@ -1,13 +1,9 @@
-import { useState } from 'react'
-
-import './App.css'
-
 function App() {
 
   return (
     <>
       <div className="">
-        <h1>V-Stable</h1>
+        <h1 className="text-5xl font-bold">V-Stable</h1>
       </div>
     </>
   )
