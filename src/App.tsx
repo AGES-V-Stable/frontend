@@ -1,12 +1,7 @@
-function App() {
+import AppRoutes from '@/routes/AppRoutes'
 
-  return (
-    <>
-      <div className="">
-        <h1 className="text-5xl font-bold">V-Stable</h1>
-      </div>
-    </>
-  )
+function App() {
+  return <AppRoutes />
 }
 
 export default App
