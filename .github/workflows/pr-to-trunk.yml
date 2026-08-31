@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   ci:
-    name: Lint and Build
+    name: Continuous Integration
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,8 +31,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Dependency Audit (DevSecOps / Shift-Left)
+        run: npm run audit
+
+      - name: Check Formatting
+        run: npm run format:check
+
       - name: Lint
         run: npm run lint
+
+      - name: Test
+        run: npm run test:coverage
 
       - name: Build
         run: npm run build
