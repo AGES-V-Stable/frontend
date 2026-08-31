@@ -4,4 +4,8 @@
   body {
     @apply bg-slate-100;
   }
+
+  #root {
+    @apply min-w-screen min-h-screen;
+  }
 }

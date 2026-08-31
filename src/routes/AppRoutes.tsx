@@ -1,8 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router'
 
-import Home from '@/pages/Home'
-import Login from '@/pages/Login'
-import Register from '@/pages/Register'
+import { Home } from '@/pages/Home/Home'
+import { Login } from '@/pages/Login/Login'
+import { Register } from '@/pages/Register/Register'
 
 import { PATHS } from './paths'
 
