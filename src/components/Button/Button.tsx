@@ -14,10 +14,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const paddingStyles = 'px-[24px] py-[12px]'
 
-    
     const wFullStyle = 'w-full'
 
-    
     const variants = {
       primary:
         'bg-[#059669] text-white hover:bg-[#047857] disabled:hover:bg-[#059669] border border-transparent',
