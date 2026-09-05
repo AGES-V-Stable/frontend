@@ -44,8 +44,8 @@ function Home() {
       <div className="w-full flex flex-col items-center gap-2">
         <h2 className="text-sm font-semibold text-gray-600">Default Input</h2>
         <Input
-          label="Nome"
-          placeholder="Digite seu nome"
+          label="CNPJ da Empresa"
+          placeholder="00.000.000/0000-00"
           value=""
           onChange={(e) => console.log(e.target.value)}
         />
