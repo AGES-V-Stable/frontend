@@ -1,4 +1,5 @@
 import { Button } from '@/components/Button'
+import { Input } from '@/components/Input'
 
 function Home() {
   return (
@@ -37,6 +38,17 @@ function Home() {
         <Button label="Primário Desabilitado" variant="primary" disabled />
         <Button label="Secundário Desabilitado" variant="secondary" disabled />
         <Button label="Terciário Desabilitado" variant="tertiary" disabled />
+      </div>
+
+      <h1 className="text-2xl font-bold mb-4">Input Components</h1>
+      <div className="w-full flex flex-col items-center gap-2">
+        <h2 className="text-sm font-semibold text-gray-600">Default Input</h2>
+        <Input
+          label="Nome"
+          placeholder="Digite seu nome"
+          value=""
+          onChange={(e) => console.log(e.target.value)}
+        />
       </div>
     </div>
   )
