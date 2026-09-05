@@ -19,6 +19,15 @@ export interface TableAction<T> {
   // Could add icons or variants here later
 }
 
+export interface PaginationProps {
+  currentPage: number
+  totalPages: number
+  displayedRecords: number
+  itemsPerPage: number
+  totalRecords: number
+  onPageChange: (page: number) => void
+}
+
 export interface TableProps<T> {
   title?: string
   totalRecords?: number // Total number of records (used in header if provided)
@@ -27,4 +36,7 @@ export interface TableProps<T> {
 
   // Actions configuration
   actions?: TableAction<T>[]
+  
+  // Pagination configuration
+  pagination?: PaginationProps
 }

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { TableProps, ColumnDefinition } from './types'
 import { StatusBadge } from './StatusBadge'
 import { TableActionButton } from './TableActionButton'
+import { TablePagination } from './TablePagination'
 
 // Helper to safely extract properties
 function getCellValue<T>(item: T, key: string): ReactNode {
@@ -9,7 +10,7 @@ function getCellValue<T>(item: T, key: string): ReactNode {
   return value !== undefined && value !== null ? String(value) : ''
 }
 
-export function Table<T>({ title, totalRecords, columns, data, actions }: TableProps<T>) {
+export function Table<T>({ title, totalRecords, columns, data, actions, pagination }: TableProps<T>) {
   const renderCellContent = (item: T, column: ColumnDefinition<T>) => {
     // Caso tenha uma função de render customizada
     if (column.render) {
@@ -52,7 +53,7 @@ export function Table<T>({ title, totalRecords, columns, data, actions }: TableP
         <div className="px-6 mb-6 font-['IBM_Plex_Sans'] text-[#0F172A] font-medium text-[18px]">
           {title}{' '}
           {totalRecords !== undefined && (
-            <span className="text-[#64748B] text-[14px] font-normal ml-2">
+            <span className="text-[#0F172A] text-[14px] font-medium ml-2">
               · {totalRecords} contas
             </span>
           )}
@@ -109,7 +110,12 @@ export function Table<T>({ title, totalRecords, columns, data, actions }: TableP
 
         {/* Paginator divider */}
         <div className="w-full h-[1px] bg-[var(--Neutral-Grey-Border,#BBCABF)] mt-8"></div>
+        
+        {pagination && (
+          <TablePagination {...pagination} />
+        )}
       </div>
     </div>
   )
 }
+

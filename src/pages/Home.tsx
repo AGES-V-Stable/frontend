@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { Table } from '@/components/Table'
 import type { ColumnDefinition } from '@/components/Table'
@@ -54,13 +55,15 @@ const mockData: Cliente[] = [
 const noop = () => {};
 
 function Home() {
+  const [currentPage, setCurrentPage] = useState(1)
+
   const columns: ColumnDefinition<Cliente>[] = [
     { key: 'empresa', label: 'Empresa', type: 'text', width: 300 },
     { key: 'cnpj', label: 'CNPJ', type: 'text', width: 210 },
     { key: 'cidade', label: 'Cidade / UF', type: 'text', width: 210 },
     { key: 'atualizacao', label: 'Última atualização', type: 'text', width: 160 },
-    { key: 'responsavel', label: 'Responsável', type: 'text', width: 160 },
     { key: 'status', label: 'Status', type: 'status', width: 140, align: 'center' },
+    { key: 'responsavel', label: 'Responsável', type: 'text', width: 160 },
     { key: 'action', label: 'Ação', type: 'action', width: 200, align: 'center' },
   ]
 
@@ -77,6 +80,13 @@ function Home() {
             columns={columns}
             data={mockData}
             actions={[{ label: 'Ver detalhes', onClick: noop }]}
+            pagination={{
+              currentPage,
+              totalPages: 6,
+              itemsPerPage: 4,
+              totalRecords: 24,
+              onPageChange: setCurrentPage,
+            }}
           />
         </div>
       </div>
