@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router'
 
 import Home from '@/pages/Home'
+import AdminClients from '../pages/AdminClients'
 import Login from '@/pages/Login'
 import Register from '@/pages/Register'
 
@@ -10,6 +11,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path={PATHS.HOME} element={<Home />} />
+      <Route path="/admin/clientes-pme" element={<AdminClients />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
 
