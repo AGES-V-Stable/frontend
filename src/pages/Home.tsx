@@ -83,6 +83,7 @@ function Home() {
             pagination={{
               currentPage,
               totalPages: 6,
+              displayedRecords: mockData.length,
               itemsPerPage: 4,
               totalRecords: 24,
               onPageChange: setCurrentPage,
