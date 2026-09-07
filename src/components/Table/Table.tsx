@@ -6,11 +6,18 @@ import { TablePagination } from './TablePagination'
 
 // Helper to safely extract properties
 function getCellValue<T>(item: T, key: string): ReactNode {
-  const value = (item as any)[key]
+  const value = (item as unknown as Record<string, unknown>)[key]
   return value !== undefined && value !== null ? String(value) : ''
 }
 
-export function Table<T>({ title, totalRecords, columns, data, actions, pagination }: TableProps<T>) {
+export function Table<T>({
+  title,
+  totalRecords,
+  columns,
+  data,
+  actions,
+  pagination,
+}: TableProps<T>) {
   const renderCellContent = (item: T, column: ColumnDefinition<T>) => {
     // Caso tenha uma função de render customizada
     if (column.render) {
@@ -110,12 +117,9 @@ export function Table<T>({ title, totalRecords, columns, data, actions, paginati
 
         {/* Paginator divider */}
         <div className="w-full h-[1px] bg-[var(--Neutral-Grey-Border,#BBCABF)] mt-8"></div>
-        
-        {pagination && (
-          <TablePagination {...pagination} />
-        )}
+
+        {pagination && <TablePagination {...pagination} />}
       </div>
     </div>
   )
 }
-

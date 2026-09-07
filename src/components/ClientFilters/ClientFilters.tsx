@@ -23,13 +23,7 @@ const initialFilters: ClientFilterValues = {
   period: '',
 }
 
-export function ClientFilters({
-  statuses,
-  cities,
-  periods,
-  onApply,
-  onClear,
-}: ClientFiltersProps) {
+export function ClientFilters({ statuses, cities, periods, onApply, onClear }: ClientFiltersProps) {
   const [filters, setFilters] = useState<ClientFilterValues>(initialFilters)
 
   const updateFilter = (field: keyof ClientFilterValues, value: string) => {

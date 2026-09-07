@@ -69,7 +69,9 @@ function AdminClients() {
   const filteredClients = clients.filter((client) => {
     const search = normalize(appliedFilters.search.trim())
     return (
-      (!search || normalize(client.empresa).includes(search) || normalize(client.cnpj).includes(search)) &&
+      (!search ||
+        normalize(client.empresa).includes(search) ||
+        normalize(client.cnpj).includes(search)) &&
       (!appliedFilters.status || client.status === appliedFilters.status) &&
       (!appliedFilters.city || client.cidade === appliedFilters.city) &&
       (!appliedFilters.period || getPeriod(client.atualizacao) === appliedFilters.period)
@@ -106,7 +108,10 @@ function AdminClients() {
               Visualize e audite todas as contas cadastradas na plataforma.
             </p>
           </div>
-          <button type="button" className="h-11 rounded-md bg-[#059669] px-5 text-sm font-medium text-white">
+          <button
+            type="button"
+            className="h-11 rounded-md bg-[#059669] px-5 text-sm font-medium text-white"
+          >
             Cadastrar representante
           </button>
         </header>
@@ -120,7 +125,10 @@ function AdminClients() {
         />
 
         {filteredClients.length === 0 && (
-          <p role="status" className="rounded-lg border border-[#BBCABF] bg-white px-6 py-5 text-sm text-[#475569]">
+          <p
+            role="status"
+            className="rounded-lg border border-[#BBCABF] bg-white px-6 py-5 text-sm text-[#475569]"
+          >
             Nenhum cliente encontrado para os filtros informados.
           </p>
         )}

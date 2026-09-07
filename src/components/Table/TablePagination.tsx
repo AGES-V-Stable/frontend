@@ -24,7 +24,7 @@ export function TablePagination({
       <div className="font-['IBM_Plex_Sans'] text-[14px] text-[#64748B]">
         Mostrando {startRecord}-{endRecord} de {totalRecords} clientes
       </div>
-      
+
       <div className="flex items-center gap-[8px]">
         <Button
           label="Anterior"

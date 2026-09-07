@@ -36,7 +36,7 @@ export interface TableProps<T> {
 
   // Actions configuration
   actions?: TableAction<T>[]
-  
+
   // Pagination configuration
   pagination?: PaginationProps
 }

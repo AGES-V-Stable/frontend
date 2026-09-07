@@ -13,7 +13,7 @@ describe('TablePagination', () => {
         itemsPerPage={10}
         totalRecords={48}
         onPageChange={onPageChange}
-      />
+      />,
     )
 
     expect(screen.getByText('2 de 5')).toBeInTheDocument()
