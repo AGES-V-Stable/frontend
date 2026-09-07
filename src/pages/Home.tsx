@@ -52,7 +52,7 @@ const mockData: Cliente[] = [
   },
 ]
 
-const noop = () => {};
+const noop = () => {}
 
 function Home() {
   const [currentPage, setCurrentPage] = useState(1)
@@ -83,6 +83,7 @@ function Home() {
             pagination={{
               currentPage,
               totalPages: 6,
+              displayedRecords: mockData.length,
               itemsPerPage: 4,
               totalRecords: 24,
               onPageChange: setCurrentPage,
@@ -95,29 +96,17 @@ function Home() {
         <h1 className="text-2xl font-bold mb-4">Button Components</h1>
         <div className="w-full flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-gray-600">Primary Button</h2>
-          <Button
-            label="Continuar"
-            variant="primary"
-            onClick={noop}
-          />
+          <Button label="Continuar" variant="primary" onClick={noop} />
         </div>
 
         <div className="w-full flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-gray-600">Secondary Button</h2>
-          <Button
-            label="Voltar"
-            variant="secondary"
-            onClick={noop}
-          />
+          <Button label="Voltar" variant="secondary" onClick={noop} />
         </div>
 
         <div className="w-full flex flex-col gap-2 items-center">
           <h2 className="text-sm font-semibold text-gray-600 self-start">Tertiary Button</h2>
-          <Button
-            label="Esqueci minha senha"
-            variant="tertiary"
-            onClick={noop}
-          />
+          <Button label="Esqueci minha senha" variant="tertiary" onClick={noop} />
         </div>
 
         <div className="w-full flex flex-col gap-4 mt-8 pt-8 border-t border-gray-200">
