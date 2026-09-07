@@ -6,7 +6,7 @@ import { TablePagination } from './TablePagination'
 
 // Helper to safely extract properties
 function getCellValue<T>(item: T, key: string): ReactNode {
-  const value = (item as any)[key]
+  const value = (item as unknown as Record<string, unknown>)[key]
   return value !== undefined && value !== null ? String(value) : ''
 }
 
