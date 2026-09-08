@@ -72,7 +72,6 @@ function Home() {
       <div>
         <h1 className="text-2xl font-bold mb-4">V-Stable</h1>
 
-        {/* Table Example */}
         <div className="w-full">
           <Table
             title="Todos os clientes"
