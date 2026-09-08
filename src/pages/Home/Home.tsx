@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { Table } from '@/components/Table'
 import type { ColumnDefinition } from '@/components/Table'
+import { Input } from '@/components/Input'
 
 interface Cliente {
   id: string
@@ -53,6 +54,7 @@ const mockData: Cliente[] = [
 ]
 
 const noop = () => {}
+
 
 function Home() {
   const [currentPage, setCurrentPage] = useState(1)
@@ -115,8 +117,19 @@ function Home() {
           <Button label="Terciário Desabilitado" variant="tertiary" disabled />
         </div>
       </div>
+
+      <h1 className="text-2xl font-bold mb-4">Input Components</h1>
+      <div className="w-full flex flex-col items-center gap-2">
+        <h2 className="text-sm font-semibold text-gray-600">Default Input</h2>
+        <Input
+          label="CNPJ da Empresa"
+          placeholder="00.000.000/0000-00"
+          value=""
+          onChange={(e) => console.log(e.target.value)}
+        />
+      </div>
     </div>
   )
 }
 
-export default Home
+export { Home }
