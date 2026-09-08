@@ -5,6 +5,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Home } from './Home'
 
 describe('Home Page Component', () => {
+  it('demonstrates all sidebar sections with local selection', async () => {
+    const user = userEvent.setup()
+    render(<Home />)
+
+    expect(screen.getByRole('button', { name: 'Início' })).toHaveAttribute('aria-current', 'page')
+    for (const label of ['Beneficiários', 'Transferências', 'Configurações', 'Início']) {
+      await user.click(screen.getByRole('button', { name: label }))
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-current', 'page')
+    }
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
