@@ -1,9 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router'
 
-import Home from '@/pages/Home'
+import { Home } from '@/pages/Home'
 import AdminClients from '../pages/AdminClients'
-import Login from '@/pages/Login'
-import Register from '@/pages/Register'
+import { Login } from '@/pages/Login'
+import { Register } from '@/pages/Register'
 
 import { PATHS } from './paths'
 
