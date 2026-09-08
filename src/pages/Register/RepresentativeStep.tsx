@@ -24,6 +24,36 @@ const CARGOS = [
   'Representante legal',
 ]
 
+const ESTADOS = [
+  { sigla: 'AC', nome: 'Acre' },
+  { sigla: 'AL', nome: 'Alagoas' },
+  { sigla: 'AP', nome: 'Amapá' },
+  { sigla: 'AM', nome: 'Amazonas' },
+  { sigla: 'BA', nome: 'Bahia' },
+  { sigla: 'CE', nome: 'Ceará' },
+  { sigla: 'DF', nome: 'Distrito Federal' },
+  { sigla: 'ES', nome: 'Espírito Santo' },
+  { sigla: 'GO', nome: 'Goiás' },
+  { sigla: 'MA', nome: 'Maranhão' },
+  { sigla: 'MT', nome: 'Mato Grosso' },
+  { sigla: 'MS', nome: 'Mato Grosso do Sul' },
+  { sigla: 'MG', nome: 'Minas Gerais' },
+  { sigla: 'PA', nome: 'Pará' },
+  { sigla: 'PB', nome: 'Paraíba' },
+  { sigla: 'PR', nome: 'Paraná' },
+  { sigla: 'PE', nome: 'Pernambuco' },
+  { sigla: 'PI', nome: 'Piauí' },
+  { sigla: 'RJ', nome: 'Rio de Janeiro' },
+  { sigla: 'RN', nome: 'Rio Grande do Norte' },
+  { sigla: 'RS', nome: 'Rio Grande do Sul' },
+  { sigla: 'RO', nome: 'Rondônia' },
+  { sigla: 'RR', nome: 'Roraima' },
+  { sigla: 'SC', nome: 'Santa Catarina' },
+  { sigla: 'SP', nome: 'São Paulo' },
+  { sigla: 'SE', nome: 'Sergipe' },
+  { sigla: 'TO', nome: 'Tocantins' },
+]
+
 export const RepresentativeStep: React.FC = () => {
   const { progresso_cadastro_id } = useParams<{ progresso_cadastro_id: string }>()
   const navigate = useNavigate()
@@ -180,6 +210,7 @@ export const RepresentativeStep: React.FC = () => {
               onChange={(e) => handleInputChange('cargo_funcao', e.target.value)}
               className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.cargo_funcao ? 'border-red-500' : 'border-gray-300'}`}
               aria-invalid={!!errors.cargo_funcao}
+              aria-describedby={errors.cargo_funcao ? 'cargo-error' : undefined}
             >
               <option value="" disabled>
                 Selecione...
@@ -191,7 +222,9 @@ export const RepresentativeStep: React.FC = () => {
               ))}
             </select>
             {errors.cargo_funcao && (
-              <p className="mt-1 text-sm text-red-500">{errors.cargo_funcao}</p>
+              <p id="cargo-error" role="alert" className="mt-1 text-sm text-red-500">
+                {errors.cargo_funcao}
+              </p>
             )}
           </div>
 
@@ -277,15 +310,23 @@ export const RepresentativeStep: React.FC = () => {
               value={formData.estado}
               onChange={(e) => handleInputChange('estado', e.target.value)}
               className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.estado ? 'border-red-500' : 'border-gray-300'}`}
+              aria-invalid={!!errors.estado}
+              aria-describedby={errors.estado ? 'estado-error' : undefined}
             >
               <option value="" disabled>
                 Selecione...
               </option>
-              <option value="SP">São Paulo</option>
-              <option value="RJ">Rio de Janeiro</option>
-              {/* Adicionar demais estados */}
+              {ESTADOS.map((estado) => (
+                <option key={estado.sigla} value={estado.sigla}>
+                  {estado.nome}
+                </option>
+              ))}
             </select>
-            {errors.estado && <p className="mt-1 text-sm text-red-500">{errors.estado}</p>}
+            {errors.estado && (
+              <p id="estado-error" role="alert" className="mt-1 text-sm text-red-500">
+                {errors.estado}
+              </p>
+            )}
           </div>
           <div>
             <label htmlFor="pais" className="block text-sm font-medium text-gray-700 mb-1">

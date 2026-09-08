@@ -208,6 +208,32 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
     expect(screen.queryByText('Cidade é obrigatória')).not.toBeInTheDocument()
   })
 
+  it('deve exibir erro em todos os campos obrigatórios e não disparar PUT ao submeter formulário vazio', async () => {
+    // Cenário 7 da issue #8: campos obrigatórios vazios -> erro exibido ao tentar submeter,
+    // sem disparar a chamada de PUT
+    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    } as Response)
+
+    render(<RepresentativeStep />)
+    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(await screen.findByText('Cargo é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('CPF é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('CEP é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
+    expect(screen.getByText('Estado é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('País é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('Endereço é obrigatório')).toBeInTheDocument()
+
+    // Apenas o GET inicial deve ter ocorrido - nenhum PUT foi disparado
+    expect(window.fetch).toHaveBeenCalledTimes(1)
+  })
+
   // ---------------------------------------------------------------------------
   // 3. NAVEGAÇÃO E SUBMISSÃO (PUT)
   // ---------------------------------------------------------------------------
