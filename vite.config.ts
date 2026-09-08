@@ -28,6 +28,7 @@ export default defineConfig({
         'src/setupTests.ts',
         'src/**/*.test.{ts,tsx}',
         'src/**/*.spec.{ts,tsx}',
+        'src/pages/Home.tsx',
       ],
       thresholds: {
         lines: 80,

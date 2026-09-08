@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Drawer } from '@/components/Drawer/Drawer'
+import { Drawer } from '@/components/Drawer'
 import { Button } from '@/components/Button'
 
 function Home() {

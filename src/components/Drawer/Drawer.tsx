@@ -49,28 +49,13 @@ export const Drawer = ({ open, title, onClose, children, actions = [] }: DrawerP
             {title}
           </h2>
 
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            label="Fechar"
             onClick={onClose}
-            aria-label="Fechar"
-            className="
-              flex h-[40px] w-[40px]
-              cursor-pointer
-              items-center justify-center
-              rounded-[8px]
-              text-[24px]
-              text-gray-500
-              transition-colors
-              hover:bg-gray-100
-              hover:text-gray-900
-              focus:outline-none
-              focus-visible:ring-2
-              focus-visible:ring-[#059669]
-              focus-visible:ring-offset-2
-            "
-          >
-            ×
-          </button>
+            className="!w-auto"
+          />
         </div>
 
         {/* Content */}
@@ -89,13 +74,14 @@ export const Drawer = ({ open, title, onClose, children, actions = [] }: DrawerP
           <div
             className="
               flex
+              justify-end
               gap-[12px]
               border-t border-gray-200
               px-[24px] py-[20px]
             "
           >
             {actions.map((action, index) => (
-              <Button key={index} {...action} className={`flex-1 ${action.className ?? ''}`} />
+              <Button key={index} {...action} className={`!w-auto ${action.className ?? ''}`} />
             ))}
           </div>
         )}
