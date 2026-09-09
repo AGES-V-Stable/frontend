@@ -12,7 +12,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path={PATHS.HOME} element={<Home />} />
-      <Route path="/admin/clientes-pme" element={<AdminClients />} />
+      <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />

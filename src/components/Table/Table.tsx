@@ -4,7 +4,6 @@ import { StatusBadge } from './StatusBadge'
 import { TableActionButton } from './TableActionButton'
 import { TablePagination } from './TablePagination'
 
-// Helper to safely extract properties
 function getCellValue<T>(item: T, key: string): ReactNode {
   const value = (item as unknown as Record<string, unknown>)[key]
   return value !== undefined && value !== null ? String(value) : ''
@@ -17,9 +16,9 @@ export function Table<T>({
   data,
   actions,
   pagination,
+  emptyMessage,
 }: TableProps<T>) {
   const renderCellContent = (item: T, column: ColumnDefinition<T>) => {
-    // Caso tenha uma função de render customizada
     if (column.render) {
       return column.render(item)
     }
@@ -31,8 +30,6 @@ export function Table<T>({
         return <StatusBadge label={value as string} />
 
       case 'action':
-        // Renderiza as ações configuradas para esta linha
-        // Aqui usamos a prop 'actions' do Table, ou você pode criar uma render customizada.
         return (
           <div
             className={`flex gap-2 ${column.align === 'center' ? 'justify-center' : column.align === 'right' ? 'justify-end' : 'justify-start'}`}
@@ -55,7 +52,6 @@ export function Table<T>({
 
   return (
     <div className="bg-[#FFFFFF] w-full flex flex-col pt-6 pb-6 rounded-lg overflow-x-auto">
-      {/* Table Header / Title */}
       {(title || totalRecords !== undefined) && (
         <div className="px-6 mb-6 font-['IBM_Plex_Sans'] text-[#0F172A] font-medium text-[18px]">
           {title}{' '}
@@ -89,36 +85,45 @@ export function Table<T>({
             </tr>
           </thead>
           <tbody>
-            {data.map((item, rowIndex) => (
-              <tr
-                key={rowIndex}
-                className="h-[64px] border-b border-[var(--Neutral-Grey-Border,#BBCABF)]"
-              >
-                {columns.map((col, colIndex) => (
-                  <td
-                    key={`${rowIndex}-${col.key as string}`}
-                    className={`
-                      font-['IBM_Plex_Sans'] font-normal text-[12px] leading-none text-[#0F172A] align-middle bg-[#FFFFFF]
-                      ${colIndex === 0 ? '' : 'pl-2'}
-                      ${colIndex === columns.length - 1 ? '' : 'pr-4'}
-                      ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
-                    `}
-                  >
-                    {renderCellContent(item, col)}
-                  </td>
-                ))}
+            {data.length > 0 ? (
+              data.map((item, rowIndex) => (
+                <tr
+                  key={rowIndex}
+                  className="h-[64px] border-b border-[var(--Neutral-Grey-Border,#BBCABF)]"
+                >
+                  {columns.map((col, colIndex) => (
+                    <td
+                      key={`${rowIndex}-${col.key as string}`}
+                      className={`
+                        font-['IBM_Plex_Sans'] font-normal text-[12px] leading-none text-[#0F172A] align-middle bg-[#FFFFFF]
+                        ${colIndex === 0 ? '' : 'pl-2'}
+                        ${colIndex === columns.length - 1 ? '' : 'pr-4'}
+                        ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
+                      `}
+                    >
+                      {renderCellContent(item, col)}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="h-[120px] text-center font-['IBM_Plex_Sans'] text-[#64748B] text-[14px]"
+                >
+                  {emptyMessage || 'Nenhum cliente cadastrado no momento.'}
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
 
-        {/* Espaço flexível para preencher a tabela quando há poucos dados */}
         <div className="flex-1"></div>
 
-        {/* Paginator divider */}
         <div className="w-full h-[1px] bg-[var(--Neutral-Grey-Border,#BBCABF)] mt-8"></div>
 
-        {pagination && <TablePagination {...pagination} />}
+        {pagination && data.length > 0 && <TablePagination {...pagination} />}
       </div>
     </div>
   )

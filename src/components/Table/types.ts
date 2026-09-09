@@ -39,4 +39,7 @@ export interface TableProps<T> {
 
   // Pagination configuration
   pagination?: PaginationProps
+
+  // Message to display when data is empty
+  emptyMessage?: ReactNode
 }
