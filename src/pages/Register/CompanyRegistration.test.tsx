@@ -142,7 +142,7 @@ describe('company API integration', () => {
     open()
     await screen.findByRole('alert')
     await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
-    await screen.findByRole('textbox', { name: 'CNPJ *' })
+    expect(await screen.findByRole('textbox', { name: 'CNPJ *' })).toBeInTheDocument()
   })
   it('reports a missing progress record', async () => {
     vi.stubGlobal(
