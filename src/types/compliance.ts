@@ -8,8 +8,5 @@ export interface SelectedFile {
 
 export interface ComplianceFormData {
   tipoDocumento: TipoDocumento | ''
-  nomeRepresentante: string
-  cargo: string
-  cpfRepresentante: string
   documentos: SelectedFile[]
 }

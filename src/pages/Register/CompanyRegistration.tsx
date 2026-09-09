@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { companyPath, compliancePath, PATHS } from '@/routes/paths'
 import { ApiError, getRegistration, saveCompany } from '@/services/registration'
 import type { CompanyData, RegistrationProgress } from '@/types/registration'
+import ComplianceStep from './ComplianceStep'
 import { CompanyStep } from './CompanyStep'
 
 const isSaved = (progress: RegistrationProgress) => !!progress.empresaId && progress.etapaAtual >= 3
@@ -110,17 +111,7 @@ function Registration({ id, compliance }: { id?: string; compliance: boolean }) 
     )
   if (isSaved(progress)) {
     if (!compliance) return <Navigate to={compliancePath(id!)} replace />
-    return (
-      <main className="mx-auto max-w-xl p-8">
-        <h1 className="text-2xl font-bold">Compliance</h1>
-        <p role="status">
-          Empresa cadastrada com sucesso. A etapa de compliance ainda não está disponível.
-        </p>
-        <Link className="underline" to={PATHS.HOME}>
-          Voltar ao início
-        </Link>
-      </main>
-    )
+    return <ComplianceStep />
   }
   if (progress.etapaAtual !== 2 || progress.empresaId)
     return (

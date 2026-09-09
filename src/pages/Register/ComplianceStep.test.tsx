@@ -18,18 +18,15 @@ describe('ComplianceStep', () => {
     expect(screen.getByText('Compliance e documentos')).toBeInTheDocument()
   })
 
-  it('renders the step indicator at step 3', () => {
+  it('renders the step indicator at step 3 of 4', () => {
     renderComponent()
-    expect(screen.getByLabelText('Passo 3 de 3')).toBeInTheDocument()
+    expect(screen.getByLabelText('Passo 3 de 4')).toBeInTheDocument()
     expect(document.querySelector('[aria-current="step"]')).toBeInTheDocument()
   })
 
-  it('renders all 4 form fields', () => {
+  it('renders the document type field', () => {
     renderComponent()
     expect(screen.getByLabelText(/tipo de documento/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/nome do representante legal/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/^cargo/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/cpf do representante/i)).toBeInTheDocument()
   })
 
   it('renders the Continuar button', () => {
@@ -44,30 +41,7 @@ describe('ComplianceStep', () => {
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
     expect(screen.getByText('Selecione o tipo de documento')).toBeInTheDocument()
-    expect(screen.getByText('Nome do representante é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('Cargo é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('CPF é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('Envie pelo menos um documento')).toBeInTheDocument()
-  })
-
-  it('shows CPF format error when CPF is incomplete', async () => {
-    const user = userEvent.setup()
-    renderComponent()
-
-    await user.type(screen.getByLabelText(/cpf do representante/i), '123456')
-    await user.click(screen.getByRole('button', { name: /continuar/i }))
-
-    expect(screen.getByText('CPF deve conter 11 dígitos')).toBeInTheDocument()
-  })
-
-  it('formats CPF as digits are typed', async () => {
-    const user = userEvent.setup()
-    renderComponent()
-
-    const cpfInput = screen.getByLabelText(/cpf do representante/i)
-    await user.type(cpfInput, '12345678901')
-
-    expect(cpfInput).toHaveValue('123.456.789-01')
   })
 
   it('accepts a valid PDF file via the file input', async () => {
@@ -174,9 +148,6 @@ describe('ComplianceStep', () => {
     renderComponent()
 
     await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'CONTRATO_SOCIAL')
-    await user.type(screen.getByLabelText(/nome do representante legal/i), 'João da Silva')
-    await user.type(screen.getByLabelText(/^cargo/i), 'Sócio-Administrador')
-    await user.type(screen.getByLabelText(/cpf do representante/i), '12345678901')
 
     await user.upload(
       screen.getByTestId('file-input'),

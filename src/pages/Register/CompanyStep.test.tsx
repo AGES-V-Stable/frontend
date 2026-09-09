@@ -143,6 +143,6 @@ describe('Company registration route', () => {
     )
     expect(screen.getByRole('alert')).toHaveTextContent('Link de cadastro ausente ou inválido')
     await user.click(screen.getByRole('link', { name: 'Voltar ao cadastro' }))
-    expect(screen.getByText('Compliance e documentos')).toBeInTheDocument()
+    expect(screen.getByText('Register')).toBeInTheDocument()
   })
 })

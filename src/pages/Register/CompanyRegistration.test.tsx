@@ -50,7 +50,9 @@ describe('company API integration', () => {
     open()
     const user = await fill()
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
-    expect(await screen.findByRole('heading', { name: 'Compliance' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Compliance e documentos' }),
+    ).toBeInTheDocument()
     const post = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')!
     expect(post[0]).toBe(`/v1/cadastros/${id}/empresa`)
     expect(JSON.parse(post[1]!.body as string)).toEqual({
@@ -68,8 +70,10 @@ describe('company API integration', () => {
       vi.fn(async () => response(saved)),
     )
     open(path)
-    expect(await screen.findByRole('heading', { name: 'Compliance' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Continuar' })).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Compliance e documentos' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'CNPJ *' })).not.toBeInTheDocument()
   })
   it('returns premature compliance visits to the form', async () => {
     vi.stubGlobal(
@@ -112,7 +116,9 @@ describe('company API integration', () => {
     open()
     const user = await fill()
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
-    expect(await screen.findByRole('heading', { name: 'Compliance' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Compliance e documentos' }),
+    ).toBeInTheDocument()
   })
   it('blocks repeated submission and cancellation while saving', async () => {
     let finish!: (value: Response) => void
@@ -131,7 +137,7 @@ describe('company API integration', () => {
     expect(screen.getByRole('button', { name: 'Salvando...' })).toBeDisabled()
     expect(fetchMock.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1)
     finish(response(result, 201))
-    await screen.findByRole('heading', { name: 'Compliance' })
+    await screen.findByRole('heading', { name: 'Compliance e documentos' })
   })
   it('allows retry after loading fails', async () => {
     const fetchMock = vi
