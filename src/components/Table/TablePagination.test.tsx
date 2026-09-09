@@ -27,4 +27,29 @@ describe('TablePagination', () => {
     fireEvent.click(nextButton)
     expect(onPageChange).toHaveBeenCalledWith(3)
   })
+  it('should disable navigation and show a valid range when there are no records', () => {
+    const onPageChange = vi.fn()
+
+    render(
+      <TablePagination
+        currentPage={1}
+        totalPages={0}
+        displayedRecords={0}
+        itemsPerPage={10}
+        totalRecords={0}
+        onPageChange={onPageChange}
+      />,
+    )
+
+    const prevButton = screen.getByRole('button', { name: 'Anterior' })
+    const nextButton = screen.getByRole('button', { name: 'Próxima' })
+
+    expect(screen.getByText('Mostrando 0-0 de 0 clientes')).toBeInTheDocument()
+    expect(prevButton).toBeDisabled()
+    expect(nextButton).toBeDisabled()
+
+    fireEvent.click(prevButton)
+    fireEvent.click(nextButton)
+    expect(onPageChange).not.toHaveBeenCalled()
+  })
 })

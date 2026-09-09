@@ -1,67 +1,65 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import { describe, expect, it } from 'vitest'
 
 import { Home } from './Home'
 
+function renderHome() {
+  return render(
+    <MemoryRouter initialEntries={['/']}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<p>Login page</p>} />
+        <Route path="/register" element={<p>Register page</p>} />
+        <Route path="/admin/clientes-pme" element={<p>Admin page</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
 describe('Home Page Component', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
+  it('demonstrates all sidebar sections with local selection', async () => {
+    const user = userEvent.setup()
+    renderHome()
+
+    expect(screen.getByRole('button', { name: 'Início' })).toHaveAttribute('aria-current', 'page')
+    for (const label of ['Beneficiários', 'Transferências', 'Configurações', 'Início']) {
+      await user.click(screen.getByRole('button', { name: label }))
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-current', 'page')
+    }
   })
 
   it('given the Home component, when rendered, then it should display the application title text', () => {
-    render(<Home />)
+    renderHome()
 
     expect(screen.getByText('V-Stable')).toBeInTheDocument()
   })
 
-  it('given the Home component, when rendered, then it should display the enabled button showcase', () => {
-    render(<Home />)
+  it('navigates to the login page when "Ir para Login" is clicked', async () => {
+    const user = userEvent.setup()
+    renderHome()
 
-    expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Voltar' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Esqueci minha senha' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'Ir para Login' }))
+
+    expect(await screen.findByText('Login page')).toBeInTheDocument()
   })
 
-  it('given the Home component, when rendered, then it should display the disabled button showcase', () => {
-    render(<Home />)
+  it('navigates to the register page when "Ir para Cadastro" is clicked', async () => {
+    const user = userEvent.setup()
+    renderHome()
 
-    expect(screen.getByRole('button', { name: 'Primário Desabilitado' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Secundário Desabilitado' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Terciário Desabilitado' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Ir para Cadastro' }))
+
+    expect(await screen.findByText('Register page')).toBeInTheDocument()
   })
 
-  it.each([
-    ['Continuar', 'Primary clicked'],
-    ['Voltar', 'Secondary clicked'],
-    ['Esqueci minha senha', 'Tertiary clicked'],
-  ])(
-    'given the Home component, when the %s button is clicked, then it should run its click handler',
-    async (label, message) => {
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      render(<Home />)
+  it('navigates to the admin clients page when "Ir para Clientes PME" is clicked', async () => {
+    const user = userEvent.setup()
+    renderHome()
 
-      await userEvent.click(screen.getByRole('button', { name: label }))
+    await user.click(screen.getByRole('button', { name: 'Ir para Clientes PME' }))
 
-      expect(logSpy).toHaveBeenCalledWith(message)
-    },
-  )
-
-  it('given the Home component, when a disabled button is clicked, then it should not run its click handler', async () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    render(<Home />)
-
-    await userEvent.click(screen.getByRole('button', { name: 'Primário Desabilitado' }))
-
-    expect(logSpy).not.toHaveBeenCalled()
-  })
-
-  it('given the Home component, when the user types in the input, then it should run its change handler', async () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-    render(<Home />)
-
-    await userEvent.type(screen.getByRole('textbox'), '1')
-
-    expect(logSpy).toHaveBeenCalledWith('1')
+    expect(await screen.findByText('Admin page')).toBeInTheDocument()
   })
 })
