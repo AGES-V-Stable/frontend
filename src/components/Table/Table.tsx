@@ -123,7 +123,7 @@ export function Table<T>({
 
         <div className="w-full h-[1px] bg-[var(--Neutral-Grey-Border,#BBCABF)] mt-8"></div>
 
-        {pagination && <TablePagination {...pagination} />}
+        {pagination && data.length > 0 && <TablePagination {...pagination} />}
       </div>
     </div>
   )

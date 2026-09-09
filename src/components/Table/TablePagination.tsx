@@ -4,20 +4,29 @@ import { Button } from '@/components/Button'
 export function TablePagination({
   currentPage,
   totalPages,
+  displayedRecords,
   itemsPerPage,
   totalRecords,
   onPageChange,
 }: PaginationProps) {
+  const hasPreviousPage = currentPage > 1
+  const hasNextPage = currentPage < totalPages
+
   const handlePrev = () => {
-    onPageChange(currentPage - 1)
+    if (hasPreviousPage) {
+      onPageChange(currentPage - 1)
+    }
   }
 
   const handleNext = () => {
-    onPageChange(currentPage + 1)
+    if (hasNextPage) {
+      onPageChange(currentPage + 1)
+    }
   }
 
-  const startRecord = (currentPage - 1) * itemsPerPage + 1
-  const endRecord = Math.min(currentPage * itemsPerPage, totalRecords)
+  const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
+  const endRecord =
+    totalRecords === 0 ? 0 : Math.min(startRecord + displayedRecords - 1, totalRecords)
 
   return (
     <div className="w-full flex items-center justify-between py-6">
@@ -29,7 +38,7 @@ export function TablePagination({
         <Button
           label="Anterior"
           variant="secondary"
-          disabled={currentPage === 1}
+          disabled={!hasPreviousPage}
           onClick={handlePrev}
           className="!w-[112px] !h-[40px] !px-[24px] !rounded-[8px] !border-[#059669] !text-[#059669] hover:!text-white !border"
         />
@@ -39,7 +48,7 @@ export function TablePagination({
         <Button
           label="Próxima"
           variant="secondary"
-          disabled={currentPage === totalPages}
+          disabled={!hasNextPage}
           onClick={handleNext}
           className="!w-[112px] !h-[40px] !px-[24px] !rounded-[8px] !border-[#059669] !text-[#059669] hover:!text-white !border"
         />
