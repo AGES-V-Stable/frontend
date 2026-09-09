@@ -8,6 +8,7 @@ describe('PATHS configuration', () => {
       HOME: '/',
       LOGIN: '/login',
       REGISTER: '/register',
+      COMPLIANCE_LIVENESS: '/cadastro/compliance/liveness',
     }
 
     const actualPaths = PATHS
@@ -19,9 +20,11 @@ describe('PATHS configuration', () => {
     const homePath = PATHS.HOME
     const loginPath = PATHS.LOGIN
     const registerPath = PATHS.REGISTER
+    const complianceLivenessPath = PATHS.COMPLIANCE_LIVENESS
 
     expect(homePath).toBe('/')
     expect(loginPath).toBe('/login')
     expect(registerPath).toBe('/register')
+    expect(complianceLivenessPath).toBe('/cadastro/compliance/liveness')
   })
 })
