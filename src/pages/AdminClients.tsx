@@ -1,19 +1,33 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ClientFilters } from '@/components/ClientFilters'
 import type { ClientFilterValues } from '@/components/ClientFilters'
+import { Drawer } from '@/components/Drawer'
 import { Table } from '@/components/Table'
-import { mockClients as clients } from '@/data/mockClients'
+import type { Cliente } from '@/data/mockClients'
 import { clientTableColumns as columns } from '@/config/clientTableColumns'
+import { PATHS } from '@/routes/paths'
+import { getClients } from '@/services/clients'
 
 const emptyFilters: ClientFilterValues = { search: '', status: '', city: '', period: '' }
 const normalize = (value: string) => value.toLocaleLowerCase('pt-BR')
 const getPeriod = (date: string) => date.slice(3)
-const noop = () => {}
 
 function AdminClients() {
+  const [clients, setClients] = useState<Cliente[]>([])
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedClient, setSelectedClient] = useState<Cliente | null>(null)
   const [appliedFilters, setAppliedFilters] = useState<ClientFilterValues>(emptyFilters)
+
+  useEffect(() => {
+    const loadClients = async () => {
+      const data = await getClients()
+      setClients(data)
+    }
+
+    loadClients()
+  }, [])
+
   const statuses = [...new Set(clients.map((client) => client.status))]
   const cities = [...new Set(clients.map((client) => client.cidade))]
   const periods = [...new Set(clients.map((client) => getPeriod(client.atualizacao)))]
@@ -40,6 +54,8 @@ function AdminClients() {
     setCurrentPage(1)
   }
 
+  const closeClientDetails = () => setSelectedClient(null)
+
   return (
     <main className="min-h-screen w-full bg-[#F1F5F9] px-6 py-8 lg:px-10">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
@@ -52,6 +68,7 @@ function AdminClients() {
           </div>
           <button
             type="button"
+            onClick={() => window.open(PATHS.REGISTER, '_blank', 'noopener,noreferrer')}
             className="h-11 rounded-md bg-[#059669] px-5 text-sm font-medium text-white"
           >
             Cadastrar representante
@@ -80,7 +97,12 @@ function AdminClients() {
           totalRecords={filteredClients.length}
           columns={columns}
           data={filteredClients}
-          actions={[{ label: 'Ver detalhes', onClick: noop }]}
+          actions={[
+            {
+              label: 'Ver detalhes',
+              onClick: (client) => setSelectedClient(client as Cliente),
+            },
+          ]}
           pagination={{
             currentPage,
             totalPages: Math.max(1, Math.ceil(filteredClients.length / 4)),
@@ -91,6 +113,54 @@ function AdminClients() {
           }}
         />
       </div>
+
+      <Drawer open={Boolean(selectedClient)} title="Detalhes do cliente" onClose={closeClientDetails}>
+        {selectedClient && (
+          <div className="space-y-5 text-sm text-[#0F172A]">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                Empresa
+              </p>
+              <p className="mt-1 text-base font-semibold">{selectedClient.empresa}</p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                CNPJ
+              </p>
+              <p className="mt-1">{selectedClient.cnpj}</p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                Cidade / UF
+              </p>
+              <p className="mt-1">{selectedClient.cidade}</p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                Responsável
+              </p>
+              <p className="mt-1">{selectedClient.responsavel}</p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                Status
+              </p>
+              <p className="mt-1">{selectedClient.status}</p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                Última atualização
+              </p>
+              <p className="mt-1">{selectedClient.atualizacao}</p>
+            </div>
+          </div>
+        )}
+      </Drawer>
     </main>
   )
 }

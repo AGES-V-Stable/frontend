@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
 import AdminClients from './AdminClients'
@@ -56,5 +57,18 @@ describe('AdminClients page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('Nenhum cliente encontrado')
+  })
+
+  it('opens a drawer with the selected client details', async () => {
+    const user = userEvent.setup()
+    render(<AdminClients />)
+
+    await user.click(screen.getAllByRole('button', { name: 'Ver detalhes' })[0])
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Detalhes do cliente' })).toBeInTheDocument()
+    expect(screen.getByText('Cooperativa AgroSul')).toBeInTheDocument()
+    expect(screen.getByText('45.123.456/0001-90')).toBeInTheDocument()
+    expect(screen.getByText('Carlos Mendonça')).toBeInTheDocument()
   })
 })
