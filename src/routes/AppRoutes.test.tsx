@@ -27,7 +27,7 @@ describe('AppRoutes Navigation & Routing', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('Login')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Entrar na sua conta' })).toBeInTheDocument()
   })
 
   it('given the user navigates to the register path, when AppRoutes is rendered, then it should render the Register page', () => {
