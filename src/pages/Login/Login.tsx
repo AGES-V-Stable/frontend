@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
 import { PATHS } from '@/routes/paths'
+import { authService } from '@/services/login'
 
 interface LoginData {
   email: string
@@ -39,12 +40,32 @@ function Login() {
     if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const nextErrors = validate({ email, password })
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length === 0) navigate('/')
+  async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault()
+
+  const nextErrors = validate({ email, password })
+  setErrors(nextErrors)
+
+  if (Object.keys(nextErrors).length > 0) {
+    return
   }
+
+  try {
+    const { token } = await authService.login({
+      email,
+      password,
+    })
+
+    localStorage.setItem('token', token)
+
+    navigate('/')
+  } catch (error) {
+    setErrors({
+      email: 'E-mail ou senha inválidos',
+      password: 'E-mail ou senha inválidos',
+    })
+  }
+}
 
   return (
     <div className="flex items-center min-h-screen">
