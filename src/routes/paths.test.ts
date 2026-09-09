@@ -12,6 +12,7 @@ describe('PATHS configuration', () => {
       REGISTER_COMPANY_PROGRESS: '/register/:progressoCadastroId/empresa',
       REGISTER_COMPLIANCE: '/register/:progressoCadastroId/compliance',
       ADMIN_CLIENTS: '/admin/clientes-pme',
+      COMPLIANCE_LIVENESS: '/cadastro/compliance/liveness',
     }
 
     const actualPaths = PATHS
@@ -24,10 +25,12 @@ describe('PATHS configuration', () => {
     const loginPath = PATHS.LOGIN
     const registerPath = PATHS.REGISTER
     const adminClientsPath = PATHS.ADMIN_CLIENTS
+    const complianceLivenessPath = PATHS.COMPLIANCE_LIVENESS
 
     expect(homePath).toBe('/')
     expect(loginPath).toBe('/login')
     expect(registerPath).toBe('/register')
     expect(adminClientsPath).toBe('/admin/clientes-pme')
+    expect(complianceLivenessPath).toBe('/cadastro/compliance/liveness')
   })
 })
