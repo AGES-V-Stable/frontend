@@ -8,6 +8,7 @@ describe('PATHS configuration', () => {
       HOME: '/',
       LOGIN: '/login',
       REGISTER: '/register',
+      ADMIN_CLIENTS: '/admin/clientes-pme',
     }
 
     const actualPaths = PATHS
@@ -19,9 +20,11 @@ describe('PATHS configuration', () => {
     const homePath = PATHS.HOME
     const loginPath = PATHS.LOGIN
     const registerPath = PATHS.REGISTER
+    const adminClientsPath = PATHS.ADMIN_CLIENTS
 
     expect(homePath).toBe('/')
     expect(loginPath).toBe('/login')
     expect(registerPath).toBe('/register')
+    expect(adminClientsPath).toBe('/admin/clientes-pme')
   })
 })

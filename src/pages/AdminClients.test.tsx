@@ -1,12 +1,20 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 
 import AdminClients from './AdminClients'
 
+const renderAdminClients = () =>
+  render(
+    <MemoryRouter>
+      <AdminClients />
+    </MemoryRouter>,
+  )
+
 describe('AdminClients page', () => {
   it('shows only clients that match the company filter', () => {
-    render(<AdminClients />)
+    renderAdminClients()
 
     fireEvent.change(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), {
       target: { value: 'BioNorte' },
@@ -18,7 +26,7 @@ describe('AdminClients page', () => {
   })
 
   it('supports status, city and period filters together', () => {
-    render(<AdminClients />)
+    renderAdminClients()
 
     fireEvent.change(screen.getByLabelText('Status'), {
       target: { value: 'Cadastro recebido' },
@@ -36,7 +44,7 @@ describe('AdminClients page', () => {
   })
 
   it('clears applied filters and restores all mock clients', () => {
-    render(<AdminClients />)
+    renderAdminClients()
 
     fireEvent.change(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), {
       target: { value: 'BioNorte' },
@@ -49,7 +57,7 @@ describe('AdminClients page', () => {
   })
 
   it('shows an informative message when no client matches', () => {
-    render(<AdminClients />)
+    renderAdminClients()
 
     fireEvent.change(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), {
       target: { value: 'cliente inexistente' },
@@ -61,14 +69,16 @@ describe('AdminClients page', () => {
 
   it('opens a drawer with the selected client details', async () => {
     const user = userEvent.setup()
-    render(<AdminClients />)
+    renderAdminClients()
 
     await user.click(screen.getAllByRole('button', { name: 'Ver detalhes' })[0])
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog')
+
+    expect(dialog).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Detalhes do cliente' })).toBeInTheDocument()
-    expect(screen.getByText('Cooperativa AgroSul')).toBeInTheDocument()
-    expect(screen.getByText('45.123.456/0001-90')).toBeInTheDocument()
-    expect(screen.getByText('Carlos Mendonça')).toBeInTheDocument()
+    expect(within(dialog).getByText('Cooperativa AgroSul')).toBeInTheDocument()
+    expect(within(dialog).getByText('45.123.456/0001-90')).toBeInTheDocument()
+    expect(within(dialog).getByText('Carlos Mendonça')).toBeInTheDocument()
   })
 })

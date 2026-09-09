@@ -6,7 +6,7 @@ import type { ClientFilterValues } from '@/components/ClientFilters'
 import { Drawer } from '@/components/Drawer'
 import { Sidebar } from '@/components/Sidebar'
 import { Table } from '@/components/Table'
-import type { Cliente } from '@/data/mockClients'
+import { mockClients, type Cliente } from '@/data/mockClients'
 import { clientTableColumns as columns } from '@/config/clientTableColumns'
 import { PATHS } from '@/routes/paths'
 import { getClients } from '@/services/clients'
@@ -52,7 +52,7 @@ const getPeriod = (date: string) => date.slice(3)
 function AdminClients() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [clients, setClients] = useState<Cliente[]>([])
+  const [clients, setClients] = useState<Cliente[]>(mockClients)
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null)
   const [appliedFilters, setAppliedFilters] = useState<ClientFilterValues>(emptyFilters)
