@@ -173,7 +173,11 @@ function AdminClients() {
           />
         </div>
 
-        <Drawer open={Boolean(selectedClient)} title="Detalhes do cliente" onClose={closeClientDetails}>
+        <Drawer
+          open={Boolean(selectedClient)}
+          title="Detalhes do cliente"
+          onClose={closeClientDetails}
+        >
           {selectedClient && (
             <div className="space-y-5 text-sm text-[#0F172A]">
               <div>
