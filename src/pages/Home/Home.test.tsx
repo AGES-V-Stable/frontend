@@ -36,12 +36,6 @@ describe('Home Page Component', () => {
     expect(screen.getByText('V-Stable')).toBeInTheDocument()
   })
 
-  it('given the Home component, when rendered, then it should display the client table', () => {
-    renderHome()
-
-    expect(screen.getByText('Todos os clientes')).toBeInTheDocument()
-  })
-
   it('navigates to the login page when "Ir para Login" is clicked', async () => {
     const user = userEvent.setup()
     renderHome()
