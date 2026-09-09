@@ -8,12 +8,14 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format:check": "prettier --check .",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "format:fix": "prettier --write .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "audit": "npm audit --audit-level=high",
+    "audit:fix": "npm audit fix --audit-level=high",
     "preview": "vite preview"
   },
   "dependencies": {
