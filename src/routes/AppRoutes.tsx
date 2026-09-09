@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router'
 
+import AdminClients from '@/pages/AdminClients'
 import { Home } from '@/pages/Home'
 import AdminClients from '../pages/AdminClients'
 import AdminTransfers from '../pages/AdminTransfers'
