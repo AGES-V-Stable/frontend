@@ -38,7 +38,8 @@ interface ValidationErrors {
 function validate(data: ComplianceFormData): ValidationErrors {
   const errors: ValidationErrors = {}
   if (!data.tipoDocumento) errors.tipoDocumento = 'Selecione o tipo de documento'
-  if (!data.nomeRepresentante.trim()) errors.nomeRepresentante = 'Nome do representante é obrigatório'
+  if (!data.nomeRepresentante.trim())
+    errors.nomeRepresentante = 'Nome do representante é obrigatório'
   if (!data.cargo.trim()) errors.cargo = 'Cargo é obrigatório'
   const cpfDigits = data.cpfRepresentante.replace(/\D/g, '')
   if (!cpfDigits) errors.cpfRepresentante = 'CPF é obrigatório'

@@ -1,6 +1,6 @@
 import React from 'react'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary'
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'neutral'
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   label: string
@@ -17,6 +17,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const wFullStyle = 'w-full'
 
     const variants = {
+      neutral: 'bg-white border border-[#BBCABF] text-[#334155] hover:bg-slate-50',
       primary:
         'bg-[#059669] text-white hover:bg-[#047857] disabled:hover:bg-[#059669] border border-transparent',
       secondary:
