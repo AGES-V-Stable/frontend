@@ -8,6 +8,8 @@ import { CompanyRegistration } from '@/pages/Register/CompanyRegistration'
 
 import { PATHS } from './paths'
 
+const ForgotPassWordPlaceHolder = () => <div className="p-8">Recuperação de Senha (Em breve)</div>
+
 function AppRoutes() {
   return (
     <Routes>
@@ -15,6 +17,7 @@ function AppRoutes() {
       <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
+      <Route path={PATHS.FORGOT_PASSWORD} element={<ForgotPassWordPlaceHolder />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPANY_PROGRESS} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<CompanyRegistration compliance />} />
