@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
 import { PATHS } from '@/routes/paths'
 import { authService } from '@/services/login'
+import { parseJwt } from '@/utils/jwt'
 
 interface LoginData {
   email: string
@@ -58,7 +59,16 @@ function Login() {
 
     localStorage.setItem('token', token)
 
-    navigate('/')
+    const payload = parseJwt(token)
+    const userRoles: string[] = payload?.role || []
+
+    const isAdmin = userRoles.includes('ADMIN') || userRoles.includes('ROLE_ADMIN')
+
+    if (isAdmin) {
+      navigate(PATHS.ADMIN_CLIENTS)
+    }else {
+      navigate(PATHS.HOME)
+    }
   } catch (error) {
     setErrors({
       email: 'E-mail ou senha inválidos',
@@ -108,6 +118,14 @@ function Login() {
               onChange={(e) => handlePasswordChange(e.target.value)}
               error={errors.password}
             />
+            <div className="flex justify-end mt-1">
+              <Link
+                  to={PATHS.FORGOT_PASSWORD}
+                  className="text-sm font medium text-[#959669] hover:text-[#047857]"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
           </div>
           <div className="flex flex-col w-[560px] gap-y-[10px]">
             <Button type="submit" label="Entrar" variant="primary" />
