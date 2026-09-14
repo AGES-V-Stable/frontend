@@ -42,40 +42,40 @@ function Login() {
   }
 
   async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault()
+    e.preventDefault()
 
-  const nextErrors = validate({ email, password })
-  setErrors(nextErrors)
+    const nextErrors = validate({ email, password })
+    setErrors(nextErrors)
 
-  if (Object.keys(nextErrors).length > 0) {
-    return
-  }
-
-  try {
-    const { token } = await authService.login({
-      email,
-      password,
-    })
-
-    localStorage.setItem('token', token)
-
-    const payload = parseJwt(token)
-    const userRoles: string[] = payload?.role || []
-
-    const isAdmin = userRoles.includes('ADMIN') || userRoles.includes('ROLE_ADMIN')
-
-    if (isAdmin) {
-      navigate(PATHS.ADMIN_CLIENTS)
-    }else {
-      navigate(PATHS.HOME)
+    if (Object.keys(nextErrors).length > 0) {
+      return
     }
-  } catch (error) {
-    setErrors({
-      email: 'E-mail ou senha inválidos',
-      password: 'E-mail ou senha inválidos',
-    })
+
+    try {
+      const { token } = await authService.login({
+        email,
+        password,
+      })
+
+      localStorage.setItem('token', token)
+
+      const payload = parseJwt(token)
+      const userRoles: string[] = payload?.role || []
+
+      const isAdmin = userRoles.includes('ADMIN') || userRoles.includes('ROLE_ADMIN')
+
+      if (isAdmin) {
+        navigate(PATHS.ADMIN_CLIENTS)
+      } else {
+        navigate(PATHS.HOME)
+      }
+    } catch {
+      setErrors({
+        email: 'E-mail ou senha inválidos',
+        password: 'E-mail ou senha inválidos',
+      })
+    }
   }
-}
 
   return (
     <div className="flex items-center min-h-screen">
@@ -118,14 +118,6 @@ function Login() {
               onChange={(e) => handlePasswordChange(e.target.value)}
               error={errors.password}
             />
-            <div className="flex justify-end mt-1">
-              <Link
-                  to={PATHS.FORGOT_PASSWORD}
-                  className="text-sm font medium text-[#959669] hover:text-[#047857]"
-              >
-                Esqueci minha senha
-              </Link>
-            </div>
           </div>
           <div className="flex flex-col w-[560px] gap-y-[10px]">
             <Button type="submit" label="Entrar" variant="primary" />
@@ -135,6 +127,14 @@ function Login() {
               variant="secondary"
               onClick={() => navigate(PATHS.REGISTER)}
             />
+          </div>
+          <div className="flex justify-center -mt-7">
+            <Link
+              to={PATHS.FORGOT_PASSWORD}
+              className="text-[16px] font-medium text-[#059669] hover:text-[#047857] hover:underline transition-colors"
+            >
+              Esqueci minha senha
+            </Link>
           </div>
         </form>
       </div>

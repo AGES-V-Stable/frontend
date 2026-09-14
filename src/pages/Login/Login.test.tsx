@@ -1,10 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Login } from './Login'
 import { authService } from '@/services/login'
+import { PATHS } from '@/routes/paths'
 
 vi.mock('@/services/login', () => ({
   authService: {
@@ -14,19 +15,24 @@ vi.mock('@/services/login', () => ({
 
 function renderLogin() {
   return render(
-    <MemoryRouter initialEntries={['/login']}>
+    <MemoryRouter initialEntries={[PATHS.LOGIN]}>
       <Routes>
-        <Route path="/" element={<p>Home page</p>} />
-        <Route path="/admin/clientes-pme" element={<p>Admin page</p>} />
-        <Route path="/register" element={<p>Register page</p>} />
-        <Route path="/esqueci-a-senha" element={<p> Forgot PassWord page </p>} />
-        <Route path="/login" element={<Login />} />
+        <Route path={PATHS.HOME} element={<p>Home page</p>} />
+        <Route path={PATHS.ADMIN_CLIENTS} element={<p>Admin page</p>} />
+        <Route path={PATHS.REGISTER} element={<p>Register page</p>} />
+        <Route path={PATHS.FORGOT_PASSWORD} element={<p>Forgot Password page</p>} />
+        <Route path={PATHS.LOGIN} element={<Login />} />
       </Routes>
     </MemoryRouter>,
   )
 }
 
 describe('Login Page Component', () => {
+  // Limpa os mocks antes de cada teste para o ADMIN não interferir no USER
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('renders the brand copy, heading and form fields', () => {
     renderLogin()
 
@@ -46,6 +52,28 @@ describe('Login Page Component', () => {
 
     expect(screen.getByText('E-mail é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('Senha é obrigatória')).toBeInTheDocument()
+  })
+
+  it('shows an error when the email format is invalid', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'nao-e-um-email')
+    await user.type(screen.getByLabelText('Senha'), '123456')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(screen.getByText('E-mail inválido')).toBeInTheDocument()
+  })
+
+  it('clears a field error as the user retypes it', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(screen.getByText('E-mail é obrigatório')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('E-mail'), 'a')
+    expect(screen.queryByText('E-mail é obrigatório')).not.toBeInTheDocument()
   })
 
   it('navigates to the forgot password page when the link is clicked', async () => {
@@ -75,9 +103,9 @@ describe('Login Page Component', () => {
   it('navigates to the home page when role array contains USER', async () => {
     const user = userEvent.setup()
 
-    // Payload mock: { "role": ["ADMIN"] } em Base64
-    const mockAdminToken = 'header.eyJyb2xlIjpbIkFETUlOIl19.signature'
-    vi.mocked(authService.login).mockResolvedValueOnce({ token: mockAdminToken })
+    // Payload mock: { "role": ["USER"] } em Base64
+    const mockUserToken = 'header.eyJyb2xlIjpbIlVTRVIiXX0=.signature'
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: mockUserToken })
 
     renderLogin()
 
@@ -101,29 +129,7 @@ describe('Login Page Component', () => {
     expect(await screen.findAllByText('E-mail ou senha inválidos')).toHaveLength(2)
   })
 
-  it('clears a field error as the user retypes it', async () => {
-    const user = userEvent.setup()
-    renderLogin()
-
-    await user.click(screen.getByRole('button', { name: 'Entrar' }))
-    expect(screen.getByText('E-mail é obrigatório')).toBeInTheDocument()
-
-    await user.type(screen.getByLabelText('E-mail'), 'a')
-    expect(screen.queryByText('E-mail é obrigatório')).not.toBeInTheDocument()
-  })
-
-  it('navigates to the home page after a valid submission', async () => {
-    const user = userEvent.setup()
-    renderLogin()
-
-    await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
-    await user.type(screen.getByLabelText('Senha'), 'senha-super-secreta')
-    await user.click(screen.getByRole('button', { name: 'Entrar' }))
-
-    expect(await screen.findByText('Home page')).toBeInTheDocument()
-  })
-
-  it('navigates to the register page when "Cadastrar PME" is clicked, without requiring valid data', async () => {
+  it('navigates to the register page when "Cadastrar PME" is clicked', async () => {
     const user = userEvent.setup()
     renderLogin()
 
