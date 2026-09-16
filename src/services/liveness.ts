@@ -1,10 +1,10 @@
-import type { LivenessStatus, StartLivenessResponse } from '@/types/liveness'
+import type { LivenessStatus, LivenessStatusResponse, StartLivenessResponse } from '@/types/liveness'
 
 import { API_BASE_URL } from './apiConfig'
 import { httpRequest } from './httpClient'
 
-const LIVENESS_ID_STORAGE_KEY = 'vstable:liveness:id'
-const LIVENESS_STATUS_STORAGE_KEY = 'vstable:liveness:status'
+export const LIVENESS_ID_STORAGE_KEY = 'vstable:liveness:id'
+export const LIVENESS_STATUS_STORAGE_KEY = 'vstable:liveness:status'
 
 const KNOWN_STATUSES: LivenessStatus[] = ['idle', 'pending', 'success', 'failure']
 
@@ -20,6 +20,22 @@ export async function startLivenessVerification(
   return httpRequest<StartLivenessResponse>(
     `${API_BASE_URL}/v1/cadastros/${progressoCadastroId}/compliance/liveness`,
     { method: 'POST' },
+  )
+}
+
+/**
+ * Consulta se a verificação de liveness já foi concluída. A Avenia não avisa a
+ * gente automaticamente (sem redirect de volta, sem webhook no front) — por
+ * isso essa consulta é acionada manualmente pelo usuário (botão "Verificar
+ * conclusão"), não por um retorno automático.
+ */
+export async function checkLivenessStatus(
+  progressoCadastroId: string,
+  livenessId: string,
+): Promise<LivenessStatusResponse> {
+  return httpRequest<LivenessStatusResponse>(
+    `${API_BASE_URL}/v1/cadastros/${progressoCadastroId}/compliance/liveness/status?livenessId=${encodeURIComponent(livenessId)}`,
+    { method: 'GET' },
   )
 }
 
@@ -41,24 +57,24 @@ export async function submitLivenessResult(
 }
 
 export function saveLivenessSession(id: string, status: LivenessStatus): void {
-  sessionStorage.setItem(LIVENESS_ID_STORAGE_KEY, id)
-  sessionStorage.setItem(LIVENESS_STATUS_STORAGE_KEY, status)
+  localStorage.setItem(LIVENESS_ID_STORAGE_KEY, id)
+  localStorage.setItem(LIVENESS_STATUS_STORAGE_KEY, status)
 }
 
 export function getLivenessId(): string | null {
-  return sessionStorage.getItem(LIVENESS_ID_STORAGE_KEY)
+  return localStorage.getItem(LIVENESS_ID_STORAGE_KEY)
 }
 
 export function getLivenessStatus(): LivenessStatus {
-  const status = sessionStorage.getItem(LIVENESS_STATUS_STORAGE_KEY)
+  const status = localStorage.getItem(LIVENESS_STATUS_STORAGE_KEY)
   return (KNOWN_STATUSES as string[]).includes(status ?? '') ? (status as LivenessStatus) : 'idle'
 }
 
 export function setLivenessStatus(status: LivenessStatus): void {
-  sessionStorage.setItem(LIVENESS_STATUS_STORAGE_KEY, status)
+  localStorage.setItem(LIVENESS_STATUS_STORAGE_KEY, status)
 }
 
 export function clearLivenessSession(): void {
-  sessionStorage.removeItem(LIVENESS_ID_STORAGE_KEY)
-  sessionStorage.removeItem(LIVENESS_STATUS_STORAGE_KEY)
+  localStorage.removeItem(LIVENESS_ID_STORAGE_KEY)
+  localStorage.removeItem(LIVENESS_STATUS_STORAGE_KEY)
 }

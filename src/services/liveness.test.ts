@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  checkLivenessStatus,
   clearLivenessSession,
   getLivenessId,
   getLivenessStatus,
@@ -12,7 +13,7 @@ import {
 
 describe('liveness service', () => {
   beforeEach(() => {
-    sessionStorage.clear()
+    localStorage.clear()
   })
 
   afterEach(() => {
@@ -57,6 +58,34 @@ describe('liveness service', () => {
     })
   })
 
+  describe('checkLivenessStatus', () => {
+    it('given a progresso de cadastro and a liveness id, when checking the status, then it should GET the status endpoint with the livenessId as a query param', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ ready: true, status: 'UPLOADED' }),
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await checkLivenessStatus('cadastro-1', 'liveness-1')
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/v1/cadastros/cadastro-1/compliance/liveness/status?livenessId=liveness-1'),
+        expect.objectContaining({ method: 'GET' }),
+      )
+      expect(result).toEqual({ ready: true, status: 'UPLOADED' })
+    })
+
+    it('given our backend returns an error, when checking the status, then it should throw', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: false, status: 502, text: async () => 'boom' }),
+      )
+
+      await expect(checkLivenessStatus('cadastro-1', 'liveness-1')).rejects.toThrow()
+    })
+  })
+
   describe('submitLivenessResult', () => {
     it('given a progresso de cadastro and a liveness id, when submitting the result, then it should PUT to the cadastro compliance endpoint', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204 })
@@ -74,7 +103,7 @@ describe('liveness service', () => {
     })
   })
 
-  describe('session storage helpers', () => {
+  describe('session persistence helpers', () => {
     it('given no session has been saved, when reading the liveness status, then it should default to idle', () => {
       expect(getLivenessStatus()).toBe('idle')
       expect(getLivenessId()).toBeNull()

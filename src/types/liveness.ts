@@ -6,3 +6,8 @@ export interface StartLivenessResponse {
   livenessUrl: string
   validateLivenessToken: string
 }
+
+export interface LivenessStatusResponse {
+  ready: boolean
+  status: string
+}
