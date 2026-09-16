@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { useCallback, useState } from 'react'
+import { useNavigate } from 'react-router'
 
 import { Button } from '@/components/Button'
 import { PATHS } from '@/routes/paths'
 import {
+  checkLivenessStatus,
   clearLivenessSession,
   getLivenessId,
   getLivenessStatus,
@@ -14,9 +15,6 @@ import {
 } from '@/services/liveness'
 import type { LivenessStatus } from '@/types/liveness'
 
-const SUCCESS_QUERY_VALUES = ['success', 'approved', 'completed']
-const FAILURE_QUERY_VALUES = ['failure', 'failed', 'rejected', 'error']
-
 export interface LivenessStepProps {
   /** TODO: obter do estado do wizard assim que o fluxo de cadastro estiver implementado. */
   progressoCadastroId?: string
@@ -25,42 +23,13 @@ export interface LivenessStepProps {
 
 function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
 
-  // TODO(contrato-avenia): o mecanismo real de retorno do redirect da Avenia (nomes de
-  // query params, necessidade de informar uma returnUrl na chamada inicial) ainda não
-  // foi validado no sandbox. Ajustar esta leitura assim que o contrato for confirmado.
-  const [status, setStatus] = useState<LivenessStatus>(() => {
-    const returnStatus = searchParams.get('status') ?? searchParams.get('livenessStatus')
-    if (returnStatus) {
-      const normalized = returnStatus.toLowerCase()
-      if (SUCCESS_QUERY_VALUES.includes(normalized)) {
-        setLivenessStatus('success')
-        return 'success'
-      }
-      if (FAILURE_QUERY_VALUES.includes(normalized)) {
-        setLivenessStatus('failure')
-        return 'failure'
-      }
-    }
-    return getLivenessStatus()
-  })
+  const [status, setStatus] = useState<LivenessStatus>(() => getLivenessStatus())
   const [isStarting, setIsStarting] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!searchParams.has('status') && !searchParams.has('livenessStatus')) return
-
-    setSearchParams(
-      (params) => {
-        params.delete('status')
-        params.delete('livenessStatus')
-        return params
-      },
-      { replace: true },
-    )
-  }, [searchParams, setSearchParams])
+  const [checkMessage, setCheckMessage] = useState<string | null>(null)
 
   const handleStart = useCallback(async () => {
     if (!progressoCadastroId) {
@@ -69,15 +38,56 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
     }
 
     setErrorMessage(null)
+    setCheckMessage(null)
     setIsStarting(true)
     try {
       const { id, livenessUrl } = await startLivenessVerification(progressoCadastroId)
       saveLivenessSession(id, 'pending')
       setStatus('pending')
-      window.location.href = livenessUrl
+
+      // Abre em uma aba nova para preservar o estado do wizard nesta aba
+      // enquanto o usuário completa a verificação na Avenia.
+      const livenessTab = window.open(livenessUrl, '_blank', 'noopener,noreferrer')
+      if (!livenessTab) {
+        setErrorMessage(
+          'Não foi possível abrir a verificação facial em uma nova aba. Permita pop-ups para este site e tente novamente.',
+        )
+        clearLivenessSession()
+        setStatus('idle')
+      }
     } catch {
       setErrorMessage('Não foi possível iniciar a verificação facial. Tente novamente.')
+    } finally {
       setIsStarting(false)
+    }
+  }, [progressoCadastroId])
+
+  // A Avenia não avisa a gente automaticamente quando o liveness termina (sem
+  // redirect de volta, sem webhook que chegue no front) — por isso a
+  // confirmação é manual: o usuário volta pra esta aba e clica em "Verificar
+  // conclusão", que consulta o backend (proxy fino pra Avenia).
+  const handleCheck = useCallback(async () => {
+    const livenessId = getLivenessId()
+    if (!livenessId || !progressoCadastroId) {
+      setErrorMessage('Não foi possível confirmar o cadastro. Reinicie a verificação.')
+      return
+    }
+
+    setErrorMessage(null)
+    setCheckMessage(null)
+    setIsChecking(true)
+    try {
+      const { ready } = await checkLivenessStatus(progressoCadastroId, livenessId)
+      if (ready) {
+        setLivenessStatus('success')
+        setStatus('success')
+      } else {
+        setCheckMessage('Verificação ainda não concluída. Finalize na aba aberta e tente novamente.')
+      }
+    } catch {
+      setErrorMessage('Não foi possível verificar a conclusão. Tente novamente.')
+    } finally {
+      setIsChecking(false)
     }
   }, [progressoCadastroId])
 
@@ -85,6 +95,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
     clearLivenessSession()
     setStatus('idle')
     setErrorMessage(null)
+    setCheckMessage(null)
   }, [])
 
   const handleContinue = useCallback(async () => {
@@ -111,7 +122,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
   }, [progressoCadastroId, onContinue, navigate])
 
   const isVerified = status === 'success'
-  const isFailure = status === 'failure'
+  const isPending = status === 'pending'
 
   return (
     <div className="p-8 flex flex-col items-center gap-6 max-w-md mx-auto">
@@ -121,9 +132,15 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
         facial rápida.
       </p>
 
-      {isFailure && (
-        <p role="alert" className="text-sm text-red-600">
-          Não foi possível concluir a verificação facial. Tente novamente.
+      {isPending && !isVerified && (
+        <p className="text-sm text-gray-600 text-center">
+          Complete a verificação na aba que abrimos e depois clique em "Verificar conclusão".
+        </p>
+      )}
+
+      {checkMessage && (
+        <p role="status" className="text-sm text-amber-600">
+          {checkMessage}
         </p>
       )}
 
@@ -135,18 +152,27 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
 
       {isVerified ? (
         <p className="text-sm text-green-700">Verificação concluída com sucesso.</p>
+      ) : isPending ? (
+        <div className="flex flex-col gap-2 w-full">
+          <Button
+            label={isChecking ? 'Verificando...' : 'Verificar conclusão'}
+            variant="secondary"
+            onClick={handleCheck}
+            disabled={isChecking}
+          />
+          <Button
+            label="Recomeçar verificação"
+            variant="secondary"
+            onClick={handleRetry}
+            disabled={isChecking}
+          />
+        </div>
       ) : (
         <Button
-          label={
-            isStarting
-              ? 'Redirecionando...'
-              : isFailure
-                ? 'Tentar novamente'
-                : 'Iniciar verificação facial'
-          }
+          label={isStarting ? 'Redirecionando...' : 'Iniciar verificação facial'}
           variant="secondary"
-          onClick={isFailure ? handleRetry : handleStart}
-          disabled={isStarting || status === 'pending'}
+          onClick={handleStart}
+          disabled={isStarting}
         />
       )}
 
