@@ -18,7 +18,10 @@ function renderRepresentativeStep(initialEntry = `/cadastro/${id}/representante`
           path="/cadastro/:progresso_cadastro_id/representante"
           element={<RepresentativeStep />}
         />
-        <Route path="/cadastro/:progresso_cadastro_id/compliance" element={<p>Compliance page</p>} />
+        <Route
+          path="/cadastro/:progresso_cadastro_id/compliance"
+          element={<p>Compliance page</p>}
+        />
         <Route path="/cadastro/:progresso_cadastro_id/acesso" element={<p>Access page</p>} />
       </Routes>
     </MemoryRouter>,

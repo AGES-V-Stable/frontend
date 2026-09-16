@@ -37,9 +37,7 @@ async function login(data: LoginData): Promise<LoginResponse> {
   }
 
   // Handles "Bearer <token>"
-  const token = authorization.startsWith('Bearer ')
-    ? authorization.substring(7)
-    : authorization
+  const token = authorization.startsWith('Bearer ') ? authorization.substring(7) : authorization
 
   return { token }
 }
