@@ -417,4 +417,24 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
     // Confirma que os dados foram preservados para nova tentativa do usuário
     expect(screen.getByLabelText(/linha de endereço/i)).toHaveValue('Rua Teste')
   })
+
+  it('usa as rotas da demonstração sem acessar a API', async () => {
+    render(<RepresentativeStep demo />)
+
+    expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /voltar/i }))
+    expect(mockNavigate).toHaveBeenCalledWith('/demo/register/empresa')
+
+    await userEvent.selectOptions(screen.getByLabelText(/cargo \/ função/i), 'Diretor(a)')
+    await userEvent.type(screen.getByPlaceholderText('000.000.000-00'), '52998224725')
+    await userEvent.type(screen.getByPlaceholderText('00000-000'), '90000000')
+    await userEvent.type(screen.getByLabelText(/linha de endereço/i), 'Rua Teste')
+    await userEvent.type(screen.getByLabelText(/cidade/i), 'São Paulo')
+    await userEvent.selectOptions(screen.getByLabelText(/estado/i), 'SP')
+    await userEvent.type(screen.getByLabelText(/país/i), 'Brasil')
+    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/demo/register/compliance')
+    expect(window.fetch).not.toHaveBeenCalled()
+  })
 })

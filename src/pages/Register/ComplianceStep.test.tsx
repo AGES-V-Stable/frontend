@@ -183,4 +183,37 @@ describe('ComplianceStep', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(/pdf, jpg, jpeg ou png/i)).toBeInTheDocument()
   })
+
+  it('disables interactions and displays the server error while saving', async () => {
+    const user = userEvent.setup()
+    const onContinue = vi.fn(async () => undefined)
+    const { rerender } = renderComponent(onContinue)
+    await user.upload(
+      screen.getByTestId('file-input'),
+      makeFile('contrato.pdf', 2 * 1024 * 1024, 'application/pdf'),
+    )
+
+    rerender(
+      <ComplianceStep onContinue={onContinue} saving serverError="Não foi possível enviar" />,
+    )
+
+    expect(screen.getByLabelText(/tipo de documento/i)).toBeDisabled()
+    expect(screen.getByTestId('file-input')).toBeDisabled()
+    expect(screen.getByRole('button', { name: /remover contrato.pdf/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Enviando documentos...' })).toBeDisabled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível enviar')
+    expect(screen.getByText('2.0 MB')).toBeInTheDocument()
+  })
+
+  it('opens the file picker from the keyboard when enabled', () => {
+    renderComponent()
+    const input = screen.getByTestId('file-input')
+    const click = vi.spyOn(input, 'click')
+    const dropZone = screen.getByRole('button', { name: /área de upload de documentos/i })
+
+    fireEvent.keyDown(dropZone, { key: 'Enter' })
+    fireEvent.keyDown(dropZone, { key: ' ' })
+
+    expect(click).toHaveBeenCalledTimes(2)
+  })
 })

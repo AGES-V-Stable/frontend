@@ -3,11 +3,17 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AppRoutes from '@/routes/AppRoutes'
-import { companyPath, compliancePath } from '@/routes/paths'
+import { companyPath, compliancePath, completionPath } from '@/routes/paths'
 
 const id = '11111111-1111-4111-8111-111111111111'
 const pending = { token: id, empresaId: null, etapaAtual: 2 }
 const saved = { ...pending, empresaId: id, etapaAtual: 3 }
+const completed = {
+  ...saved,
+  etapaAtual: 4,
+  statusGeral: 'EM_ANALISE',
+  statusComplianceFinal: 'PENDENTE',
+}
 const result = {
   empresa_id: id,
   progresso_cadastro_id: id,
@@ -138,6 +144,106 @@ describe('company API integration', () => {
     expect(fetchMock.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1)
     finish(response(result, 201))
     await screen.findByRole('heading', { name: 'Compliance e documentos' })
+  })
+  it('submits compliance documents and advances to completion', async () => {
+    const fetchMock = vi.fn(async (_url, options?: RequestInit) => {
+      if (options?.method === 'POST') {
+        return response({
+          progresso_cadastro_id: id,
+          empresa_id: id,
+          etapa_atual: 4,
+          status_geral: 'EM_ANALISE',
+          status_compliance_final: 'PENDENTE',
+        })
+      }
+      return response(saved)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    open(compliancePath(id))
+    const user = userEvent.setup()
+    await screen.findByRole('heading', { name: 'Compliance e documentos' })
+    await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'CONTRATO_SOCIAL')
+    await user.upload(
+      screen.getByTestId('file-input'),
+      new File(['document'], 'contrato.pdf', { type: 'application/pdf' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Cadastro enviado para análise' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Passo 4 de 4')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ir para o login' })).toHaveAttribute('href', '/login')
+    const post = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')!
+    expect(post[0]).toBe(`/v1/cadastros/${id}/compliance`)
+    expect(post[1]?.body).toBeInstanceOf(FormData)
+    expect((post[1]?.body as FormData).get('tipo_documento')).toBe('CONTRATO_SOCIAL')
+    expect((post[1]?.body as FormData).getAll('documentos')).toHaveLength(1)
+  })
+  it('keeps compliance selections and reports an API failure', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url, options?: RequestInit) =>
+        options?.method === 'POST'
+          ? response({ message: 'Documento rejeitado' }, 422)
+          : response(saved),
+      ),
+    )
+    open(compliancePath(id))
+    const user = userEvent.setup()
+    await screen.findByRole('heading', { name: 'Compliance e documentos' })
+    await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'CONTRATO_SOCIAL')
+    await user.upload(
+      screen.getByTestId('file-input'),
+      new File(['document'], 'contrato.pdf', { type: 'application/pdf' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Documento rejeitado')
+    expect(screen.getByText('contrato.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
+  })
+  it('recovers when compliance was committed before its response was lost', async () => {
+    let committed = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url, options?: RequestInit) => {
+        if (options?.method === 'POST') {
+          committed = true
+          throw new TypeError('offline')
+        }
+        return response(committed ? completed : saved)
+      }),
+    )
+    open(compliancePath(id))
+    const user = userEvent.setup()
+    await screen.findByRole('heading', { name: 'Compliance e documentos' })
+    await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'CONTRATO_SOCIAL')
+    await user.upload(
+      screen.getByTestId('file-input'),
+      new File(['document'], 'contrato.pdf', { type: 'application/pdf' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Cadastro enviado para análise' }),
+    ).toBeInTheDocument()
+  })
+  it.each([
+    [companyPath(id), completed, 'Cadastro enviado para análise'],
+    [completionPath(id), pending, 'Razão Social *'],
+    [completionPath(id), saved, 'Compliance e documentos'],
+  ])('redirects %s according to restored progress', async (path, progress, expected) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(progress)),
+    )
+    open(path)
+
+    expect(await screen.findByText(expected)).toBeInTheDocument()
   })
   it('allows retry after loading fails', async () => {
     const fetchMock = vi

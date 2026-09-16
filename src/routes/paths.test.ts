@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { PATHS } from './paths'
+import { companyPath, compliancePath, completionPath, PATHS } from './paths'
 
 describe('PATHS configuration', () => {
   it('given route definitions, when accessing PATHS, then it should match the expected route paths', () => {
@@ -38,5 +38,11 @@ describe('PATHS configuration', () => {
     expect(loginPath).toBe('/login')
     expect(registerPath).toBe('/register')
     expect(adminClientsPath).toBe('/admin/clientes-pme')
+  })
+
+  it('encodes registration IDs in every generated step path', () => {
+    expect(companyPath('id/with spaces')).toBe('/register/id%2Fwith%20spaces/empresa')
+    expect(compliancePath('id/with spaces')).toBe('/register/id%2Fwith%20spaces/compliance')
+    expect(completionPath('id/with spaces')).toBe('/register/id%2Fwith%20spaces/conclusao')
   })
 })
