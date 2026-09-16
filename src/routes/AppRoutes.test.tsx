@@ -42,6 +42,18 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByText('Register')).toBeInTheDocument()
   })
 
+  it('given the user navigates to the compliance liveness path, when AppRoutes is rendered, then it should render the LivenessStep page', () => {
+    const initialRoute = PATHS.COMPLIANCE_LIVENESS
+
+    render(
+      <MemoryRouter initialEntries={[initialRoute]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Verificação facial')).toBeInTheDocument()
+  })
+
   it('given the user navigates to an unknown route, when AppRoutes is rendered, then it should redirect to the Home page', () => {
     const unknownRoute = '/unknown-non-existent-route'
 

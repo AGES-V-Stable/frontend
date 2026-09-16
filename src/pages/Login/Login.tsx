@@ -59,7 +59,7 @@ function Login() {
     localStorage.setItem('token', token)
 
     navigate('/')
-  } catch (error) {
+  } catch {
     setErrors({
       email: 'E-mail ou senha inválidos',
       password: 'E-mail ou senha inválidos',
