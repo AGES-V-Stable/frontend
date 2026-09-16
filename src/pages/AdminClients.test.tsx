@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
@@ -13,56 +13,51 @@ const renderAdminClients = () =>
   )
 
 describe('AdminClients page', () => {
-  it('shows only clients that match the company filter', () => {
+  it('shows only clients that match the company filter', async () => {
+    const user = userEvent.setup()
     renderAdminClients()
 
-    fireEvent.change(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), {
-      target: { value: 'BioNorte' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.type(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), 'BioNorte')
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
 
     expect(screen.getByText('BioNorte Alimentos S.A.')).toBeInTheDocument()
     expect(screen.queryByText('Cooperativa AgroSul')).not.toBeInTheDocument()
   })
 
-  it('supports status, city and period filters together', () => {
+  it('supports status, city and period filters together', async () => {
+    const user = userEvent.setup()
     renderAdminClients()
 
-    fireEvent.change(screen.getByLabelText('Status'), {
-      target: { value: 'Cadastro recebido' },
-    })
-    fireEvent.change(screen.getByLabelText('Cidade / UF'), {
-      target: { value: 'Belém / PA' },
-    })
-    fireEvent.change(screen.getByLabelText('Período de cadastro'), {
-      target: { value: '08/2023' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.selectOptions(screen.getByLabelText('Status'), 'Cadastro recebido')
+    await user.selectOptions(screen.getByLabelText('Cidade / UF'), 'Belém / PA')
+    await user.selectOptions(screen.getByLabelText('Período de cadastro'), '08/2023')
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
 
     expect(screen.getByText('BioNorte Alimentos S.A.')).toBeInTheDocument()
     expect(screen.queryByText('TechVale Serviços Ltda.')).not.toBeInTheDocument()
   })
 
-  it('clears applied filters and restores all mock clients', () => {
+  it('clears applied filters and restores all mock clients', async () => {
+    const user = userEvent.setup()
     renderAdminClients()
 
-    fireEvent.change(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), {
-      target: { value: 'BioNorte' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
+    await user.type(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), 'BioNorte')
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.click(screen.getByRole('button', { name: 'Limpar' }))
 
     expect(screen.getByText('Cooperativa AgroSul')).toBeInTheDocument()
     expect(screen.getByText('TechVale Serviços Ltda.')).toBeInTheDocument()
   })
 
-  it('shows an informative message when no client matches', () => {
+  it('shows an informative message when no client matches', async () => {
+    const user = userEvent.setup()
     renderAdminClients()
 
-    fireEvent.change(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), {
-      target: { value: 'cliente inexistente' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.type(
+      screen.getByPlaceholderText('Buscar por razão social ou CNPJ'),
+      'cliente inexistente',
+    )
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('Nenhum cliente encontrado')
   })

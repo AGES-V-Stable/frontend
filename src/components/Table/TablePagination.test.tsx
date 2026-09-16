@@ -1,9 +1,11 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { TablePagination } from './TablePagination'
 
 describe('TablePagination', () => {
-  it('should render and handle clicks', () => {
+  it('should render and handle clicks', async () => {
+    const user = userEvent.setup()
     const onPageChange = vi.fn()
     render(
       <TablePagination
@@ -21,13 +23,14 @@ describe('TablePagination', () => {
     const prevButton = screen.getByText('Anterior')
     const nextButton = screen.getByText('Próxima')
 
-    fireEvent.click(prevButton)
+    await user.click(prevButton)
     expect(onPageChange).toHaveBeenCalledWith(1)
 
-    fireEvent.click(nextButton)
+    await user.click(nextButton)
     expect(onPageChange).toHaveBeenCalledWith(3)
   })
-  it('should disable navigation and show a valid range when there are no records', () => {
+  it('should disable navigation and show a valid range when there are no records', async () => {
+    const user = userEvent.setup()
     const onPageChange = vi.fn()
 
     render(
@@ -48,8 +51,8 @@ describe('TablePagination', () => {
     expect(prevButton).toBeDisabled()
     expect(nextButton).toBeDisabled()
 
-    fireEvent.click(prevButton)
-    fireEvent.click(nextButton)
+    await user.click(prevButton)
+    await user.click(nextButton)
     expect(onPageChange).not.toHaveBeenCalled()
   })
 })
