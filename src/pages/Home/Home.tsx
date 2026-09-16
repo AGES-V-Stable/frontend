@@ -38,6 +38,11 @@ function Home() {
             variant="tertiary"
             onClick={() => navigate(PATHS.ADMIN_CLIENTS)}
           />
+          <Button
+            label="Abrir demonstração completa"
+            variant="primary"
+            onClick={() => navigate(PATHS.DEMO)}
+          />
         </div>
       </main>
     </div>

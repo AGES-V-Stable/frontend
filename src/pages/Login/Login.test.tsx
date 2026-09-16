@@ -1,9 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Login } from './Login'
+
+afterEach(() => vi.unstubAllGlobals())
 
 function renderLogin() {
   return render(
@@ -62,6 +64,12 @@ describe('Login Page Component', () => {
   })
 
   it('navigates to the home page after a valid submission', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () => new Response(null, { status: 200, headers: { Authorization: 'Bearer token' } }),
+      ),
+    )
     const user = userEvent.setup()
     renderLogin()
 

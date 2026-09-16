@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
+import { PATHS } from '@/routes/paths'
 import { maskCEP, maskCPF } from '@/utils/masks'
 import { isValidCPF } from '@/utils/validators'
+import { RegistrationHeader } from './RegistrationHeader'
 
 interface RepresentativeData {
   cargo_funcao: string
@@ -54,7 +56,11 @@ const ESTADOS = [
   { sigla: 'TO', nome: 'Tocantins' },
 ]
 
-export const RepresentativeStep: React.FC = () => {
+interface RepresentativeStepProps {
+  demo?: boolean
+}
+
+export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = false }) => {
   const { progresso_cadastro_id } = useParams<{ progresso_cadastro_id: string }>()
   const navigate = useNavigate()
 
@@ -72,9 +78,11 @@ export const RepresentativeStep: React.FC = () => {
   const [errors, setErrors] = useState<Partial<Record<keyof RepresentativeData, string>>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [globalError, setGlobalError] = useState<string | null>(null)
-  const [isFetching, setIsFetching] = useState(true)
+  const [isFetching, setIsFetching] = useState(!demo)
 
   useEffect(() => {
+    if (demo) return
+
     const fetchInitialData = async () => {
       try {
         const response = await fetch(`/v1/cadastros/${progresso_cadastro_id}`)
@@ -99,7 +107,7 @@ export const RepresentativeStep: React.FC = () => {
       }
     }
     fetchInitialData()
-  }, [progresso_cadastro_id, navigate])
+  }, [demo, progresso_cadastro_id, navigate])
 
   const validateForm = () => {
     const newErrors: typeof errors = {}
@@ -136,6 +144,11 @@ export const RepresentativeStep: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return
+
+    if (demo) {
+      navigate(PATHS.DEMO_REGISTER_COMPLIANCE)
+      return
+    }
 
     setIsLoading(true)
     setGlobalError(null)
@@ -182,8 +195,14 @@ export const RepresentativeStep: React.FC = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 bg-white rounded-lg shadow-sm">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Dados do Representante</h2>
+    <main className="min-h-screen bg-[#F1F5F9] px-4 py-8 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10">
+        <RegistrationHeader
+          activeStep={0}
+          description="Informe os dados do representante legal da empresa."
+        />
+        <div className="mx-auto w-full max-w-3xl">
+          <h2 className="mb-6 text-2xl font-bold text-gray-800">Dados do Representante</h2>
 
       {globalError && (
         <div
@@ -347,7 +366,13 @@ export const RepresentativeStep: React.FC = () => {
         <Button
           label="Voltar"
           variant="secondary"
-          onClick={() => navigate(`/cadastro/${progresso_cadastro_id}/acesso`)}
+          onClick={() =>
+            navigate(
+              demo
+                ? PATHS.DEMO_REGISTER_COMPANY
+                : `/cadastro/${progresso_cadastro_id}/acesso`,
+            )
+          }
           disabled={isLoading}
         />
         <Button
@@ -356,6 +381,8 @@ export const RepresentativeStep: React.FC = () => {
           disabled={isLoading || Object.keys(errors).length > 0}
         />
       </div>
-    </div>
+        </div>
+      </div>
+    </main>
   )
 }

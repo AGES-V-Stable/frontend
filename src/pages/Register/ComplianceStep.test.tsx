@@ -1,11 +1,11 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import ComplianceStep from './ComplianceStep'
 
-function renderComponent() {
-  return render(<ComplianceStep />)
+function renderComponent(onContinue = vi.fn(async () => undefined)) {
+  return render(<ComplianceStep onContinue={onContinue} />)
 }
 
 function makeFile(name: string, size: number, type: string): File {
@@ -143,9 +143,10 @@ describe('ComplianceStep', () => {
     expect(dropZone).toBeInTheDocument()
   })
 
-  it('shows success message when form is fully valid and submitted', async () => {
+  it('submits the selected documents when the form is valid', async () => {
     const user = userEvent.setup()
-    renderComponent()
+    const onContinue = vi.fn(async () => undefined)
+    renderComponent(onContinue)
 
     await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'CONTRATO_SOCIAL')
 
@@ -156,8 +157,9 @@ describe('ComplianceStep', () => {
 
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText('Formulário enviado com sucesso!')).toBeInTheDocument()
+    expect(onContinue).toHaveBeenCalledWith(
+      expect.objectContaining({ tipoDocumento: 'CONTRATO_SOCIAL' }),
+    )
   })
 
   it('does not show success message when form has validation errors', async () => {

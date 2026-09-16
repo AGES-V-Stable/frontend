@@ -1,3 +1,10 @@
+export interface AccessData {
+  nomeCompleto: string
+  email: string
+  senha: string
+  confirmarSenha: string
+}
+
 export interface CompanyData {
   razaoSocial: string
   pais: string
@@ -10,6 +17,18 @@ export interface RegistrationProgress {
   token: string
   empresaId: string | null
   etapaAtual: number
+  statusGeral?: string
+  statusComplianceFinal?: string
+}
+
+export interface ComplianceSubmissionResult {
+  progresso_cadastro_id: string
+  empresa_id: string
+  documentos_ids: string[]
+  etapa_atual: number
+  status_geral: string
+  status_compliance_final: string
+  atualizado_em: string
 }
 export interface CompanyRegistrationResult {
   empresa_id: string

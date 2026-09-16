@@ -39,7 +39,7 @@ describe('AppRoutes Navigation & Routing', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('Register')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Dados de acesso' })).toBeInTheDocument()
   })
 
   it('given the user navigates to an unknown route, when AppRoutes is rendered, then it should redirect to the Home page', () => {

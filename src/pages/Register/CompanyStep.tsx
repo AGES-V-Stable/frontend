@@ -4,6 +4,7 @@ import { Input } from '@/components/Input'
 import { maskCEP, maskCNPJ } from '@/utils/masks'
 import { isValidCNPJ } from '@/utils/validators'
 import type { CompanyData } from '@/types/registration'
+import { RegistrationHeader } from './RegistrationHeader'
 
 export type { CompanyData } from '@/types/registration'
 
@@ -29,8 +30,6 @@ const fields: { name: Field; label: string; placeholder: string; required: boole
   { name: 'cidade', label: 'Cidade', placeholder: 'Ex: São Paulo', required: false },
   { name: 'estado', label: 'Estado', placeholder: 'Ex: SP, RJ', required: true },
 ]
-const steps = ['Representante', 'Empresa', 'Compliance', 'Conclusão']
-
 const brazil = (pais: string) => pais.trim().toLowerCase() === 'brasil'
 function validate(name: Field, value: string, pais: string) {
   if (name !== 'cidade' && !value.trim()) return 'Campo obrigatório.'
@@ -109,56 +108,10 @@ export function CompanyStep({
         }}
         className="flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10"
       >
-        <header className="flex flex-col items-center text-center">
-          <img
-            src="/images/register/v-stable-logo.png"
-            alt="V-Stable"
-            className="h-[68px] w-full max-w-[350px] object-contain"
-          />
-          <h1 className="mt-2 flex min-h-10 items-center text-2xl font-bold text-[#0F172A]">
-            Cadastro Institucional
-          </h1>
-          <p className="mt-1 flex min-h-7 items-center text-xs text-[#64748B]">
-            Preencha os dados da empresa para iniciar o processo de cadastro.
-          </p>
-        </header>
-        <ol
-          aria-label="Etapas do cadastro"
-          className="mx-auto grid w-full max-w-[1070px] grid-cols-4"
-        >
-          {steps.map((step, index) => (
-            <li
-              key={step}
-              aria-current={index === 1 ? 'step' : undefined}
-              className="relative flex flex-col items-center gap-1.5"
-            >
-              {index < 3 && (
-                <span
-                  aria-hidden="true"
-                  className={`absolute left-[calc(50%+22px)] right-[calc(-50%+22px)] top-[17px] h-0.5 md:left-[calc(50%+31px)] md:right-[calc(-50%+31px)] ${index === 0 ? 'bg-[#059669]' : 'bg-[#BBCABF]'}`}
-                />
-              )}
-              <span className="relative flex size-9 items-center justify-center">
-                <img
-                  alt=""
-                  src={`/images/register/step-${index === 0 ? 'completed' : index === 1 ? 'active' : 'pending'}.svg`}
-                  className="absolute inset-0 size-9"
-                />
-                <span
-                  className={`relative text-sm font-medium ${index === 1 ? 'text-white' : index === 0 ? 'text-[#059669]' : 'text-[#64748B]'}`}
-                >
-                  {index + 1}
-                </span>
-              </span>
-              <span
-                className={`flex min-h-6 items-center text-[10px] sm:text-xs ${index < 2 ? 'text-[#059669]' : 'text-[#64748B]'}`}
-              >
-                {step}
-              </span>
-            </li>
-          ))}
-        </ol>
-        <hr className="border-[#BBCABF]" />
+        <RegistrationHeader
+          activeStep={1}
+          description="Preencha os dados da empresa para iniciar o processo de cadastro."
+        />
         {serverError && (
           <p role="alert" className="text-red-700">
             {serverError}
