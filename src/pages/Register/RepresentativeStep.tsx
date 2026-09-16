@@ -204,183 +204,186 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
         <div className="mx-auto w-full max-w-3xl">
           <h2 className="mb-6 text-2xl font-bold text-gray-800">Dados do Representante</h2>
 
-      {globalError && (
-        <div
-          className="mb-6 p-4 bg-red-50 text-red-700 rounded-md border border-red-200"
-          role="alert"
-        >
-          {globalError}
-        </div>
-      )}
-
-      {/* Bloco: Vínculo Societário */}
-      <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
-          Vínculo Societário
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="cargo" className="block text-sm font-medium text-gray-700 mb-1">
-              Cargo / Função *
-            </label>
-            <select
-              id="cargo"
-              value={formData.cargo_funcao}
-              onChange={(e) => handleInputChange('cargo_funcao', e.target.value)}
-              className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.cargo_funcao ? 'border-red-500' : 'border-gray-300'}`}
-              aria-invalid={!!errors.cargo_funcao}
-              aria-describedby={errors.cargo_funcao ? 'cargo-error' : undefined}
+          {globalError && (
+            <div
+              className="mb-6 p-4 bg-red-50 text-red-700 rounded-md border border-red-200"
+              role="alert"
             >
-              <option value="" disabled>
-                Selecione...
-              </option>
-              {CARGOS.map((cargo) => (
-                <option key={cargo} value={cargo}>
-                  {cargo}
-                </option>
-              ))}
-            </select>
-            {errors.cargo_funcao && (
-              <p id="cargo-error" role="alert" className="mt-1 text-sm text-red-500">
-                {errors.cargo_funcao}
-              </p>
-            )}
-          </div>
+              {globalError}
+            </div>
+          )}
 
-          <div>
-            <label htmlFor="participacao" className="block text-sm font-medium text-gray-700 mb-1">
-              Participação Societária: {formData.participacao_societaria}%
-            </label>
-            <input
-              type="range"
-              id="participacao"
-              min="0"
-              max="100"
-              value={formData.participacao_societaria}
-              onChange={(e) => handleInputChange('participacao_societaria', Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2"
-            />
-          </div>
-        </div>
-      </section>
+          {/* Bloco: Vínculo Societário */}
+          <section className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
+              Vínculo Societário
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="cargo" className="block text-sm font-medium text-gray-700 mb-1">
+                  Cargo / Função *
+                </label>
+                <select
+                  id="cargo"
+                  value={formData.cargo_funcao}
+                  onChange={(e) => handleInputChange('cargo_funcao', e.target.value)}
+                  className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.cargo_funcao ? 'border-red-500' : 'border-gray-300'}`}
+                  aria-invalid={!!errors.cargo_funcao}
+                  aria-describedby={errors.cargo_funcao ? 'cargo-error' : undefined}
+                >
+                  <option value="" disabled>
+                    Selecione...
+                  </option>
+                  {CARGOS.map((cargo) => (
+                    <option key={cargo} value={cargo}>
+                      {cargo}
+                    </option>
+                  ))}
+                </select>
+                {errors.cargo_funcao && (
+                  <p id="cargo-error" role="alert" className="mt-1 text-sm text-red-500">
+                    {errors.cargo_funcao}
+                  </p>
+                )}
+              </div>
 
-      {/* Bloco: Documento e Endereço */}
-      <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
-          Documento e Endereço
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 mb-1">
-              CPF *
-            </label>
-            <Input
-              id="cpf"
-              placeholder="000.000.000-00"
-              value={formData.cpf}
-              onChange={(e) => handleInputChange('cpf', e.target.value)}
-              onBlur={handleBlurCPF}
-              error={errors.cpf}
-            />
-          </div>
-          <div>
-            <label htmlFor="cep" className="block text-sm font-medium text-gray-700 mb-1">
-              CEP *
-            </label>
-            <Input
-              id="cep"
-              placeholder="00000-000"
-              value={formData.cep}
-              onChange={(e) => handleInputChange('cep', e.target.value)}
-              error={errors.cep}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label
-              htmlFor="linha_endereco"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Linha de endereço *
-            </label>
-            <Input
-              id="linha_endereco"
-              value={formData.linha_endereco}
-              onChange={(e) => handleInputChange('linha_endereco', e.target.value)}
-              error={errors.linha_endereco}
-            />
-          </div>
-          <div>
-            <label htmlFor="cidade" className="block text-sm font-medium text-gray-700 mb-1">
-              Cidade *
-            </label>
-            <Input
-              id="cidade"
-              value={formData.cidade}
-              onChange={(e) => handleInputChange('cidade', e.target.value)}
-              error={errors.cidade}
-            />
-          </div>
-          <div>
-            <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">
-              Estado *
-            </label>
-            <select
-              id="estado"
-              value={formData.estado}
-              onChange={(e) => handleInputChange('estado', e.target.value)}
-              className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.estado ? 'border-red-500' : 'border-gray-300'}`}
-              aria-invalid={!!errors.estado}
-              aria-describedby={errors.estado ? 'estado-error' : undefined}
-            >
-              <option value="" disabled>
-                Selecione...
-              </option>
-              {ESTADOS.map((estado) => (
-                <option key={estado.sigla} value={estado.sigla}>
-                  {estado.nome}
-                </option>
-              ))}
-            </select>
-            {errors.estado && (
-              <p id="estado-error" role="alert" className="mt-1 text-sm text-red-500">
-                {errors.estado}
-              </p>
-            )}
-          </div>
-          <div>
-            <label htmlFor="pais" className="block text-sm font-medium text-gray-700 mb-1">
-              País *
-            </label>
-            <Input
-              id="pais"
-              value={formData.pais}
-              onChange={(e) => handleInputChange('pais', e.target.value)}
-              error={errors.pais}
-            />
-          </div>
-        </div>
-      </section>
+              <div>
+                <label
+                  htmlFor="participacao"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Participação Societária: {formData.participacao_societaria}%
+                </label>
+                <input
+                  type="range"
+                  id="participacao"
+                  min="0"
+                  max="100"
+                  value={formData.participacao_societaria}
+                  onChange={(e) =>
+                    handleInputChange('participacao_societaria', Number(e.target.value))
+                  }
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2"
+                />
+              </div>
+            </div>
+          </section>
 
-      {/* Navegação */}
-      <div className="flex justify-between items-center mt-8 pt-4 border-t">
-        <Button
-          label="Voltar"
-          variant="secondary"
-          onClick={() =>
-            navigate(
-              demo
-                ? PATHS.DEMO_REGISTER_COMPANY
-                : `/cadastro/${progresso_cadastro_id}/acesso`,
-            )
-          }
-          disabled={isLoading}
-        />
-        <Button
-          label={isLoading ? 'Processando...' : 'Continuar'}
-          onClick={handleSubmit}
-          disabled={isLoading || Object.keys(errors).length > 0}
-        />
-      </div>
+          {/* Bloco: Documento e Endereço */}
+          <section className="mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
+              Documento e Endereço
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 mb-1">
+                  CPF *
+                </label>
+                <Input
+                  id="cpf"
+                  placeholder="000.000.000-00"
+                  value={formData.cpf}
+                  onChange={(e) => handleInputChange('cpf', e.target.value)}
+                  onBlur={handleBlurCPF}
+                  error={errors.cpf}
+                />
+              </div>
+              <div>
+                <label htmlFor="cep" className="block text-sm font-medium text-gray-700 mb-1">
+                  CEP *
+                </label>
+                <Input
+                  id="cep"
+                  placeholder="00000-000"
+                  value={formData.cep}
+                  onChange={(e) => handleInputChange('cep', e.target.value)}
+                  error={errors.cep}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label
+                  htmlFor="linha_endereco"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Linha de endereço *
+                </label>
+                <Input
+                  id="linha_endereco"
+                  value={formData.linha_endereco}
+                  onChange={(e) => handleInputChange('linha_endereco', e.target.value)}
+                  error={errors.linha_endereco}
+                />
+              </div>
+              <div>
+                <label htmlFor="cidade" className="block text-sm font-medium text-gray-700 mb-1">
+                  Cidade *
+                </label>
+                <Input
+                  id="cidade"
+                  value={formData.cidade}
+                  onChange={(e) => handleInputChange('cidade', e.target.value)}
+                  error={errors.cidade}
+                />
+              </div>
+              <div>
+                <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">
+                  Estado *
+                </label>
+                <select
+                  id="estado"
+                  value={formData.estado}
+                  onChange={(e) => handleInputChange('estado', e.target.value)}
+                  className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.estado ? 'border-red-500' : 'border-gray-300'}`}
+                  aria-invalid={!!errors.estado}
+                  aria-describedby={errors.estado ? 'estado-error' : undefined}
+                >
+                  <option value="" disabled>
+                    Selecione...
+                  </option>
+                  {ESTADOS.map((estado) => (
+                    <option key={estado.sigla} value={estado.sigla}>
+                      {estado.nome}
+                    </option>
+                  ))}
+                </select>
+                {errors.estado && (
+                  <p id="estado-error" role="alert" className="mt-1 text-sm text-red-500">
+                    {errors.estado}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label htmlFor="pais" className="block text-sm font-medium text-gray-700 mb-1">
+                  País *
+                </label>
+                <Input
+                  id="pais"
+                  value={formData.pais}
+                  onChange={(e) => handleInputChange('pais', e.target.value)}
+                  error={errors.pais}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Navegação */}
+          <div className="flex justify-between items-center mt-8 pt-4 border-t">
+            <Button
+              label="Voltar"
+              variant="secondary"
+              onClick={() =>
+                navigate(
+                  demo ? PATHS.DEMO_REGISTER_COMPANY : `/cadastro/${progresso_cadastro_id}/acesso`,
+                )
+              }
+              disabled={isLoading}
+            />
+            <Button
+              label={isLoading ? 'Processando...' : 'Continuar'}
+              onClick={handleSubmit}
+              disabled={isLoading || Object.keys(errors).length > 0}
+            />
+          </div>
         </div>
       </div>
     </main>
