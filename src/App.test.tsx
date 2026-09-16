@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import App from './App'
 
 describe('App Component', () => {
-  it('given the root App component wrapped in a router, when rendered, then it should render the active route content', () => {
+  it('renders the active route content', () => {
     const routerWrapper = (
       <MemoryRouter initialEntries={['/']}>
         <App />
