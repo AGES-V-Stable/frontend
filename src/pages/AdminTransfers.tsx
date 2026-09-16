@@ -57,7 +57,7 @@ function AdminTransfers() {
   const [error, setError] = useState<string | null>(null)
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null)
 
-  const limit = 6 
+  const limit = 12
 
   const activeItemId = useMemo(() => {
     const matchedItem = sidebarMenuItems.find((item) => item.path === location.pathname)

@@ -70,5 +70,25 @@ export const mockTransfers: Transfer[] = [
     moeda: 'USD',
     status: 'Concluída',
   },
+  {
+    id: 't7',
+    empresa: 'AgroSul',
+    beneficiario: 'Silicon Valley Services',
+    data: '2026-05-10T14:20:00Z',
+    tipo: 'Pagamento',
+    valor: 3250.00,
+    moeda: 'USD',
+    status: 'Concluída',
+  },
+  {
+    id: 't8',
+    empresa: 'Tech Corp',
+    beneficiario: 'Silicon Valley Services',
+    data: '2026-08-05T14:20:00Z',
+    tipo: 'Pagamento',
+    valor: 1250.00,
+    moeda: 'USD',
+    status: 'Concluída',
+  },
 ]
 
