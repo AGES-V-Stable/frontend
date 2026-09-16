@@ -4,15 +4,28 @@ import { describe, expect, it, vi } from 'vitest'
 import type { RepresentativeData } from '@/types/registration'
 import { RepresentativeStep } from './RepresentativeStep'
 
-const valid: RepresentativeData = {
-  cargo_funcao: 'Diretor(a)',
-  participacao_societaria: 45,
-  cpf: '52998224725',
-  cep: '90000000',
-  cidade: 'Porto Alegre',
-  estado: 'RS',
-  pais: 'Brasil',
-  linha_endereco: 'Av. Ipiranga, 6681',
+const id = 'cad-123'
+const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
+
+afterEach(() => vi.unstubAllGlobals())
+
+function renderRepresentativeStep(initialEntry = `/cadastro/${id}/representante`) {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Routes>
+        <Route path="/cadastro" element={<p>Register page</p>} />
+        <Route
+          path="/cadastro/:progresso_cadastro_id/representante"
+          element={<RepresentativeStep />}
+        />
+        <Route
+          path="/cadastro/:progresso_cadastro_id/compliance"
+          element={<p>Compliance page</p>}
+        />
+        <Route path="/cadastro/:progresso_cadastro_id/acesso" element={<p>Access page</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
 }
 
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
