@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Login } from './Login'
 
@@ -18,6 +18,8 @@ function renderLogin() {
 }
 
 describe('Login Page Component', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
   it('renders the brand copy, heading and form fields', () => {
     renderLogin()
 
@@ -63,6 +65,15 @@ describe('Login Page Component', () => {
 
   it('navigates to the home page after a valid submission', async () => {
     const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 200,
+          headers: { Authorization: 'Bearer token123' },
+        }),
+      ),
+    )
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
