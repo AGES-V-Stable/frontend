@@ -7,6 +7,7 @@ import { Register } from '@/pages/Register'
 import { CompanyRegistration } from '@/pages/Register/CompanyRegistration'
 
 import { PATHS } from './paths'
+import { RegisterStatus } from '@/pages/RegisterStatus/RegisterStatus'
 
 function AppRoutes() {
   return (
@@ -18,6 +19,9 @@ function AppRoutes() {
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPANY_PROGRESS} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<CompanyRegistration compliance />} />
+      <Route path={PATHS.REGISTER_STATUS} element={<RegisterStatus />} />
+
+
 
       <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
     </Routes>
