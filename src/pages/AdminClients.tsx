@@ -14,7 +14,7 @@ import { getClients } from '@/services/clients'
 const sidebarMenuItems = [
   { id: 'home', label: 'Início', path: PATHS.HOME },
   { id: 'beneficiaries', label: 'Beneficiários', path: PATHS.ADMIN_CLIENTS },
-  { id: 'transfers', label: 'Transferências', path: '/transfers' },
+  { id: 'transfers', label: 'Transferências', path: PATHS.ADMIN_TRANSFERS },
   { id: 'settings', label: 'Configurações', path: '/settings' },
 ].map((item) => ({
   ...item,

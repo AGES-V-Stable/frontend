@@ -1,9 +1,16 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { Login } from './Login'
+import { authService } from '@/services/login'
+
+vi.mock('@/services/login', () => ({
+  authService: {
+    login: vi.fn(),
+  },
+}))
 
 function renderLogin() {
   return render(
@@ -62,6 +69,7 @@ describe('Login Page Component', () => {
   })
 
   it('navigates to the home page after a valid submission', async () => {
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: 'fake-token' })
     const user = userEvent.setup()
     renderLogin()
 

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router'
 
 import { Home } from '@/pages/Home'
 import AdminClients from '../pages/AdminClients'
+import AdminTransfers from '../pages/AdminTransfers'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
 import { CompanyRegistration } from '@/pages/Register/CompanyRegistration'
@@ -13,6 +14,7 @@ function AppRoutes() {
     <Routes>
       <Route path={PATHS.HOME} element={<Home />} />
       <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
+      <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
