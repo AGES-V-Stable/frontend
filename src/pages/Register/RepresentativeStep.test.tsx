@@ -8,7 +8,7 @@ import { RepresentativeStep } from './RepresentativeStep'
 const mockNavigate = vi.fn()
 vi.mock('react-router', () => ({
   useNavigate: () => mockNavigate,
-  useParams: () => ({ progresso_cadastro_id: 'cad-123' }),
+  useParams: () => ({ progressoCadastroId: 'cad-123' }),
 }))
 
 describe('RepresentativeStep (Etapa 3 - Representante)', () => {
@@ -28,15 +28,15 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
       ok: true,
       status: 200,
       json: async () => ({
-        representante: {
-          cargo_funcao: 'Diretor(a)',
-          participacao_societaria: 45,
+        representative: {
+          role: 'Diretor(a)',
+          shareholdingPercentage: 45,
           cpf: '52998224725',
-          cep: '90000000',
-          cidade: 'Porto Alegre',
-          estado: 'RS',
-          pais: 'Brasil',
-          linha_endereco: 'Av. Ipiranga, 6681',
+          zipCode: '90000000',
+          city: 'Porto Alegre',
+          state: 'RS',
+          country: 'Brasil',
+          addressLine: 'Av. Ipiranga, 6681',
         },
       }),
     } as Response)
@@ -71,7 +71,7 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
     })
   })
 
-  it('deve redirecionar para /cadastro com erro se o GET retornar 404 (cadastro expirado)', async () => {
+  it('deve redirecionar para /register com erro se o GET retornar 404 (cadastro expirado)', async () => {
     // Valida o redirecionamento imediato caso a sessão do onboarding não exista
     vi.spyOn(window, 'fetch').mockResolvedValueOnce({
       ok: false,
@@ -82,7 +82,7 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
     render(<RepresentativeStep />)
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/cadastro', expect.anything())
+      expect(mockNavigate).toHaveBeenCalledWith('/register', expect.anything())
     })
   })
 
@@ -252,7 +252,7 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
     fireEvent.click(backButton)
 
     // Valida navegação para a etapa anterior e ausência de chamadas PUT extras
-    expect(mockNavigate).toHaveBeenCalledWith('/cadastro/cad-123/acesso')
+    expect(mockNavigate).toHaveBeenCalledWith('/register')
     expect(window.fetch).toHaveBeenCalledTimes(1)
   })
 
@@ -284,25 +284,25 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
     const submitBtn = screen.getByRole('button', { name: /continuar/i })
     fireEvent.click(submitBtn)
 
-    // Valida navegação para a próxima etapa (compliance)
+    // Valida navegação para a próxima etapa (empresa)
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/cadastro/cad-123/compliance')
+      expect(mockNavigate).toHaveBeenCalledWith('/register/cad-123/empresa')
     })
 
     // Garante que o payload foi enviado com pontuações removidas (desmascarado)
     expect(window.fetch).toHaveBeenLastCalledWith(
-      '/v1/cadastros/cad-123/representante',
+      '/v1/onboarding/cad-123/representative',
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({
-          cargo_funcao: 'Sócio-administrador',
-          participacao_societaria: 0,
+          role: 'Sócio-administrador',
+          shareholdingPercentage: 0,
           cpf: '52998224725',
-          cep: '90000000',
-          cidade: 'São Paulo',
-          estado: 'SP',
-          pais: 'Brasil',
-          linha_endereco: 'Rua Teste, 100',
+          zipCode: '90000000',
+          city: 'São Paulo',
+          state: 'SP',
+          country: 'Brasil',
+          addressLine: 'Rua Teste, 100',
         }),
       }),
     )
@@ -315,7 +315,7 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
         ok: false,
         status: 422,
         json: async () => ({
-          errors: { cep: 'CEP não encontrado na base dos Correios.' },
+          errors: { zipCode: 'CEP não encontrado na base dos Correios.' },
         }),
       } as Response)
 
@@ -366,7 +366,7 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
     })
   })
 
-  it('deve redirecionar para /cadastro se o PUT retornar 404 (progresso expirado ao salvar)', async () => {
+  it('deve redirecionar para /register se o PUT retornar 404 (progresso expirado ao salvar)', async () => {
     // Cobre a linha 132 não testada anteriormente: else if (response.status === 404) no PUT
     vi.spyOn(window, 'fetch')
       .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as Response)
@@ -386,7 +386,7 @@ describe('RepresentativeStep (Etapa 3 - Representante)', () => {
     fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/cadastro', expect.anything())
+      expect(mockNavigate).toHaveBeenCalledWith('/register', expect.anything())
     })
   })
 
