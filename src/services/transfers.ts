@@ -9,7 +9,10 @@ export interface GetTransfersResponse {
   currentPage: number
 }
 
-export const getTransfers = async (page: number = 1, limit: number = 3): Promise<GetTransfersResponse> => {
+export const getTransfers = async (
+  page: number = 1,
+  limit: number = 6,
+): Promise<GetTransfersResponse> => {
   try {
     const response = await fetch(`${API_BASE_URL}/transfers?page=${page}&limit=${limit}`, {
       headers: {
@@ -23,18 +26,18 @@ export const getTransfers = async (page: number = 1, limit: number = 3): Promise
         return payload as GetTransfersResponse
       }
     }
-    
+
     throw new Error('API failed or returned invalid format, falling back to mock')
-  } catch (error) {
+  } catch {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
     const totalItems = mockTransfers.length
     const totalPages = Math.max(1, Math.ceil(totalItems / limit))
-    
+
     const safePage = Math.max(1, Math.min(page, totalPages))
     const startIndex = (safePage - 1) * limit
     const endIndex = startIndex + limit
-    
+
     const paginatedData = mockTransfers.slice(startIndex, endIndex)
 
     return {
@@ -45,4 +48,3 @@ export const getTransfers = async (page: number = 1, limit: number = 3): Promise
     }
   }
 }
-

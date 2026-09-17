@@ -12,14 +12,15 @@ export function StatusBadge({ label, variant }: StatusBadgeProps) {
 
   const variants = {
     success: 'bg-[var(--Semantic-Success-Subtle,#ECFDF5)] text-[#059669]',
-    warning: 'bg-[#FFFBEB] text-[#B45309]', 
+    warning: 'bg-[#FFFBEB] text-[#B45309]',
     error: 'bg-[#FEF2F2] text-[#B91C1C]',
     info: 'bg-[#EFF6FF] text-[#1D4ED8]',
   }
 
   const inferVariant = (labelText: string): StatusVariant => {
     const text = labelText.toLowerCase()
-    if (text.includes('processando') || text.includes('auditoria') || text.includes('pendente')) return 'warning'
+    if (text.includes('processando') || text.includes('auditoria') || text.includes('pendente'))
+      return 'warning'
     if (text.includes('falha') || text.includes('erro') || text.includes('cancelad')) return 'error'
     if (text.includes('info')) return 'info'
     return 'success'

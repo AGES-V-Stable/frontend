@@ -10,7 +10,6 @@ import { PATHS } from '@/routes/paths'
 import { getTransfers, type GetTransfersResponse } from '@/services/transfers'
 import { formatCurrency, formatDate } from '@/utils/formatters'
 
-
 const sidebarMenuItems = [
   { id: 'home', label: 'Início', path: PATHS.HOME },
   { id: 'beneficiaries', label: 'Beneficiários', path: PATHS.ADMIN_CLIENTS },
@@ -48,7 +47,7 @@ const sidebarMenuItems = [
 function AdminTransfers() {
   const navigate = useNavigate()
   const location = useLocation()
-  
+
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -57,7 +56,7 @@ function AdminTransfers() {
   const [error, setError] = useState<string | null>(null)
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null)
 
-  const limit = 6 
+  const limit = 6
 
   const activeItemId = useMemo(() => {
     const matchedItem = sidebarMenuItems.find((item) => item.path === location.pathname)
@@ -73,7 +72,7 @@ function AdminTransfers() {
       setTotalPages(data.totalPages)
       setTotalItems(data.totalItems)
       setCurrentPage(data.currentPage)
-    } catch (err) {
+    } catch {
       setError('Não foi possível carregar as transferências. Tente novamente.')
     } finally {
       setIsLoading(false)
@@ -81,6 +80,7 @@ function AdminTransfers() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTransfers(currentPage)
   }, [currentPage])
 
@@ -120,7 +120,7 @@ function AdminTransfers() {
               className="flex flex-col sm:flex-row justify-between items-center gap-4 rounded-lg border border-red-200 bg-red-50 px-6 py-5 text-sm text-red-800"
             >
               <p>{error}</p>
-              <button 
+              <button
                 onClick={() => fetchTransfers(currentPage)}
                 className="rounded-md bg-red-100 px-4 py-2 font-medium text-red-800 hover:bg-red-200 transition-colors"
               >
@@ -136,7 +136,9 @@ function AdminTransfers() {
                 totalRecords={totalItems > 0 ? totalItems : undefined}
                 columns={columns}
                 data={transfers}
-                emptyMessage={isLoading ? 'Carregando transferências...' : 'Nenhuma transferência encontrada.'}
+                emptyMessage={
+                  isLoading ? 'Carregando transferências...' : 'Nenhuma transferência encontrada.'
+                }
                 actions={[
                   {
                     label: 'Ver detalhes',
@@ -197,12 +199,14 @@ function AdminTransfers() {
                 </p>
                 <p className="mt-1">{selectedTransfer.tipo}</p>
               </div>
-              
+
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
                   Valor
                 </p>
-                <p className="mt-1">{formatCurrency(selectedTransfer.valor, selectedTransfer.moeda)}</p>
+                <p className="mt-1">
+                  {formatCurrency(selectedTransfer.valor, selectedTransfer.moeda)}
+                </p>
               </div>
 
               <div>
@@ -220,4 +224,3 @@ function AdminTransfers() {
 }
 
 export default AdminTransfers
-

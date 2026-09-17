@@ -41,31 +41,31 @@ function Login() {
   }
 
   async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault()
+    e.preventDefault()
 
-  const nextErrors = validate({ email, password })
-  setErrors(nextErrors)
+    const nextErrors = validate({ email, password })
+    setErrors(nextErrors)
 
-  if (Object.keys(nextErrors).length > 0) {
-    return
+    if (Object.keys(nextErrors).length > 0) {
+      return
+    }
+
+    try {
+      const { token } = await authService.login({
+        email,
+        password,
+      })
+
+      localStorage.setItem('token', token)
+
+      navigate('/')
+    } catch {
+      setErrors({
+        email: 'E-mail ou senha inválidos',
+        password: 'E-mail ou senha inválidos',
+      })
+    }
   }
-
-  try {
-    const { token } = await authService.login({
-      email,
-      password,
-    })
-
-    localStorage.setItem('token', token)
-
-    navigate('/')
-  } catch (error) {
-    setErrors({
-      email: 'E-mail ou senha inválidos',
-      password: 'E-mail ou senha inválidos',
-    })
-  }
-}
 
   return (
     <div className="flex items-center min-h-screen">

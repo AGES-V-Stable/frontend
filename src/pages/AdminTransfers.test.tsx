@@ -26,7 +26,7 @@ describe('AdminTransfers page', () => {
   it('renders loading state initially', () => {
     vi.mocked(getTransfers).mockReturnValue(new Promise(() => {}))
     renderAdminTransfers()
-    
+
     expect(screen.getByText('Carregando transferências...')).toBeInTheDocument()
   })
 
@@ -55,9 +55,8 @@ describe('AdminTransfers page', () => {
     expect(headers[5]).toHaveTextContent('Status')
     expect(headers[6]).toHaveTextContent('Ação')
 
-    
     expect(screen.getByText('24 ago 2026')).toBeInTheDocument()
-    
+
     const currencyCells = screen.getAllByRole('cell', { name: /USD\s23\.062,73/i })
     expect(currencyCells.length).toBeGreaterThan(0)
   })
@@ -79,10 +78,10 @@ describe('AdminTransfers page', () => {
 
   it('handles error state and allows retry', async () => {
     const user = userEvent.setup()
-    
+
     // First call fails
     vi.mocked(getTransfers).mockRejectedValueOnce(new Error('Network error'))
-    
+
     // Second call succeeds
     vi.mocked(getTransfers).mockResolvedValueOnce({
       data: mockTransfers.slice(0, 1),
@@ -96,8 +95,10 @@ describe('AdminTransfers page', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
-    
-    expect(screen.getByText('Não foi possível carregar as transferências. Tente novamente.')).toBeInTheDocument()
+
+    expect(
+      screen.getByText('Não foi possível carregar as transferências. Tente novamente.'),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
 
@@ -126,13 +127,11 @@ describe('AdminTransfers page', () => {
     const prevButton = screen.getByRole('button', { name: /anterior/i })
     const nextButton = screen.getByRole('button', { name: /próxima/i })
 
-    
     expect(prevButton).toBeDisabled()
     expect(nextButton).not.toBeDisabled()
-    
+
     expect(screen.getByText(/1 de 2/i)).toBeInTheDocument()
 
-    
     vi.mocked(getTransfers).mockResolvedValueOnce({
       data: mockTransfers.slice(3, 6),
       totalItems: 6,
@@ -147,7 +146,6 @@ describe('AdminTransfers page', () => {
       expect(screen.getByText(/2 de 2/i)).toBeInTheDocument()
     })
 
-    
     expect(screen.getByRole('button', { name: /anterior/i })).not.toBeDisabled()
     expect(screen.getByRole('button', { name: /próxima/i })).toBeDisabled()
   })
@@ -169,16 +167,15 @@ describe('AdminTransfers page', () => {
 
     const detailButtons = screen.getAllByRole('button', { name: 'Ver detalhes' })
     expect(detailButtons.length).toBeGreaterThan(0)
-    
+
     await user.click(detailButtons[0])
 
     const dialog = screen.getByRole('dialog')
     expect(dialog).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Detalhes da transferência' })).toBeInTheDocument()
-    
+
     // Check if correct data is inside drawer
     expect(within(dialog).getByText('Tech Corp')).toBeInTheDocument()
     expect(within(dialog).getByText('t1')).toBeInTheDocument()
   })
 })
-
