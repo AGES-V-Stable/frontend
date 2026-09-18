@@ -59,7 +59,7 @@ function Login() {
       localStorage.setItem('token', token)
 
       navigate('/')
-    } catch (error) {
+    } catch {//tirei o (error) pois dava erro de lint
       setErrors({
         email: 'E-mail ou senha inválidos',
         password: 'E-mail ou senha inválidos',
