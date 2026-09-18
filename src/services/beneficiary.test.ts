@@ -29,16 +29,23 @@ describe('beneficiary service', () => {
   })
 
   it('normalizes data and results list envelopes', async () => {
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [beneficiary] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ results: [beneficiary] }) }))
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [beneficiary] }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ results: [beneficiary] }) }),
+    )
 
     await expect(getBeneficiaries()).resolves.toEqual([beneficiary])
     await expect(getBeneficiaries()).resolves.toEqual([beneficiary])
   })
 
   it('returns an empty list for a valid empty payload', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) }))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) }),
+    )
 
     await expect(getBeneficiaries()).resolves.toEqual([])
   })
@@ -50,9 +57,13 @@ describe('beneficiary service', () => {
   })
 
   it('loads details from an enveloped or raw response', async () => {
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: beneficiary }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => beneficiary }))
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ data: beneficiary }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => beneficiary }),
+    )
 
     await expect(getBeneficiary('1')).resolves.toEqual(beneficiary)
     await expect(getBeneficiary('1')).resolves.toEqual(beneficiary)

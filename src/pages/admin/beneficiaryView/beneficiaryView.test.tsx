@@ -48,10 +48,14 @@ describe('BeneficiaryView', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Nenhum beneficiário encontrado')
 
     fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Ver detalhes' })).toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Ver detalhes' })).toBeInTheDocument(),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Ver detalhes' }))
 
-    expect(await screen.findByRole('heading', { name: 'Detalhes do beneficiário' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Detalhes do beneficiário' }),
+    ).toBeInTheDocument()
     expect(within(screen.getByRole('dialog')).getByText('Empresa proprietária')).toBeInTheDocument()
     expect(getBeneficiary).toHaveBeenCalledWith('1')
   })
@@ -77,6 +81,8 @@ describe('BeneficiaryView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Ver detalhes' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar os detalhes')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível carregar os detalhes',
+    )
   })
 })
