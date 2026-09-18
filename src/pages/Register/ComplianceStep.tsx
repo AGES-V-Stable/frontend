@@ -126,7 +126,7 @@ export default function ComplianceStep({
     <main className="min-h-screen bg-[#F1F5F9] px-4 py-8 md:px-8">
       <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10">
         <RegistrationHeader
-          activeStep={2}
+          activeStep={3}
           description="Envie os documentos necessários para a análise de compliance."
         />
 

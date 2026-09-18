@@ -7,7 +7,7 @@ export function CompletionStep() {
     <main className="min-h-screen bg-[#F1F5F9] px-4 py-8 md:px-8">
       <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10">
         <RegistrationHeader
-          activeStep={3}
+          activeStep={4}
           description="A submissão do cadastro institucional foi concluída."
         />
         <section className="mx-auto w-full max-w-xl py-10 text-center">

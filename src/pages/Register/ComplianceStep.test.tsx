@@ -18,9 +18,9 @@ describe('ComplianceStep', () => {
     expect(screen.getByText('Compliance e documentos')).toBeInTheDocument()
   })
 
-  it('renders the step indicator at step 3 of 4', () => {
+  it('renders the step indicator at step 4 of 5', () => {
     renderComponent()
-    expect(screen.getByLabelText('Passo 3 de 4')).toBeInTheDocument()
+    expect(screen.getByLabelText('Passo 4 de 5')).toBeInTheDocument()
     expect(document.querySelector('[aria-current="step"]')).toBeInTheDocument()
   })
 

@@ -10,7 +10,7 @@ describe('RegistrationHeader', () => {
     expect(
       screen.getByText('Preencha os dados solicitados para concluir o cadastro institucional.'),
     ).toBeInTheDocument()
-    expect(screen.getByLabelText('Passo 2 de 4')).toBeInTheDocument()
+    expect(screen.getByLabelText('Passo 2 de 5')).toBeInTheDocument()
     expect(screen.getByText('Acesso').previousElementSibling).toHaveTextContent('✓')
     expect(screen.getByText('Empresa').previousElementSibling).toHaveTextContent('2')
   })

@@ -85,7 +85,9 @@ export function DemoCompany() {
 }
 
 export function DemoRepresentative() {
-  return <RepresentativeStep demo />
+  const navigate = useNavigate()
+
+  return <RepresentativeStep onContinue={() => navigate(PATHS.DEMO_REGISTER_COMPLIANCE)} />
 }
 
 export function DemoCompliance() {

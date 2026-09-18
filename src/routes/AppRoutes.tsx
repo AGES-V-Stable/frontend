@@ -18,6 +18,10 @@ function AppRoutes() {
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPANY_PROGRESS} element={<CompanyRegistration />} />
+      <Route
+        path={PATHS.REGISTER_REPRESENTATIVE}
+        element={<CompanyRegistration representative />}
+      />
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<CompanyRegistration compliance />} />
       <Route path={PATHS.REGISTER_COMPLETE} element={<CompanyRegistration completion />} />
       <Route path={PATHS.DEMO} element={<Demo />} />

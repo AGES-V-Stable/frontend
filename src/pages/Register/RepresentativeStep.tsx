@@ -1,22 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
-import { PATHS } from '@/routes/paths'
 import { maskCEP, maskCPF } from '@/utils/masks'
 import { isValidCPF } from '@/utils/validators'
+import type { RepresentativeData } from '@/types/registration'
 import { RegistrationHeader } from './RegistrationHeader'
 
-interface RepresentativeData {
-  cargo_funcao: string
-  participacao_societaria: number
-  cpf: string
-  cep: string
-  cidade: string
-  estado: string
-  pais: string
-  linha_endereco: string
-}
+export type { RepresentativeData } from '@/types/registration'
 
 const CARGOS = [
   'Sócio-administrador',
@@ -57,75 +47,48 @@ const ESTADOS = [
 ]
 
 interface RepresentativeStepProps {
-  demo?: boolean
+  initialValues?: Partial<RepresentativeData>
+  onContinue: (data: RepresentativeData) => void
+  saving?: boolean
+  serverError?: string
 }
 
-export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = false }) => {
-  const { progresso_cadastro_id } = useParams<{ progresso_cadastro_id: string }>()
-  const navigate = useNavigate()
+function validateForm(data: RepresentativeData) {
+  const errors: Partial<Record<keyof RepresentativeData, string>> = {}
+  if (!data.cargo_funcao) errors.cargo_funcao = 'Cargo é obrigatório'
+  if (!data.cpf) errors.cpf = 'CPF é obrigatório'
+  else if (!isValidCPF(data.cpf)) errors.cpf = 'CPF inválido'
 
-  const [formData, setFormData] = useState<RepresentativeData>({
+  if (!data.cep) errors.cep = 'CEP é obrigatório'
+  else if (data.cep.replace(/\D/g, '').length !== 8) errors.cep = 'CEP inválido'
+
+  if (!data.cidade) errors.cidade = 'Cidade é obrigatória'
+  if (!data.estado) errors.estado = 'Estado é obrigatório'
+  if (!data.pais) errors.pais = 'País é obrigatório'
+  if (!data.linha_endereco) errors.linha_endereco = 'Endereço é obrigatório'
+
+  return errors
+}
+
+export function RepresentativeStep({
+  initialValues,
+  onContinue,
+  saving = false,
+  serverError,
+}: RepresentativeStepProps) {
+  const [formData, setFormData] = useState<RepresentativeData>(() => ({
     cargo_funcao: '',
     participacao_societaria: 0,
-    cpf: '',
-    cep: '',
     cidade: '',
     estado: '',
     pais: '',
     linha_endereco: '',
-  })
+    ...initialValues,
+    cpf: maskCPF(initialValues?.cpf ?? ''),
+    cep: maskCEP(initialValues?.cep ?? ''),
+  }))
 
   const [errors, setErrors] = useState<Partial<Record<keyof RepresentativeData, string>>>({})
-  const [isLoading, setIsLoading] = useState(false)
-  const [globalError, setGlobalError] = useState<string | null>(null)
-  const [isFetching, setIsFetching] = useState(!demo)
-
-  useEffect(() => {
-    if (demo) return
-
-    const fetchInitialData = async () => {
-      try {
-        const response = await fetch(`/v1/cadastros/${progresso_cadastro_id}`)
-        if (response.status === 404) {
-          navigate('/cadastro', { state: { error: 'Cadastro não encontrado ou expirado.' } })
-          return
-        }
-        if (response.ok) {
-          const data = await response.json()
-          if (data.representante) {
-            setFormData({
-              ...data.representante,
-              cpf: maskCPF(data.representante.cpf) || '',
-              cep: maskCEP(data.representante.cep || ''),
-            })
-          }
-        }
-      } catch {
-        setGlobalError('Não foi possível carregar os dados. Tente novamente.')
-      } finally {
-        setIsFetching(false)
-      }
-    }
-    fetchInitialData()
-  }, [demo, progresso_cadastro_id, navigate])
-
-  const validateForm = () => {
-    const newErrors: typeof errors = {}
-    if (!formData.cargo_funcao) newErrors.cargo_funcao = 'Cargo é obrigatório'
-    if (!formData.cpf) newErrors.cpf = 'CPF é obrigatório'
-    else if (!isValidCPF(formData.cpf)) newErrors.cpf = 'CPF inválido'
-
-    if (!formData.cep) newErrors.cep = 'CEP é obrigatório'
-    else if (formData.cep.replace(/\D/g, '').length !== 8) newErrors.cep = 'CEP inválido'
-
-    if (!formData.cidade) newErrors.cidade = 'Cidade é obrigatória'
-    if (!formData.estado) newErrors.estado = 'Estado é obrigatório'
-    if (!formData.pais) newErrors.pais = 'País é obrigatório'
-    if (!formData.linha_endereco) newErrors.linha_endereco = 'Endereço é obrigatório'
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
 
   const handleInputChange = (field: keyof RepresentativeData, value: string | number) => {
     let formattedValue = value
@@ -142,78 +105,32 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
     }
   }
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return
-
-    if (demo) {
-      navigate(PATHS.DEMO_REGISTER_COMPLIANCE)
-      return
-    }
-
-    setIsLoading(true)
-    setGlobalError(null)
-
-    const payload = {
-      ...formData,
-      cpf: formData.cpf.replace(/\D/g, ''),
-      cep: formData.cep.replace(/\D/g, ''),
-    }
-
-    try {
-      const response = await fetch(`/v1/cadastros/${progresso_cadastro_id}/representante`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (response.ok) {
-        navigate(`/cadastro/${progresso_cadastro_id}/compliance`)
-      } else if (response.status === 422) {
-        const errorData = await response.json()
-        setErrors(errorData.errors || {})
-      } else if (response.status === 404) {
-        navigate('/cadastro', { state: { error: 'Progresso expirado. Inicie novamente. ' } })
-      } else {
-        throw new Error('Erro interno')
-      }
-    } catch {
-      setGlobalError('Ocorreu um erro ao salvar os dados. Por favor, tente novamente.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  if (isFetching) {
-    return (
-      <div className="flex justify-center p-8">
-        <span
-          className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"
-          aria-label="Carregando"
-        ></span>
-      </div>
-    )
+  const handleSubmit = () => {
+    if (saving) return
+    const nextErrors = validateForm(formData)
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length === 0) onContinue({ ...formData })
   }
 
   return (
     <main className="min-h-screen bg-[#F1F5F9] px-4 py-8 md:px-8">
       <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10">
         <RegistrationHeader
-          activeStep={0}
+          activeStep={2}
           description="Informe os dados do representante legal da empresa."
         />
         <div className="mx-auto w-full max-w-3xl">
           <h2 className="mb-6 text-2xl font-bold text-gray-800">Dados do Representante</h2>
 
-          {globalError && (
+          {serverError && (
             <div
               className="mb-6 p-4 bg-red-50 text-red-700 rounded-md border border-red-200"
               role="alert"
             >
-              {globalError}
+              {serverError}
             </div>
           )}
 
-          {/* Bloco: Vínculo Societário */}
           <section className="mb-8">
             <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
               Vínculo Societário
@@ -226,6 +143,7 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
                 <select
                   id="cargo"
                   value={formData.cargo_funcao}
+                  disabled={saving}
                   onChange={(e) => handleInputChange('cargo_funcao', e.target.value)}
                   className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.cargo_funcao ? 'border-red-500' : 'border-gray-300'}`}
                   aria-invalid={!!errors.cargo_funcao}
@@ -259,6 +177,7 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
                   id="participacao"
                   min="0"
                   max="100"
+                  disabled={saving}
                   value={formData.participacao_societaria}
                   onChange={(e) =>
                     handleInputChange('participacao_societaria', Number(e.target.value))
@@ -269,7 +188,6 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
             </div>
           </section>
 
-          {/* Bloco: Documento e Endereço */}
           <section className="mb-8">
             <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
               Documento e Endereço
@@ -282,6 +200,7 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
                 <Input
                   id="cpf"
                   placeholder="000.000.000-00"
+                  disabled={saving}
                   value={formData.cpf}
                   onChange={(e) => handleInputChange('cpf', e.target.value)}
                   onBlur={handleBlurCPF}
@@ -295,6 +214,7 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
                 <Input
                   id="cep"
                   placeholder="00000-000"
+                  disabled={saving}
                   value={formData.cep}
                   onChange={(e) => handleInputChange('cep', e.target.value)}
                   error={errors.cep}
@@ -309,6 +229,7 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
                 </label>
                 <Input
                   id="linha_endereco"
+                  disabled={saving}
                   value={formData.linha_endereco}
                   onChange={(e) => handleInputChange('linha_endereco', e.target.value)}
                   error={errors.linha_endereco}
@@ -320,6 +241,7 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
                 </label>
                 <Input
                   id="cidade"
+                  disabled={saving}
                   value={formData.cidade}
                   onChange={(e) => handleInputChange('cidade', e.target.value)}
                   error={errors.cidade}
@@ -332,6 +254,7 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
                 <select
                   id="estado"
                   value={formData.estado}
+                  disabled={saving}
                   onChange={(e) => handleInputChange('estado', e.target.value)}
                   className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.estado ? 'border-red-500' : 'border-gray-300'}`}
                   aria-invalid={!!errors.estado}
@@ -358,6 +281,7 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
                 </label>
                 <Input
                   id="pais"
+                  disabled={saving}
                   value={formData.pais}
                   onChange={(e) => handleInputChange('pais', e.target.value)}
                   error={errors.pais}
@@ -366,22 +290,11 @@ export const RepresentativeStep: React.FC<RepresentativeStepProps> = ({ demo = f
             </div>
           </section>
 
-          {/* Navegação */}
-          <div className="flex justify-between items-center mt-8 pt-4 border-t">
+          <div className="flex justify-end items-center mt-8 pt-4 border-t">
             <Button
-              label="Voltar"
-              variant="secondary"
-              onClick={() =>
-                navigate(
-                  demo ? PATHS.DEMO_REGISTER_COMPANY : `/cadastro/${progresso_cadastro_id}/acesso`,
-                )
-              }
-              disabled={isLoading}
-            />
-            <Button
-              label={isLoading ? 'Processando...' : 'Continuar'}
+              label={saving ? 'Processando...' : 'Continuar'}
               onClick={handleSubmit}
-              disabled={isLoading || Object.keys(errors).length > 0}
+              disabled={saving}
             />
           </div>
         </div>

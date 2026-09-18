@@ -4,6 +4,8 @@ import type {
   CompanyRegistrationResult,
   ComplianceSubmissionResult,
   RegistrationProgress,
+  RepresentativeData,
+  RepresentativeSubmissionResult,
 } from '@/types/registration'
 import type { ComplianceFormData } from '@/types/compliance'
 
@@ -62,6 +64,21 @@ export function saveCompany(id: string, data: CompanyData) {
       estado: data.estado.trim(),
     }),
   })
+}
+
+export function saveRepresentative(id: string, data: RepresentativeData) {
+  return request<RepresentativeSubmissionResult>(
+    `/cadastros/${encodeURIComponent(id)}/representante`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...data,
+        cpf: data.cpf.replace(/\D/g, ''),
+        cep: data.cep.replace(/\D/g, ''),
+      }),
+    },
+  )
 }
 
 export function submitCompliance(id: string, data: ComplianceFormData) {

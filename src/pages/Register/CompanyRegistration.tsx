@@ -1,37 +1,64 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
-import { companyPath, compliancePath, completionPath, PATHS } from '@/routes/paths'
-import { ApiError, getRegistration, saveCompany, submitCompliance } from '@/services/registration'
-import type { CompanyData, RegistrationProgress } from '@/types/registration'
+import {
+  companyPath,
+  compliancePath,
+  completionPath,
+  representativePath,
+  PATHS,
+} from '@/routes/paths'
+import {
+  ApiError,
+  getRegistration,
+  saveCompany,
+  saveRepresentative,
+  submitCompliance,
+} from '@/services/registration'
+import type { CompanyData, RegistrationProgress, RepresentativeData } from '@/types/registration'
 import type { ComplianceFormData } from '@/types/compliance'
 import ComplianceStep from './ComplianceStep'
 import { CompletionStep } from './CompletionStep'
 import { CompanyStep } from './CompanyStep'
+import { RepresentativeStep } from './RepresentativeStep'
 
-const isSaved = (progress: RegistrationProgress) => !!progress.empresaId && progress.etapaAtual >= 3
+const isCompanySaved = (progress: RegistrationProgress) =>
+  !!progress.empresaId && progress.etapaAtual >= 3
+const isRepresentativeSaved = (progress: RegistrationProgress) => progress.etapaAtual >= 4
 const failureMessage = (error: unknown) =>
   error instanceof ApiError && error.status < 500
     ? error.message
     : 'Não foi possível concluir a solicitação. Tente novamente.'
 
 export function CompanyRegistration({
+  representative = false,
   compliance = false,
   completion = false,
 }: {
+  representative?: boolean
   compliance?: boolean
   completion?: boolean
 }) {
   const { progressoCadastroId: id } = useParams()
   // Remount when the token changes so stale progress and form data cannot cross registrations.
-  return <Registration key={id} id={id} compliance={compliance} completion={completion} />
+  return (
+    <Registration
+      key={id}
+      id={id}
+      representative={representative}
+      compliance={compliance}
+      completion={completion}
+    />
+  )
 }
 
 function Registration({
   id,
+  representative,
   compliance,
   completion,
 }: {
   id?: string
+  representative: boolean
   compliance: boolean
   completion: boolean
 }) {
@@ -70,8 +97,43 @@ function Registration({
     try {
       // Reconcile before every attempt, including retries after an uncertain response.
       const current = await getRegistration(id)
-      if (!isSaved(current)) {
+      if (!isCompanySaved(current)) {
         const result = await saveCompany(id, data)
+        setProgress({
+          token: result.progresso_cadastro_id,
+          empresaId: result.empresa_id,
+          etapaAtual: result.etapa_atual,
+        })
+      } else setProgress(current)
+      navigate(representativePath(id), { replace: true })
+    } catch (error) {
+      try {
+        const current = await getRegistration(id)
+        if (isCompanySaved(current)) {
+          setProgress(current)
+          navigate(representativePath(id), { replace: true })
+          return
+        }
+      } catch {
+        /* Preserve entered values when reconciliation is unavailable. */
+      }
+      setSaveError(failureMessage(error))
+    } finally {
+      locked.current = false
+      setSaving(false)
+    }
+  }
+
+  async function submitRepresentative(data: RepresentativeData) {
+    if (!id || locked.current) return
+    locked.current = true
+    setSaving(true)
+    setSaveError('')
+    try {
+      // Reconcile before every attempt, including retries after an uncertain response.
+      const current = await getRegistration(id)
+      if (!isRepresentativeSaved(current)) {
+        const result = await saveRepresentative(id, data)
         setProgress({
           token: result.progresso_cadastro_id,
           empresaId: result.empresa_id,
@@ -82,7 +144,7 @@ function Registration({
     } catch (error) {
       try {
         const current = await getRegistration(id)
-        if (isSaved(current)) {
+        if (isRepresentativeSaved(current)) {
           setProgress(current)
           navigate(compliancePath(id), { replace: true })
           return
@@ -115,7 +177,7 @@ function Registration({
     } catch (error) {
       try {
         const current = await getRegistration(id)
-        if (current.etapaAtual >= 4) {
+        if (current.etapaAtual >= 5) {
           setProgress(current)
           navigate(completionPath(id), { replace: true })
           return
@@ -158,15 +220,31 @@ function Registration({
         Carregando cadastro...
       </p>
     )
-  if (progress.etapaAtual >= 4) {
+  if (progress.etapaAtual >= 5) {
     if (!completion) return <Navigate to={completionPath(id!)} replace />
     return <CompletionStep />
   }
-  if (completion)
-    return <Navigate to={isSaved(progress) ? compliancePath(id!) : companyPath(id!)} replace />
-  if (isSaved(progress)) {
+  if (completion) {
+    const nextPath = isRepresentativeSaved(progress)
+      ? compliancePath(id!)
+      : isCompanySaved(progress)
+        ? representativePath(id!)
+        : companyPath(id!)
+    return <Navigate to={nextPath} replace />
+  }
+  if (isRepresentativeSaved(progress)) {
     if (!compliance) return <Navigate to={compliancePath(id!)} replace />
     return <ComplianceStep onContinue={submitDocuments} saving={saving} serverError={saveError} />
+  }
+  if (isCompanySaved(progress)) {
+    if (!representative) return <Navigate to={representativePath(id!)} replace />
+    return (
+      <RepresentativeStep
+        onContinue={submitRepresentative}
+        saving={saving}
+        serverError={saveError}
+      />
+    )
   }
   if (progress.etapaAtual !== 2 || progress.empresaId)
     return (
@@ -174,7 +252,7 @@ function Registration({
         Cadastro não está disponível para inclusão da empresa.
       </p>
     )
-  if (compliance) return <Navigate to={companyPath(id!)} replace />
+  if (compliance || representative) return <Navigate to={companyPath(id!)} replace />
   return (
     <CompanyStep
       onCancel={() => navigate(PATHS.REGISTER)}

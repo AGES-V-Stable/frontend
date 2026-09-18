@@ -119,7 +119,7 @@ export function CompanyStep({
         )}
         <div className="flex min-h-8 items-center justify-between gap-3">
           <h2 className="text-base font-bold text-[#0F172A]">Dados da empresa</h2>
-          <span className="shrink-0 text-sm font-medium text-[#059669]">Etapa 2 de 4</span>
+          <span className="shrink-0 text-sm font-medium text-[#059669]">Etapa 2 de 5</span>
         </div>
         <div className="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
           {fields.map(({ name, label, placeholder, required }) => (

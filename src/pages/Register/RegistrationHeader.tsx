@@ -1,7 +1,7 @@
-const steps = ['Acesso', 'Empresa', 'Compliance', 'Conclusão']
+const steps = ['Acesso', 'Empresa', 'Representante', 'Compliance', 'Conclusão']
 
 interface RegistrationHeaderProps {
-  activeStep: 0 | 1 | 2 | 3
+  activeStep: 0 | 1 | 2 | 3 | 4
   description?: string
 }
 
@@ -21,7 +21,7 @@ export function RegistrationHeader({
 
       <ol
         aria-label={`Passo ${activeStep + 1} de ${steps.length}`}
-        className="mx-auto grid w-full max-w-[1070px] grid-cols-4"
+        className="mx-auto grid w-full max-w-[1070px] grid-cols-5"
       >
         {steps.map((step, index) => {
           const completed = index < activeStep

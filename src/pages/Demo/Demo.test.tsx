@@ -15,7 +15,9 @@ vi.mock('@/pages/Register/CompanyStep', () => ({
 }))
 
 vi.mock('@/pages/Register/RepresentativeStep', () => ({
-  RepresentativeStep: ({ demo }: { demo?: boolean }) => <p>{demo ? 'Demo representative' : ''}</p>,
+  RepresentativeStep: ({ onContinue }: { onContinue: () => void }) => (
+    <button onClick={onContinue}>Continue representative</button>
+  ),
 }))
 
 vi.mock('@/pages/Register/ComplianceStep', () => ({
@@ -70,20 +72,30 @@ describe('Demo pages', () => {
     expect(screen.getByText('Representative destination')).toBeInTheDocument()
   })
 
-  it('configures the representative and compliance demo adapters', async () => {
+  it('advances from the representative demo to the compliance demo route', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(
-      <MemoryRouter>
-        <DemoRepresentative />
+    render(
+      <MemoryRouter initialEntries={['/demo/register/representante']}>
+        <Routes>
+          <Route path="/demo/register/representante" element={<DemoRepresentative />} />
+          <Route path="/demo/register/compliance" element={<p>Compliance destination</p>} />
+        </Routes>
       </MemoryRouter>,
     )
-    expect(screen.getByText('Demo representative')).toBeInTheDocument()
 
-    rerender(
+    await user.click(screen.getByRole('button', { name: 'Continue representative' }))
+
+    expect(screen.getByText('Compliance destination')).toBeInTheDocument()
+  })
+
+  it('configures the compliance demo adapter', async () => {
+    const user = userEvent.setup()
+    render(
       <MemoryRouter>
         <DemoCompliance />
       </MemoryRouter>,
     )
+
     await user.click(screen.getByRole('button', { name: 'Demo compliance' }))
   })
 })
