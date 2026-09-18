@@ -5,6 +5,7 @@ import AdminClients from '../pages/AdminClients'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
 import { CompanyRegistration } from '@/pages/Register/CompanyRegistration'
+import { BeneficiaryView } from '@/pages/admin/beneficiaryView'
 
 import { PATHS } from './paths'
 
@@ -13,6 +14,7 @@ function AppRoutes() {
     <Routes>
       <Route path={PATHS.HOME} element={<Home />} />
       <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
+      <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
