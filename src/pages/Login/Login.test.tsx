@@ -1,9 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Login } from './Login'
+
+afterEach(() => vi.unstubAllGlobals())
 
 function renderLogin() {
   return render(
@@ -62,6 +64,14 @@ describe('Login Page Component', () => {
   })
 
   it('navigates to the home page after a valid submission', async () => {
+    const setItem = vi.fn()
+    vi.stubGlobal('localStorage', { setItem })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () => new Response(null, { status: 200, headers: { Authorization: 'Bearer token' } }),
+      ),
+    )
     const user = userEvent.setup()
     renderLogin()
 
@@ -70,6 +80,26 @@ describe('Login Page Component', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText('Home page')).toBeInTheDocument()
+    expect(setItem).toHaveBeenCalledWith('token', 'token')
+  })
+
+  it('shows and clears credential errors after a failed login', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 401 })),
+    )
+    const user = userEvent.setup()
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-super-secreta')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findAllByText('E-mail ou senha inválidos')).toHaveLength(2)
+    await user.type(screen.getByLabelText('E-mail'), 'x')
+    expect(screen.getAllByText('E-mail ou senha inválidos')).toHaveLength(1)
+    await user.type(screen.getByLabelText('Senha'), 'x')
+    expect(screen.queryByText('E-mail ou senha inválidos')).not.toBeInTheDocument()
   })
 
   it('navigates to the register page when "Cadastrar PME" is clicked, without requiring valid data', async () => {

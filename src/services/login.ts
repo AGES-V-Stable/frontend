@@ -7,7 +7,7 @@ interface LoginResponse {
   token: string
 }
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+const API_URL = `${(import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')}/v1`
 
 async function login(data: LoginData): Promise<LoginResponse> {
   const response = await fetch(`${API_URL}/login`, {
@@ -37,9 +37,7 @@ async function login(data: LoginData): Promise<LoginResponse> {
   }
 
   // Handles "Bearer <token>"
-  const token = authorization.startsWith('Bearer ')
-    ? authorization.substring(7)
-    : authorization
+  const token = authorization.startsWith('Bearer ') ? authorization.substring(7) : authorization
 
   return { token }
 }
