@@ -6,7 +6,7 @@ import AppRoutes from './AppRoutes'
 import { PATHS } from './paths'
 
 describe('AppRoutes Navigation & Routing', () => {
-  it('given the user navigates to the root path, when AppRoutes is rendered, then it should render the Home page', () => {
+  it('renders the Home page for the root path', () => {
     const initialRoute = PATHS.HOME
 
     render(
@@ -18,7 +18,7 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByText('V-Stable')).toBeInTheDocument()
   })
 
-  it('given the user navigates to the login path, when AppRoutes is rendered, then it should render the Login page', () => {
+  it('renders the Login page for the login path', () => {
     const initialRoute = PATHS.LOGIN
 
     render(
@@ -30,7 +30,7 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByRole('heading', { name: 'Bem-vindo à V-Stable!' })).toBeInTheDocument()
   })
 
-  it('given the user navigates to the register path, when AppRoutes is rendered, then it should render the Register page', () => {
+  it('renders the Register page for the register path', () => {
     const initialRoute = PATHS.REGISTER
 
     render(
@@ -42,7 +42,7 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByText('Register')).toBeInTheDocument()
   })
 
-  it('given the user navigates to an unknown route, when AppRoutes is rendered, then it should redirect to the Home page', () => {
+  it('redirects to the Home page for an unknown route', () => {
     const unknownRoute = '/unknown-non-existent-route'
 
     render(
