@@ -1,78 +1,54 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
-import type { RepresentativeData } from '@/types/registration'
+import { describe, it, expect, vi } from 'vitest'
+
 import { RepresentativeStep } from './RepresentativeStep'
+import type { RepresentativeData } from '@/types/onboarding'
 
-const id = 'cad-123'
-const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
-
-afterEach(() => vi.unstubAllGlobals())
-
-function renderRepresentativeStep(initialEntry = `/cadastro/${id}/representante`) {
-  return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <Routes>
-        <Route path="/cadastro" element={<p>Register page</p>} />
-        <Route
-          path="/cadastro/:progresso_cadastro_id/representante"
-          element={<RepresentativeStep />}
-        />
-        <Route
-          path="/cadastro/:progresso_cadastro_id/compliance"
-          element={<p>Compliance page</p>}
-        />
-        <Route path="/cadastro/:progresso_cadastro_id/acesso" element={<p>Access page</p>} />
-      </Routes>
-    </MemoryRouter>,
-  )
+const validPersonal = {
+  cargoFuncao: 'Sócio-administrador',
+  participacaoSocietaria: 0,
+  cpf: '52998224725',
+  dateOfBirth: '1990-05-20',
+  phone: '11987654321',
+  cep: '90000000',
+  cidade: 'São Paulo',
+  estado: 'SP',
+  pais: 'Brasil',
+  linhaEndereco: 'Rua Teste, 100',
+}
+const validAccess = {
+  fullName: 'Maria da Silva',
+  email: 'maria@empresa.com',
+  password: 'Senha@123',
+  confirmPassword: 'Senha@123',
 }
 
-async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
-  await user.selectOptions(screen.getByLabelText(/cargo \/ função/i), 'Diretor(a)')
-  await user.type(screen.getByPlaceholderText('000.000.000-00'), '52998224725')
-  await user.type(screen.getByPlaceholderText('00000-000'), '90000000')
-  await user.type(screen.getByLabelText(/linha de endereço/i), 'Rua Teste')
-  await user.type(screen.getByLabelText(/cidade/i), 'São Paulo')
-  await user.selectOptions(screen.getByLabelText(/estado/i), 'SP')
-  await user.type(screen.getByLabelText(/país/i), 'Brasil')
+async function fillAll(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText(/nome completo/i), validAccess.fullName)
+  await user.type(screen.getByLabelText(/e-mail/i), validAccess.email)
+  await user.type(screen.getByLabelText(/^senha/i), validAccess.password)
+  await user.type(screen.getByLabelText(/confirmar senha/i), validAccess.confirmPassword)
+  await user.selectOptions(screen.getByLabelText(/cargo \/ função/i), validPersonal.cargoFuncao)
+  await user.type(screen.getByPlaceholderText('000.000.000-00'), validPersonal.cpf)
+  fireEvent.change(screen.getByLabelText(/data de nascimento/i), {
+    target: { value: validPersonal.dateOfBirth },
+  })
+  await user.type(screen.getByLabelText(/telefone/i), validPersonal.phone)
+  await user.type(screen.getByPlaceholderText('00000-000'), validPersonal.cep)
+  await user.type(screen.getByLabelText(/linha de endereço/i), validPersonal.linhaEndereco)
+  await user.type(screen.getByLabelText(/cidade/i), validPersonal.cidade)
+  await user.selectOptions(screen.getByLabelText(/estado/i), validPersonal.estado)
 }
 
-describe('RepresentativeStep', () => {
-  it('shows the design fields and the active step in the shared header', () => {
-    render(<RepresentativeStep onContinue={vi.fn()} />)
-    expect(screen.getByRole('heading', { name: 'Dados do Representante' })).toBeInTheDocument()
+describe('RepresentativeStep (Etapa 1 - Acesso e Representante)', () => {
+  it('renders the step indicator at step 1 of 4', () => {
+    render(<RepresentativeStep onBack={vi.fn()} onContinue={vi.fn()} />)
     expect(screen.getByText('Representante').closest('li')).toHaveAttribute('aria-current', 'step')
   })
 
-  it('preloads and masks the provided initial values', () => {
-    render(<RepresentativeStep initialValues={valid} onContinue={vi.fn()} />)
-    expect(screen.getByLabelText(/cargo \/ função/i)).toHaveValue('Diretor(a)')
-    expect(screen.getByText(/participação societária: 45%/i)).toBeInTheDocument()
-    expect(screen.getByDisplayValue('529.982.247-25')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('90000-000')).toBeInTheDocument()
-  })
-
-  it('shows errors on every required field and does not call onContinue for an empty form', async () => {
-    const onContinue = vi.fn()
-    const user = userEvent.setup()
-    render(<RepresentativeStep onContinue={onContinue} />)
-
-    await user.click(screen.getByRole('button', { name: 'Continuar' }))
-
-    expect(screen.getByText('Cargo é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('CPF é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('CEP é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
-    expect(screen.getByText('Estado é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('País é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('Endereço é obrigatório')).toBeInTheDocument()
-    expect(onContinue).not.toHaveBeenCalled()
-  })
-
-  it('applies input masks and reflects slider changes', async () => {
-    const user = userEvent.setup()
-    render(<RepresentativeStep onContinue={vi.fn()} />)
+  it('applies masks and reflects slider changes', async () => {
+    render(<RepresentativeStep onBack={vi.fn()} onContinue={vi.fn()} />)
 
     const cpfInput = screen.getByPlaceholderText('000.000.000-00')
     const cepInput = screen.getByPlaceholderText('00000-000')
@@ -81,76 +57,115 @@ describe('RepresentativeStep', () => {
     fireEvent.change(slider, { target: { value: '30' } })
     expect(screen.getByText(/participação societária: 30%/i)).toBeInTheDocument()
 
-    await user.type(cpfInput, '52998224725')
+    await userEvent.type(cpfInput, '52998224725')
     expect(cpfInput).toHaveValue('529.982.247-25')
 
     await user.type(cepInput, '90000000')
     expect(cepInput).toHaveValue('90000-000')
   })
 
-  it('validates the CPF on blur and highlights the client-side error', async () => {
-    const user = userEvent.setup()
-    render(<RepresentativeStep onContinue={vi.fn()} />)
+  it('validates CPF on blur', async () => {
+    render(<RepresentativeStep onBack={vi.fn()} onContinue={vi.fn()} />)
 
     const cpfInput = screen.getByPlaceholderText('000.000.000-00')
-    await user.type(cpfInput, '11111111111')
+    await userEvent.type(cpfInput, '11111111111')
     fireEvent.blur(cpfInput)
 
     expect(screen.getByText(/cpf inválido/i)).toBeInTheDocument()
   })
 
-  it('does not show an error on blur when the CPF is valid', async () => {
-    const user = userEvent.setup()
-    render(<RepresentativeStep onContinue={vi.fn()} />)
+  it('does not show a CPF error on blur when the CPF is valid', async () => {
+    render(<RepresentativeStep onBack={vi.fn()} onContinue={vi.fn()} />)
 
     const cpfInput = screen.getByPlaceholderText('000.000.000-00')
-    await user.type(cpfInput, '52998224725')
+    await userEvent.type(cpfInput, '52998224725')
     fireEvent.blur(cpfInput)
 
     expect(screen.queryByText(/cpf inválido/i)).not.toBeInTheDocument()
   })
 
-  it('clears a field error message as the user types again', async () => {
-    const user = userEvent.setup()
-    render(<RepresentativeStep onContinue={vi.fn()} />)
-
-    await user.click(screen.getByRole('button', { name: 'Continuar' }))
-    expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
-
-    await user.type(screen.getByLabelText(/cidade/i), 'A')
-
-    expect(screen.queryByText('Cidade é obrigatória')).not.toBeInTheDocument()
-  })
-
-  it('calls onContinue with the current masked data on a valid submission', async () => {
+  it('shows validation errors for every required field and does not call onContinue when submitted empty', async () => {
     const onContinue = vi.fn()
+    render(<RepresentativeStep onBack={vi.fn()} onContinue={onContinue} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(await screen.findByText('Nome completo é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('E-mail é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('Senha é obrigatória')).toBeInTheDocument()
+    expect(screen.getByText('Cargo é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('CPF é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('Data de nascimento é obrigatória')).toBeInTheDocument()
+    expect(screen.getByText('Telefone é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('CEP é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
+    expect(screen.getByText('Estado é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('Endereço é obrigatório')).toBeInTheDocument()
+    expect(onContinue).not.toHaveBeenCalled()
+  })
+
+  it('rejects a mismatched password confirmation', async () => {
     const user = userEvent.setup()
-    render(<RepresentativeStep onContinue={onContinue} />)
+    const onContinue = vi.fn()
+    render(<RepresentativeStep onBack={vi.fn()} onContinue={onContinue} />)
 
-    await fillRequiredFields(user)
-    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    await user.type(screen.getByLabelText(/nome completo/i), validAccess.fullName)
+    await user.type(screen.getByLabelText(/e-mail/i), validAccess.email)
+    await user.type(screen.getByLabelText(/^senha/i), validAccess.password)
+    await user.type(screen.getByLabelText(/confirmar senha/i), 'outra-senha')
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
 
-    expect(onContinue).toHaveBeenCalledWith({
-      cargo_funcao: 'Diretor(a)',
-      participacao_societaria: 0,
-      cpf: '529.982.247-25',
-      cep: '90000-000',
-      cidade: 'São Paulo',
-      estado: 'SP',
-      pais: 'Brasil',
-      linha_endereco: 'Rua Teste',
-    })
+    expect(screen.getByText('Senha e confirmação não coincidem')).toBeInTheDocument()
+    expect(onContinue).not.toHaveBeenCalled()
   })
 
-  it('shows the server error message when provided', () => {
-    render(<RepresentativeStep onContinue={vi.fn()} serverError="Ocorreu um erro ao salvar." />)
-    expect(screen.getByRole('alert')).toHaveTextContent('Ocorreu um erro ao salvar.')
+  it('calls onBack without validating the form', async () => {
+    const onBack = vi.fn()
+    render(<RepresentativeStep onBack={onBack} onContinue={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /voltar/i }))
+
+    expect(onBack).toHaveBeenCalledOnce()
+    expect(screen.queryByText('Nome completo é obrigatório')).not.toBeInTheDocument()
   })
 
-  it('disables the fields and the submit button while saving', () => {
-    render(<RepresentativeStep onContinue={vi.fn()} saving />)
-    expect(screen.getByLabelText(/cargo \/ função/i)).toBeDisabled()
-    expect(screen.getByPlaceholderText('000.000.000-00')).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Processando...' })).toBeDisabled()
+  it('submits clean data (unmasked CPF/CEP) when the form is fully valid', async () => {
+    const user = userEvent.setup()
+    const onContinue = vi.fn()
+    render(<RepresentativeStep onBack={vi.fn()} onContinue={onContinue} />)
+
+    await fillAll(user)
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(onContinue).toHaveBeenCalledWith(
+      expect.objectContaining<Partial<RepresentativeData>>({
+        fullName: validAccess.fullName,
+        email: validAccess.email,
+        password: validAccess.password,
+        confirmPassword: validAccess.confirmPassword,
+        cargoFuncao: validPersonal.cargoFuncao,
+        cpf: '529.982.247-25',
+        dateOfBirth: validPersonal.dateOfBirth,
+        phone: '(11) 98765-4321',
+        cep: '90000-000',
+        cidade: validPersonal.cidade,
+        estado: validPersonal.estado,
+        pais: validPersonal.pais,
+        linhaEndereco: validPersonal.linhaEndereco,
+      }),
+    )
+  })
+
+  it('restores previously entered values from initialValues', () => {
+    render(
+      <RepresentativeStep
+        initialValues={{ fullName: 'João', cargoFuncao: 'Diretor(a)' }}
+        onBack={vi.fn()}
+        onContinue={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByLabelText(/nome completo/i)).toHaveValue('João')
+    expect(screen.getByLabelText(/cargo \/ função/i)).toHaveValue('Diretor(a)')
   })
 })

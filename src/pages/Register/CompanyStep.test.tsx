@@ -1,9 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { MemoryRouter } from 'react-router'
-import AppRoutes from '@/routes/AppRoutes'
-import { PATHS } from '@/routes/paths'
 import { CompanyStep, type CompanyData } from './CompanyStep'
 
 const valid: CompanyData = {

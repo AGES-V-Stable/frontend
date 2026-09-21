@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as livenessService from '@/services/liveness'
+import * as onboardingService from '@/services/onboarding'
 
 import LivenessStep from './LivenessStep'
 
@@ -17,6 +18,28 @@ vi.mock('@/services/liveness', async () => {
   }
 })
 
+vi.mock('@/services/onboarding', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/services/onboarding')>('@/services/onboarding')
+  return {
+    ...actual,
+    submitKyc: vi.fn(),
+  }
+})
+
+const personalData = {
+  fullName: 'Maria da Silva',
+  email: 'maria@empresa.com',
+  phone: '11987654321',
+  dateOfBirth: '1990-05-20',
+  taxIdNumber: '52998224725',
+  country: 'Brasil',
+  state: 'SP',
+  city: 'São Paulo',
+  zipCode: '90000000',
+  streetAddress: 'Rua Teste, 100',
+}
+
 function renderLivenessStep(props: React.ComponentProps<typeof LivenessStep> = {}) {
   return render(
     <MemoryRouter>
@@ -28,6 +51,7 @@ function renderLivenessStep(props: React.ComponentProps<typeof LivenessStep> = {
 describe('LivenessStep Page Component', () => {
   beforeEach(() => {
     localStorage.clear()
+    sessionStorage.clear()
   })
 
   afterEach(() => {
@@ -147,9 +171,11 @@ describe('LivenessStep Page Component', () => {
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
   })
 
-  it('given a verified session and a progresso de cadastro id, when the user clicks Continuar, then it should submit the liveness result and call onContinue', async () => {
+  it('given a verified session, a progresso de cadastro id and saved personal data, when the user clicks Continuar, then it should submit the liveness result, finalize the KYC and call onContinue', async () => {
     livenessService.saveLivenessSession('liveness-1', 'success')
+    onboardingService.saveRepresentativePersonalData(personalData)
     vi.mocked(livenessService.submitLivenessResult).mockResolvedValue(undefined)
+    vi.mocked(onboardingService.submitKyc).mockResolvedValue({ aveniaProcessId: 'kyc-process-1' })
     const onContinue = vi.fn()
 
     renderLivenessStep({ progressoCadastroId: 'cadastro-1', onContinue })
@@ -158,16 +184,47 @@ describe('LivenessStep Page Component', () => {
     await waitFor(() => {
       expect(livenessService.submitLivenessResult).toHaveBeenCalledWith('cadastro-1', 'liveness-1')
     })
+    expect(onboardingService.submitKyc).toHaveBeenCalledWith('cadastro-1', personalData)
+    expect(onboardingService.getRepresentativePersonalData()).toBeNull()
     expect(onContinue).toHaveBeenCalled()
   })
 
   it('given a verified session without a progresso de cadastro id, when the user clicks Continuar, then it should show an error instead of submitting', async () => {
     livenessService.saveLivenessSession('liveness-1', 'success')
+    onboardingService.saveRepresentativePersonalData(personalData)
 
     renderLivenessStep()
     await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Reinicie a verificação')
     expect(livenessService.submitLivenessResult).not.toHaveBeenCalled()
+  })
+
+  it('given a verified session without saved personal data, when the user clicks Continuar, then it should show an error instead of submitting', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'success')
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível recuperar os dados do representante',
+    )
+    expect(livenessService.submitLivenessResult).not.toHaveBeenCalled()
+  })
+
+  it('given the KYC finalization fails, when the user clicks Continuar, then it should show an error and not call onContinue', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'success')
+    onboardingService.saveRepresentativePersonalData(personalData)
+    vi.mocked(livenessService.submitLivenessResult).mockResolvedValue(undefined)
+    vi.mocked(onboardingService.submitKyc).mockRejectedValue(new Error('network error'))
+    const onContinue = vi.fn()
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1', onContinue })
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível confirmar a verificação',
+    )
+    expect(onContinue).not.toHaveBeenCalled()
   })
 })

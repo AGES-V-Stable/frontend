@@ -6,17 +6,34 @@ import AdminClients from '../pages/AdminClients'
 import AdminTransfers from '../pages/AdminTransfers'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
-import { CompanyRegistration } from '@/pages/Register/CompanyRegistration'
-import { Demo, DemoCompany, DemoCompliance, DemoRepresentative } from '@/pages/Demo'
-import { BeneficiaryView } from '@/pages/admin/beneficiaryView'
-import { ClientLayout } from '@/pages/client/ClientLayout'
-import { BeneficiariesLanding } from '@/pages/client/beneficiaries/BeneficiariesLanding'
-import { BeneficiaryCreate } from '@/pages/client/beneficiaryCreate'
+import ComplianceStep from '@/pages/Register/ComplianceStep'
+import RegistrationComplete from '@/pages/Register/RegistrationComplete'
 
-import { PATHS } from './paths'
-import { RegisterStatus } from '@/pages/RegisterStatus/RegisterStatus'
+import { livenessPath, PATHS, registrationCompletePath } from './paths'
 
-const ForgotPassWordPlaceHolder = () => <div className="p-8">Recuperação de Senha (Em breve)</div>
+function ComplianceRoute() {
+  const { kycVerificationId } = useParams()
+  const navigate = useNavigate()
+
+  return (
+    <ComplianceStep
+      progressoCadastroId={kycVerificationId}
+      onContinue={() => navigate(livenessPath(kycVerificationId!))}
+    />
+  )
+}
+
+function LivenessRoute() {
+  const { kycVerificationId } = useParams()
+  const navigate = useNavigate()
+
+  return (
+    <LivenessStep
+      progressoCadastroId={kycVerificationId}
+      onContinue={() => navigate(registrationCompletePath(kycVerificationId!), { replace: true })}
+    />
+  )
+}
 
 function AppRoutes() {
   return (
@@ -36,27 +53,9 @@ function AppRoutes() {
       />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
-      <Route path={PATHS.FORGOT_PASSWORD} element={<ForgotPassWordPlaceHolder />} />
-      <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
-      <Route path={PATHS.REGISTER_COMPANY_PROGRESS} element={<CompanyRegistration />} />
-      <Route
-        path={PATHS.REGISTER_REPRESENTATIVE}
-        element={<CompanyRegistration representative />}
-      />
-      <Route path={PATHS.REGISTER_COMPLIANCE} element={<CompanyRegistration compliance />} />
-      <Route path={PATHS.REGISTER_COMPLETE} element={<CompanyRegistration completion />} />
-      <Route path={PATHS.DEMO} element={<Demo />} />
-      <Route path={PATHS.DEMO_HOME} element={<Home />} />
-      <Route path={PATHS.DEMO_LOGIN} element={<Login />} />
-      <Route
-        path={PATHS.DEMO_REGISTER}
-        element={<Navigate to={PATHS.DEMO_REGISTER_COMPANY} replace />}
-      />
-      <Route path={PATHS.DEMO_REGISTER_COMPANY} element={<DemoCompany />} />
-      <Route path={PATHS.DEMO_REGISTER_REPRESENTATIVE} element={<DemoRepresentative />} />
-      <Route path={PATHS.DEMO_REGISTER_COMPLIANCE} element={<DemoCompliance />} />
-      <Route path={PATHS.DEMO_ADMIN_CLIENTS} element={<AdminClients />} />
-      <Route path={PATHS.REGISTER_STATUS} element={<RegisterStatus />} />
+      <Route path={PATHS.REGISTER_COMPLIANCE} element={<ComplianceRoute />} />
+      <Route path={PATHS.COMPLIANCE_LIVENESS} element={<LivenessRoute />} />
+      <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />
 
       <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
     </Routes>

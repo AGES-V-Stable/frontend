@@ -4,7 +4,7 @@ import { Input } from '@/components/Input'
 import { maskCEP, maskCNPJ } from '@/utils/masks'
 import { isValidCNPJ } from '@/utils/validators'
 import type { CompanyData } from '@/types/registration'
-import { RegistrationHeader } from './RegistrationHeader'
+import { RegistrationSteps } from './RegistrationSteps'
 
 export type { CompanyData } from '@/types/registration'
 
@@ -108,10 +108,21 @@ export function CompanyStep({
         }}
         className="flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-sage-300 bg-white px-4 py-[30px] md:px-10"
       >
-        <RegistrationHeader
-          activeStep={1}
-          description="Preencha os dados da empresa para iniciar o processo de cadastro."
-        />
+        <header className="flex flex-col items-center text-center">
+          <img
+            src="/images/register/v-stable-logo.png"
+            alt="V-Stable"
+            className="h-[68px] w-full max-w-[350px] object-contain"
+          />
+          <h1 className="mt-2 flex min-h-10 items-center text-2xl font-bold text-[#0F172A]">
+            Cadastro Institucional
+          </h1>
+          <p className="mt-1 flex min-h-7 items-center text-xs text-[#64748B]">
+            Preencha os dados da empresa para iniciar o processo de cadastro.
+          </p>
+        </header>
+        <RegistrationSteps currentIndex={1} />
+        <hr className="border-[#BBCABF]" />
         {serverError && (
           <p role="alert" className="text-red-700">
             {serverError}
