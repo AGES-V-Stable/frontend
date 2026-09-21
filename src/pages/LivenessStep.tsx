@@ -13,6 +13,12 @@ import {
   startLivenessVerification,
   submitLivenessResult,
 } from '@/services/liveness'
+import {
+  clearAccessToken,
+  clearRepresentativePersonalData,
+  getRepresentativePersonalData,
+  submitKyc,
+} from '@/services/onboarding'
 import type { LivenessStatus } from '@/types/liveness'
 
 export interface LivenessStepProps {
@@ -82,7 +88,9 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
         setLivenessStatus('success')
         setStatus('success')
       } else {
-        setCheckMessage('Verificação ainda não concluída. Finalize na aba aberta e tente novamente.')
+        setCheckMessage(
+          'Verificação ainda não concluída. Finalize na aba aberta e tente novamente.',
+        )
       }
     } catch {
       setErrorMessage('Não foi possível verificar a conclusão. Tente novamente.')
@@ -105,10 +113,22 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
       return
     }
 
+    const personalData = getRepresentativePersonalData()
+    if (!personalData) {
+      setErrorMessage('Não foi possível recuperar os dados do representante. Reinicie o cadastro.')
+      return
+    }
+
     setErrorMessage(null)
     setIsSubmitting(true)
     try {
       await submitLivenessResult(progressoCadastroId, livenessId)
+      // O documento e o liveness já estão salvos na verificação de KYC no
+      // backend; o KYC finaliza combinando eles com esses dados pessoais, que
+      // vão direto para a Avenia sem serem persistidos no nosso banco.
+      await submitKyc(progressoCadastroId, personalData)
+      clearRepresentativePersonalData()
+      clearAccessToken()
       if (onContinue) {
         onContinue()
       } else {

@@ -1,3 +1,5 @@
+import { getAccessToken } from './authToken'
+
 export class HttpError extends Error {
   readonly status: number
   readonly body?: unknown
@@ -11,10 +13,12 @@ export class HttpError extends Error {
 }
 
 export async function httpRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
+  const token = getAccessToken()
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   })

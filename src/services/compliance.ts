@@ -1,6 +1,5 @@
 import type { DocumentUploadStartResponse, TipoDocumento } from '@/types/compliance'
 
-import { API_BASE_URL } from './apiConfig'
 import { httpRequest } from './httpClient'
 
 /**
@@ -15,7 +14,7 @@ export async function startDocumentUpload(
   doubleSided: boolean,
 ): Promise<DocumentUploadStartResponse> {
   return httpRequest<DocumentUploadStartResponse>(
-    `${API_BASE_URL}/v1/onboarding/${progressoCadastroId}/compliance/documento`,
+    `/v1/onboarding/${progressoCadastroId}/compliance/documento`,
     {
       method: 'POST',
       body: JSON.stringify({ documentType, doubleSided }),
@@ -25,13 +24,16 @@ export async function startDocumentUpload(
 
 /**
  * Envia o binário do arquivo direto para a URL pré-assinada da S3, sem passar pelo
- * nosso backend — a URL já carrega a autorização necessária.
+ * nosso backend — a URL já carrega a autorização necessária. Confirmado contra o
+ * sandbox real: a assinatura da Avenia inclui "If-None-Match: *" (escrita condicional
+ * — não sobrescrever se já existir) como header assinado; sem ele o S3 sempre recusa
+ * com 403 SignatureDoesNotMatch.
  */
 export async function uploadFileToS3(url: string, file: File): Promise<void> {
   const response = await fetch(url, {
     method: 'PUT',
     body: file,
-    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    headers: { 'Content-Type': file.type || 'application/octet-stream', 'If-None-Match': '*' },
   })
 
   if (!response.ok) {
@@ -47,11 +49,8 @@ export async function submitDocumentResult(
   progressoCadastroId: string,
   documentoId: string,
 ): Promise<void> {
-  await httpRequest<void>(
-    `${API_BASE_URL}/v1/onboarding/${progressoCadastroId}/compliance/documento`,
-    {
-      method: 'PUT',
-      body: JSON.stringify({ documentoId }),
-    },
-  )
+  await httpRequest<void>(`/v1/onboarding/${progressoCadastroId}/compliance/documento`, {
+    method: 'PUT',
+    body: JSON.stringify({ documentoId }),
+  })
 }
