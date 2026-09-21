@@ -37,7 +37,7 @@ describe('liveness service', () => {
       const result = await startLivenessVerification('cadastro-1')
 
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/v1/cadastros/cadastro-1/compliance/liveness'),
+        expect.stringContaining('/v1/onboarding/cadastro-1/compliance/liveness'),
         expect.objectContaining({ method: 'POST' }),
       )
       expect(result).toEqual({
@@ -70,7 +70,9 @@ describe('liveness service', () => {
       const result = await checkLivenessStatus('cadastro-1', 'liveness-1')
 
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/v1/cadastros/cadastro-1/compliance/liveness/status?livenessId=liveness-1'),
+        expect.stringContaining(
+          '/v1/onboarding/cadastro-1/compliance/liveness/status?livenessId=liveness-1',
+        ),
         expect.objectContaining({ method: 'GET' }),
       )
       expect(result).toEqual({ ready: true, status: 'UPLOADED' })
@@ -94,7 +96,7 @@ describe('liveness service', () => {
       await submitLivenessResult('cadastro-1', 'liveness-1')
 
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/v1/cadastros/cadastro-1/compliance/liveness'),
+        expect.stringContaining('/v1/onboarding/cadastro-1/compliance/liveness'),
         expect.objectContaining({
           method: 'PUT',
           body: JSON.stringify({ livenessId: 'liveness-1' }),

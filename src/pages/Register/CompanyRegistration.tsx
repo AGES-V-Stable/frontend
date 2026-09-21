@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
-import { companyPath, compliancePath, PATHS } from '@/routes/paths'
+import { companyPath, compliancePath, livenessPath, PATHS } from '@/routes/paths'
 import { ApiError, getRegistration, saveCompany } from '@/services/registration'
 import type { CompanyData, RegistrationProgress } from '@/types/registration'
 import ComplianceStep from './ComplianceStep'
@@ -111,7 +111,12 @@ function Registration({ id, compliance }: { id?: string; compliance: boolean }) 
     )
   if (isSaved(progress)) {
     if (!compliance) return <Navigate to={compliancePath(id!)} replace />
-    return <ComplianceStep />
+    return (
+      <ComplianceStep
+        progressoCadastroId={id}
+        onContinue={() => navigate(livenessPath(id!), { replace: true })}
+      />
+    )
   }
   if (progress.etapaAtual !== 2 || progress.empresaId)
     return (

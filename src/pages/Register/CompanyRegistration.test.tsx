@@ -158,6 +158,55 @@ describe('company API integration', () => {
     open()
     expect(await screen.findByRole('alert')).toHaveTextContent('Cadastro não encontrado')
   })
+  it('advances from the compliance step to the liveness step, wiring the same progresso de cadastro id', async () => {
+    localStorage.clear()
+    vi.stubGlobal('open', vi.fn().mockReturnValue({} as Window))
+    const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.includes('/compliance/documento') && options?.method === 'POST') {
+        return response({ id: 'doc-1', uploadUrlFront: 'https://s3/front', uploadUrlBack: null })
+      }
+      if (url === 'https://s3/front' && options?.method === 'PUT') {
+        return response(null, 200)
+      }
+      if (url.includes('/compliance/documento') && options?.method === 'PUT') {
+        return new Response(null, { status: 204 })
+      }
+      if (url.includes('/compliance/liveness') && options?.method === 'POST') {
+        return response({
+          id: 'liveness-1',
+          sessionId: 'session-1',
+          livenessUrl: 'https://avenia.io/liveness/liveness-1',
+          validateLivenessToken: 'token-1',
+        })
+      }
+      return response(saved)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    open(compliancePath(id))
+    const user = userEvent.setup()
+
+    await user.selectOptions(await screen.findByLabelText(/tipo de documento/i), 'PASSPORT')
+    await user.upload(
+      screen.getByTestId('file-input'),
+      new File([new Uint8Array(10)], 'doc.pdf', { type: 'application/pdf' }),
+    )
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+    await screen.findByText('Formulário enviado com sucesso!')
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(await screen.findByRole('heading', { name: 'Verificação facial' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Iniciar verificação facial' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining(`/v1/onboarding/${id}/compliance/liveness`),
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('rejects an incompatible stage', async () => {
     vi.stubGlobal(
       'fetch',
