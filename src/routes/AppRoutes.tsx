@@ -21,8 +21,6 @@ function AppRoutes() {
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<CompanyRegistration compliance />} />
       <Route path={PATHS.REGISTER_STATUS} element={<RegisterStatus />} />
 
-
-
       <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
     </Routes>
   )
