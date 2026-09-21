@@ -1,9 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { MemoryRouter } from 'react-router'
-import AppRoutes from '@/routes/AppRoutes'
-import { PATHS } from '@/routes/paths'
 import { CompanyStep, type CompanyData } from './CompanyStep'
 
 const valid: CompanyData = {
@@ -130,19 +127,5 @@ describe('CompanyStep', () => {
     expect(screen.getByRole('textbox', { name: 'Razão Social *' })).toHaveFocus()
     await user.keyboard('{Enter}')
     expect(onContinue).toHaveBeenCalledOnce()
-  })
-})
-
-describe('Company registration route', () => {
-  it('requires a progress link and provides a return to register', async () => {
-    const user = userEvent.setup()
-    render(
-      <MemoryRouter initialEntries={[PATHS.REGISTER_COMPANY]}>
-        <AppRoutes />
-      </MemoryRouter>,
-    )
-    expect(screen.getByRole('alert')).toHaveTextContent('Link de cadastro ausente ou inválido')
-    await user.click(screen.getByRole('link', { name: 'Voltar ao cadastro' }))
-    expect(screen.getByText('Register')).toBeInTheDocument()
   })
 })

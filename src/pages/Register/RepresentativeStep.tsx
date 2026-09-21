@@ -1,20 +1,11 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
-import { maskCEP, maskCPF } from '@/utils/masks'
+import { RepresentativeAccessSchema } from '@/schemas/onboarding'
+import type { RepresentativeData } from '@/types/onboarding'
+import { maskCEP, maskCPF, maskPhone } from '@/utils/masks'
 import { isValidCPF } from '@/utils/validators'
-
-interface RepresentativeData {
-  cargo_funcao: string
-  participacao_societaria: number
-  cpf: string
-  cep: string
-  cidade: string
-  estado: string
-  pais: string
-  linha_endereco: string
-}
+import { RegistrationSteps } from './RegistrationSteps'
 
 const CARGOS = [
   'Sócio-administrador',
@@ -54,308 +45,312 @@ const ESTADOS = [
   { sigla: 'TO', nome: 'Tocantins' },
 ]
 
-export const RepresentativeStep: React.FC = () => {
-  const { progresso_cadastro_id } = useParams<{ progresso_cadastro_id: string }>()
-  const navigate = useNavigate()
+type Errors = Partial<Record<keyof RepresentativeData, string>>
 
-  const [formData, setFormData] = useState<RepresentativeData>({
-    cargo_funcao: '',
-    participacao_societaria: 0,
+function validatePersonal(data: RepresentativeData): Errors {
+  const errors: Errors = {}
+  if (!data.cargoFuncao) errors.cargoFuncao = 'Cargo é obrigatório'
+  if (!data.cpf) errors.cpf = 'CPF é obrigatório'
+  else if (!isValidCPF(data.cpf)) errors.cpf = 'CPF inválido'
+  if (!data.dateOfBirth) errors.dateOfBirth = 'Data de nascimento é obrigatória'
+  if (!data.phone) errors.phone = 'Telefone é obrigatório'
+  else if (data.phone.replace(/\D/g, '').length < 10) errors.phone = 'Telefone inválido'
+  if (!data.cep) errors.cep = 'CEP é obrigatório'
+  else if (data.cep.replace(/\D/g, '').length !== 8) errors.cep = 'CEP inválido'
+  if (!data.cidade) errors.cidade = 'Cidade é obrigatória'
+  if (!data.estado) errors.estado = 'Estado é obrigatório'
+  if (!data.pais) errors.pais = 'País é obrigatório'
+  if (!data.linhaEndereco) errors.linhaEndereco = 'Endereço é obrigatório'
+  return errors
+}
+
+function validateAccess(data: RepresentativeData): Errors {
+  const result = RepresentativeAccessSchema.safeParse(data)
+  if (result.success) return {}
+
+  const errors: Errors = {}
+  for (const issue of result.error.issues) {
+    const field = issue.path[0] as keyof RepresentativeData
+    if (!errors[field]) errors[field] = issue.message
+  }
+  return errors
+}
+
+export interface RepresentativeStepProps {
+  initialValues?: Partial<RepresentativeData>
+  onBack: () => void
+  onContinue: (data: RepresentativeData) => void
+}
+
+export function RepresentativeStep({ initialValues, onBack, onContinue }: RepresentativeStepProps) {
+  const [data, setData] = useState<RepresentativeData>(() => ({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    cargoFuncao: '',
+    participacaoSocietaria: 0,
     cpf: '',
+    dateOfBirth: '',
+    phone: '',
+    pais: 'Brasil',
     cep: '',
     cidade: '',
     estado: '',
-    pais: '',
-    linha_endereco: '',
-  })
+    linhaEndereco: '',
+    ...initialValues,
+  }))
+  const [errors, setErrors] = useState<Errors>({})
 
-  const [errors, setErrors] = useState<Partial<Record<keyof RepresentativeData, string>>>({})
-  const [isLoading, setIsLoading] = useState(false)
-  const [globalError, setGlobalError] = useState<string | null>(null)
-  const [isFetching, setIsFetching] = useState(true)
+  function change<K extends keyof RepresentativeData>(field: K, value: RepresentativeData[K]) {
+    let formatted = value
+    if (field === 'cpf') formatted = maskCPF(value as string) as RepresentativeData[K]
+    if (field === 'cep') formatted = maskCEP(value as string) as RepresentativeData[K]
+    if (field === 'phone') formatted = maskPhone(value as string) as RepresentativeData[K]
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const response = await fetch(`/v1/cadastros/${progresso_cadastro_id}`)
-        if (response.status === 404) {
-          navigate('/cadastro', { state: { error: 'Cadastro não encontrado ou expirado.' } })
-          return
-        }
-        if (response.ok) {
-          const data = await response.json()
-          if (data.representante) {
-            setFormData({
-              ...data.representante,
-              cpf: maskCPF(data.representante.cpf) || '',
-              cep: maskCEP(data.representante.cep || ''),
-            })
-          }
-        }
-      } catch {
-        setGlobalError('Não foi possível carregar os dados. Tente novamente.')
-      } finally {
-        setIsFetching(false)
-      }
-    }
-    fetchInitialData()
-  }, [progresso_cadastro_id, navigate])
-
-  const validateForm = () => {
-    const newErrors: typeof errors = {}
-    if (!formData.cargo_funcao) newErrors.cargo_funcao = 'Cargo é obrigatório'
-    if (!formData.cpf) newErrors.cpf = 'CPF é obrigatório'
-    else if (!isValidCPF(formData.cpf)) newErrors.cpf = 'CPF inválido'
-
-    if (!formData.cep) newErrors.cep = 'CEP é obrigatório'
-    else if (formData.cep.replace(/\D/g, '').length !== 8) newErrors.cep = 'CEP inválido'
-
-    if (!formData.cidade) newErrors.cidade = 'Cidade é obrigatória'
-    if (!formData.estado) newErrors.estado = 'Estado é obrigatório'
-    if (!formData.pais) newErrors.pais = 'País é obrigatório'
-    if (!formData.linha_endereco) newErrors.linha_endereco = 'Endereço é obrigatório'
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    setData((previous) => ({ ...previous, [field]: formatted }))
+    if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }))
   }
 
-  const handleInputChange = (field: keyof RepresentativeData, value: string | number) => {
-    let formattedValue = value
-    if (field === 'cpf') formattedValue = maskCPF(value as string)
-    if (field === 'cep') formattedValue = maskCEP(value as string)
-
-    setFormData((prev) => ({ ...prev, [field]: formattedValue }))
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
-  }
-
-  const handleBlurCPF = () => {
-    if (formData.cpf && !isValidCPF(formData.cpf)) {
-      setErrors((prev) => ({ ...prev, cpf: 'CPF inválido' }))
+  function handleBlurCPF() {
+    if (data.cpf && !isValidCPF(data.cpf)) {
+      setErrors((previous) => ({ ...previous, cpf: 'CPF inválido' }))
     }
   }
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return
-
-    setIsLoading(true)
-    setGlobalError(null)
-
-    const payload = {
-      ...formData,
-      cpf: formData.cpf.replace(/\D/g, ''),
-      cep: formData.cep.replace(/\D/g, ''),
-    }
-
-    try {
-      const response = await fetch(`/v1/cadastros/${progresso_cadastro_id}/representante`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (response.ok) {
-        navigate(`/cadastro/${progresso_cadastro_id}/compliance`)
-      } else if (response.status === 422) {
-        const errorData = await response.json()
-        setErrors(errorData.errors || {})
-      } else if (response.status === 404) {
-        navigate('/cadastro', { state: { error: 'Progresso expirado. Inicie novamente. ' } })
-      } else {
-        throw new Error('Erro interno')
-      }
-    } catch {
-      setGlobalError('Ocorreu um erro ao salvar os dados. Por favor, tente novamente.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  if (isFetching) {
-    return (
-      <div className="flex justify-center p-8">
-        <span
-          className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"
-          aria-label="Carregando"
-        ></span>
-      </div>
-    )
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    const nextErrors = { ...validateAccess(data), ...validatePersonal(data) }
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) return
+    onContinue(data)
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 bg-white rounded-lg shadow-sm">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Dados do Representante</h2>
+    <main className="flex min-h-screen items-center justify-center bg-[#F1F5F9] px-4 py-8 md:px-8">
+      <form
+        noValidate
+        onSubmit={handleSubmit}
+        className="flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10"
+      >
+        <header className="flex flex-col items-center text-center">
+          <img
+            src="/images/register/v-stable-logo.png"
+            alt="V-Stable"
+            className="h-[68px] w-full max-w-[350px] object-contain"
+          />
+          <h1 className="mt-2 flex min-h-10 items-center text-2xl font-bold text-[#0F172A]">
+            Cadastro Institucional
+          </h1>
+          <p className="mt-1 flex min-h-7 items-center text-xs text-[#64748B]">
+            Crie seu acesso e informe seus dados de representante para iniciar o cadastro.
+          </p>
+        </header>
 
-      {globalError && (
-        <div
-          className="mb-6 p-4 bg-red-50 text-red-700 rounded-md border border-red-200"
-          role="alert"
-        >
-          {globalError}
+        <RegistrationSteps currentIndex={0} />
+        <hr className="border-[#BBCABF]" />
+
+        <div className="flex min-h-8 items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-[#0F172A]">Dados de acesso e do representante</h2>
+          <span className="shrink-0 text-sm font-medium text-[#059669]">Etapa 1 de 4</span>
         </div>
-      )}
 
-      {/* Bloco: Vínculo Societário */}
-      <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
-          Vínculo Societário
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="cargo" className="block text-sm font-medium text-gray-700 mb-1">
-              Cargo / Função *
-            </label>
-            <select
-              id="cargo"
-              value={formData.cargo_funcao}
-              onChange={(e) => handleInputChange('cargo_funcao', e.target.value)}
-              className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.cargo_funcao ? 'border-red-500' : 'border-gray-300'}`}
-              aria-invalid={!!errors.cargo_funcao}
-              aria-describedby={errors.cargo_funcao ? 'cargo-error' : undefined}
-            >
-              <option value="" disabled>
-                Selecione...
-              </option>
-              {CARGOS.map((cargo) => (
-                <option key={cargo} value={cargo}>
-                  {cargo}
-                </option>
-              ))}
-            </select>
-            {errors.cargo_funcao && (
-              <p id="cargo-error" role="alert" className="mt-1 text-sm text-red-500">
-                {errors.cargo_funcao}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="participacao" className="block text-sm font-medium text-gray-700 mb-1">
-              Participação Societária: {formData.participacao_societaria}%
-            </label>
-            <input
-              type="range"
-              id="participacao"
-              min="0"
-              max="100"
-              value={formData.participacao_societaria}
-              onChange={(e) => handleInputChange('participacao_societaria', Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2"
+        <section>
+          <h3 className="mb-4 border-b pb-2 text-lg font-semibold text-gray-700">Acesso</h3>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+            <Input
+              id="fullName"
+              label="Nome completo *"
+              value={data.fullName}
+              onChange={(event) => change('fullName', event.target.value)}
+              error={errors.fullName}
+            />
+            <Input
+              id="email"
+              type="email"
+              label="E-mail *"
+              value={data.email}
+              onChange={(event) => change('email', event.target.value)}
+              error={errors.email}
+            />
+            <Input
+              id="password"
+              type="password"
+              label="Senha *"
+              value={data.password}
+              onChange={(event) => change('password', event.target.value)}
+              error={errors.password}
+            />
+            <Input
+              id="confirmPassword"
+              type="password"
+              label="Confirmar senha *"
+              value={data.confirmPassword}
+              onChange={(event) => change('confirmPassword', event.target.value)}
+              error={errors.confirmPassword}
             />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Bloco: Documento e Endereço */}
-      <section className="mb-8">
-        <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
-          Documento e Endereço
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 mb-1">
-              CPF *
-            </label>
+        <section>
+          <h3 className="mb-4 border-b pb-2 text-lg font-semibold text-gray-700">
+            Vínculo Societário
+          </h3>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div>
+              <label htmlFor="cargo" className="mb-1 block text-sm font-medium text-gray-700">
+                Cargo / Função *
+              </label>
+              <select
+                id="cargo"
+                value={data.cargoFuncao}
+                onChange={(event) => change('cargoFuncao', event.target.value)}
+                className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.cargoFuncao ? 'border-red-500' : 'border-gray-300'}`}
+                aria-invalid={!!errors.cargoFuncao}
+                aria-describedby={errors.cargoFuncao ? 'cargo-error' : undefined}
+              >
+                <option value="" disabled>
+                  Selecione...
+                </option>
+                {CARGOS.map((cargo) => (
+                  <option key={cargo} value={cargo}>
+                    {cargo}
+                  </option>
+                ))}
+              </select>
+              {errors.cargoFuncao && (
+                <p id="cargo-error" role="alert" className="mt-1 text-sm text-red-500">
+                  {errors.cargoFuncao}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="participacao"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                Participação Societária: {data.participacaoSocietaria}%
+              </label>
+              <input
+                type="range"
+                id="participacao"
+                min="0"
+                max="100"
+                value={data.participacaoSocietaria}
+                onChange={(event) => change('participacaoSocietaria', Number(event.target.value))}
+                className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-4 border-b pb-2 text-lg font-semibold text-gray-700">
+            Documento e Endereço
+          </h3>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Input
               id="cpf"
+              label="CPF *"
               placeholder="000.000.000-00"
-              value={formData.cpf}
-              onChange={(e) => handleInputChange('cpf', e.target.value)}
+              value={data.cpf}
+              onChange={(event) => change('cpf', event.target.value)}
               onBlur={handleBlurCPF}
               error={errors.cpf}
             />
-          </div>
-          <div>
-            <label htmlFor="cep" className="block text-sm font-medium text-gray-700 mb-1">
-              CEP *
-            </label>
+            <Input
+              id="dateOfBirth"
+              type="date"
+              label="Data de nascimento *"
+              value={data.dateOfBirth}
+              onChange={(event) => change('dateOfBirth', event.target.value)}
+              error={errors.dateOfBirth}
+            />
+            <Input
+              id="phone"
+              label="Telefone *"
+              placeholder="(00) 00000-0000"
+              value={data.phone}
+              onChange={(event) => change('phone', event.target.value)}
+              error={errors.phone}
+            />
             <Input
               id="cep"
+              label="CEP *"
               placeholder="00000-000"
-              value={formData.cep}
-              onChange={(e) => handleInputChange('cep', e.target.value)}
+              value={data.cep}
+              onChange={(event) => change('cep', event.target.value)}
               error={errors.cep}
             />
-          </div>
-          <div className="md:col-span-2">
-            <label
-              htmlFor="linha_endereco"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Linha de endereço *
-            </label>
-            <Input
-              id="linha_endereco"
-              value={formData.linha_endereco}
-              onChange={(e) => handleInputChange('linha_endereco', e.target.value)}
-              error={errors.linha_endereco}
-            />
-          </div>
-          <div>
-            <label htmlFor="cidade" className="block text-sm font-medium text-gray-700 mb-1">
-              Cidade *
-            </label>
+            <div className="md:col-span-2">
+              <Input
+                id="linhaEndereco"
+                label="Linha de endereço *"
+                value={data.linhaEndereco}
+                onChange={(event) => change('linhaEndereco', event.target.value)}
+                error={errors.linhaEndereco}
+              />
+            </div>
             <Input
               id="cidade"
-              value={formData.cidade}
-              onChange={(e) => handleInputChange('cidade', e.target.value)}
+              label="Cidade *"
+              value={data.cidade}
+              onChange={(event) => change('cidade', event.target.value)}
               error={errors.cidade}
             />
-          </div>
-          <div>
-            <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">
-              Estado *
-            </label>
-            <select
-              id="estado"
-              value={formData.estado}
-              onChange={(e) => handleInputChange('estado', e.target.value)}
-              className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.estado ? 'border-red-500' : 'border-gray-300'}`}
-              aria-invalid={!!errors.estado}
-              aria-describedby={errors.estado ? 'estado-error' : undefined}
-            >
-              <option value="" disabled>
-                Selecione...
-              </option>
-              {ESTADOS.map((estado) => (
-                <option key={estado.sigla} value={estado.sigla}>
-                  {estado.nome}
+            <div>
+              <label htmlFor="estado" className="mb-1 block text-sm font-medium text-gray-700">
+                Estado *
+              </label>
+              <select
+                id="estado"
+                value={data.estado}
+                onChange={(event) => change('estado', event.target.value)}
+                className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.estado ? 'border-red-500' : 'border-gray-300'}`}
+                aria-invalid={!!errors.estado}
+                aria-describedby={errors.estado ? 'estado-error' : undefined}
+              >
+                <option value="" disabled>
+                  Selecione...
                 </option>
-              ))}
-            </select>
-            {errors.estado && (
-              <p id="estado-error" role="alert" className="mt-1 text-sm text-red-500">
-                {errors.estado}
-              </p>
-            )}
-          </div>
-          <div>
-            <label htmlFor="pais" className="block text-sm font-medium text-gray-700 mb-1">
-              País *
-            </label>
+                {ESTADOS.map((estado) => (
+                  <option key={estado.sigla} value={estado.sigla}>
+                    {estado.nome}
+                  </option>
+                ))}
+              </select>
+              {errors.estado && (
+                <p id="estado-error" role="alert" className="mt-1 text-sm text-red-500">
+                  {errors.estado}
+                </p>
+              )}
+            </div>
             <Input
               id="pais"
-              value={formData.pais}
-              onChange={(e) => handleInputChange('pais', e.target.value)}
+              label="País *"
+              value={data.pais}
+              onChange={(event) => change('pais', event.target.value)}
               error={errors.pais}
             />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Navegação */}
-      <div className="flex justify-between items-center mt-8 pt-4 border-t">
-        <Button
-          label="Voltar"
-          variant="secondary"
-          onClick={() => navigate(`/cadastro/${progresso_cadastro_id}/acesso`)}
-          disabled={isLoading}
-        />
-        <Button
-          label={isLoading ? 'Processando...' : 'Continuar'}
-          onClick={handleSubmit}
-          disabled={isLoading || Object.keys(errors).length > 0}
-        />
-      </div>
-    </div>
+        <div className="mt-4 flex flex-col gap-3 border-t pt-4 md:flex-row md:justify-end md:gap-[70px]">
+          <div className="md:w-[170px]">
+            <Button
+              type="button"
+              variant="neutral"
+              label="Voltar"
+              onClick={onBack}
+              className="h-12 font-medium"
+            />
+          </div>
+          <div className="md:w-[170px]">
+            <Button type="submit" label="Continuar" className="h-12 font-medium" />
+          </div>
+        </div>
+      </form>
+    </main>
   )
 }
