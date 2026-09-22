@@ -26,6 +26,7 @@ export interface PaginationProps {
   itemsPerPage: number
   totalRecords: number
   onPageChange: (page: number) => void
+  entityLabel?: string
 }
 
 export interface TableProps<T> {
@@ -42,4 +43,5 @@ export interface TableProps<T> {
 
   // Message to display when data is empty
   emptyMessage?: ReactNode
+  entityLabel?: string
 }

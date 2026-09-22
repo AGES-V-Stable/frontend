@@ -2,24 +2,30 @@ import { Navigate, Route, Routes } from 'react-router'
 
 import { Home } from '@/pages/Home'
 import AdminClients from '../pages/AdminClients'
+import AdminTransfers from '../pages/AdminTransfers'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
 import { CompanyRegistration } from '@/pages/Register/CompanyRegistration'
 import { RepresentativeStep } from '@/pages/Register/RepresentativeStep'
+import { BeneficiaryView } from '@/pages/admin/beneficiaryView'
 
 import { PATHS } from './paths'
+import { RegisterStatus } from '@/pages/RegisterStatus/RegisterStatus'
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path={PATHS.HOME} element={<Home />} />
       <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
+      <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
+      <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeStep />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPANY_PROGRESS} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<CompanyRegistration compliance />} />
+      <Route path={PATHS.REGISTER_STATUS} element={<RegisterStatus />} />
 
       <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
     </Routes>
