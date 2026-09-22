@@ -13,6 +13,7 @@ describe('PATHS configuration', () => {
       REGISTER_COMPLIANCE: '/register/:progressoCadastroId/compliance',
       REGISTER_STATUS: '/register/status',
       ADMIN_CLIENTS: '/admin/clientes-pme',
+      ADMIN_BENEFICIARIES: '/admin/beneficiarios',
     }
 
     const actualPaths = PATHS

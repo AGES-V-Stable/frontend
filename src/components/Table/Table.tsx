@@ -17,6 +17,7 @@ export function Table<T>({
   actions,
   pagination,
   emptyMessage,
+  entityLabel = 'registros',
 }: TableProps<T>) {
   const renderCellContent = (item: T, column: ColumnDefinition<T>) => {
     if (column.render) {
@@ -57,7 +58,7 @@ export function Table<T>({
           {title}{' '}
           {totalRecords !== undefined && (
             <span className="text-[#0F172A] text-[14px] font-medium ml-2">
-              · {totalRecords} contas
+              · {totalRecords} {entityLabel}
             </span>
           )}
         </div>
@@ -123,7 +124,9 @@ export function Table<T>({
 
         <div className="w-full h-[1px] bg-[var(--Neutral-Grey-Border,#BBCABF)] mt-8"></div>
 
-        {pagination && data.length > 0 && <TablePagination {...pagination} />}
+        {pagination && data.length > 0 && (
+          <TablePagination {...pagination} entityLabel={pagination.entityLabel ?? entityLabel} />
+        )}
       </div>
     </div>
   )

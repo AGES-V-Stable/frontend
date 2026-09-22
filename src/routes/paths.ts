@@ -7,6 +7,7 @@ export const PATHS = {
   REGISTER_COMPLIANCE: '/register/:progressoCadastroId/compliance',
   REGISTER_STATUS: '/register/status',
   ADMIN_CLIENTS: '/admin/clientes-pme',
+  ADMIN_BENEFICIARIES: '/admin/beneficiarios',
 } as const
 
 export type Path = (typeof PATHS)[keyof typeof PATHS]
