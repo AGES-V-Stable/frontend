@@ -142,7 +142,7 @@ describe('AdminTransfers page', () => {
     await user.click(nextButton)
 
     await waitFor(() => {
-      expect(getTransfers).toHaveBeenCalledWith(2, 6)
+      expect(getTransfers).toHaveBeenCalledWith(2, 12)
       expect(screen.getByText(/2 de 2/i)).toBeInTheDocument()
     })
 

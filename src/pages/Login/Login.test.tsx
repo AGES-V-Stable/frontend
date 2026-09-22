@@ -3,12 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
-import { Login } from './Login'
 import { authService } from '@/services/login'
+import { Login } from './Login'
 
 vi.mock('@/services/login', () => ({
   authService: {
-    login: vi.fn(),
+    login: vi.fn().mockResolvedValue({ token: 'mock-jwt-token' }),
   },
 }))
 
@@ -69,7 +69,7 @@ describe('Login Page Component', () => {
   })
 
   it('navigates to the home page after a valid submission', async () => {
-    vi.mocked(authService.login).mockResolvedValueOnce({ token: 'fake-token' })
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: 'mock-jwt-token' })
     const user = userEvent.setup()
     renderLogin()
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
 import { Drawer } from '@/components/Drawer'
-import { Sidebar } from '@/components/Sidebar'
+import { AdminNavIcon, Sidebar, type AdminNavIconId } from '@/components/Sidebar'
 import { Table } from '@/components/Table'
 import { type Transfer } from '@/data/mockTransfers'
 import { transferTableColumns as columns } from '@/config/transferTableColumns'
@@ -15,34 +15,7 @@ const sidebarMenuItems = [
   { id: 'beneficiaries', label: 'Beneficiários', path: PATHS.ADMIN_CLIENTS },
   { id: 'transfers', label: 'Transferências', path: PATHS.ADMIN_TRANSFERS },
   { id: 'settings', label: 'Configurações', path: '/settings' },
-].map((item) => ({
-  ...item,
-  icon: (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className="size-full"
-      focusable="false"
-    >
-      {item.id === 'home' && <path d="m3 10 9-7 9 7M5 9v11h5v-6h4v6h5V9" />}
-      {item.id === 'beneficiaries' && (
-        <>
-          <circle cx="9" cy="7" r="3" />
-          <path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6m2 4a5 5 0 0 1 3 4v3" />
-        </>
-      )}
-      {item.id === 'transfers' && <path d="M3 7h18m-5-5 5 5-5 5M21 17H3m5-5-5 5 5 5" />}
-      {item.id === 'settings' && (
-        <>
-          <path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3Z" />
-          <circle cx="12" cy="12" r="3" />
-        </>
-      )}
-    </svg>
-  ),
-}))
+].map((item) => ({ ...item, icon: <AdminNavIcon id={item.id as AdminNavIconId} /> }))
 
 function AdminTransfers() {
   const navigate = useNavigate()
@@ -55,7 +28,6 @@ function AdminTransfers() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null)
-
 
   const limit = 12
 

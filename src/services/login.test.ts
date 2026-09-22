@@ -10,7 +10,7 @@ describe('authService', () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ Authorization: 'Bearer token-secreto-123' })
+      headers: new Headers({ Authorization: 'Bearer token-secreto-123' }),
     })
 
     const result = await authService.login({ email: 'a@b.com', password: '123' })
@@ -21,7 +21,7 @@ describe('authService', () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ Authorization: 'token-secreto-456' })
+      headers: new Headers({ Authorization: 'token-secreto-456' }),
     })
 
     const result = await authService.login({ email: 'a@b.com', password: '123' })
@@ -30,34 +30,37 @@ describe('authService', () => {
 
   it('deve estourar erro 401 - E-mail ou senha inválidos', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ status: 401 })
-    
-    await expect(authService.login({ email: 'a@b.com', password: '123' }))
-      .rejects.toThrow('E-mail ou senha inválidos')
+
+    await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
+      'E-mail ou senha inválidos',
+    )
   })
 
   it('deve estourar erro 423 - Usuário bloqueado', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ status: 423 })
-    
-    await expect(authService.login({ email: 'a@b.com', password: '123' }))
-      .rejects.toThrow('Usuário bloqueado')
+
+    await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
+      'Usuário bloqueado',
+    )
   })
 
   it('deve estourar erro genérico para outros problemas', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 })
-    
-    await expect(authService.login({ email: 'a@b.com', password: '123' }))
-      .rejects.toThrow('Erro ao realizar login')
+
+    await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
+      'Erro ao realizar login',
+    )
   })
 
   it('deve estourar erro se a API não devolver o cabeçalho Authorization', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers() // Sem headers
+      headers: new Headers(), // Sem headers
     })
-    
-    await expect(authService.login({ email: 'a@b.com', password: '123' }))
-      .rejects.toThrow('Token não retornado pelo servidor')
+
+    await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
+      'Token não retornado pelo servidor',
+    )
   })
 })
-

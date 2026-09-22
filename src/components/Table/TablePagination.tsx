@@ -8,6 +8,7 @@ export function TablePagination({
   itemsPerPage,
   totalRecords,
   onPageChange,
+  entityLabel = 'clientes',
 }: PaginationProps) {
   const hasPreviousPage = currentPage > 1
   const hasNextPage = currentPage < totalPages
@@ -31,7 +32,7 @@ export function TablePagination({
   return (
     <div className="w-full flex items-center justify-between py-6">
       <div className="font-['IBM_Plex_Sans'] text-[14px] text-[#64748B]">
-        Mostrando {startRecord}-{endRecord} de {totalRecords} clientes
+        Mostrando {startRecord}-{endRecord} de {totalRecords} {entityLabel}
       </div>
 
       <div className="flex items-center gap-[8px]">

@@ -13,6 +13,13 @@ const renderAdminClients = () =>
   )
 
 describe('AdminClients page', () => {
+  it('labels the table and pagination with "clientes"', () => {
+    renderAdminClients()
+
+    expect(screen.getByText(/^· \d+ clientes$/)).toBeInTheDocument()
+    expect(screen.getByText(/de \d+ clientes$/)).toBeInTheDocument()
+  })
+
   it('shows only clients that match the company filter', () => {
     renderAdminClients()
 
