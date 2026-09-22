@@ -1,9 +1,16 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
+import { authService } from '@/services/login'
 import { Login } from './Login'
+
+vi.mock('@/services/login', () => ({
+  authService: {
+    login: vi.fn().mockResolvedValue({ token: 'mock-jwt-token' }),
+  },
+}))
 
 function renderLogin() {
   return render(
@@ -18,8 +25,6 @@ function renderLogin() {
 }
 
 describe('Login Page Component', () => {
-  afterEach(() => vi.unstubAllGlobals())
-
   it('renders the brand copy, heading and form fields', () => {
     renderLogin()
 
@@ -64,16 +69,8 @@ describe('Login Page Component', () => {
   })
 
   it('navigates to the home page after a valid submission', async () => {
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: 'mock-jwt-token' })
     const user = userEvent.setup()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        headers: {
-          get: () => 'Bearer test-token',
-        },
-      }),
-    )
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
