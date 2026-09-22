@@ -8,6 +8,7 @@ describe('PATHS configuration', () => {
       HOME: '/',
       LOGIN: '/login',
       REGISTER: '/register',
+      REGISTER_REPRESENTATIVE: '/register/:progressoCadastroId/representante',
       REGISTER_COMPANY: '/register/empresa',
       REGISTER_COMPANY_PROGRESS: '/register/:progressoCadastroId/empresa',
       REGISTER_COMPLIANCE: '/register/:progressoCadastroId/compliance',

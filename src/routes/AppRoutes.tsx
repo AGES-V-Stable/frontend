@@ -6,6 +6,7 @@ import AdminTransfers from '../pages/AdminTransfers'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
 import { CompanyRegistration } from '@/pages/Register/CompanyRegistration'
+import { RepresentativeStep } from '@/pages/Register/RepresentativeStep'
 import { BeneficiaryView } from '@/pages/admin/beneficiaryView'
 
 import { PATHS } from './paths'
@@ -20,6 +21,7 @@ function AppRoutes() {
       <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
+      <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeStep />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPANY_PROGRESS} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<CompanyRegistration compliance />} />
