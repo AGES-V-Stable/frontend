@@ -153,6 +153,7 @@ function AdminClients() {
 
           <Table
             title="Todos os clientes"
+            entityLabel="clientes"
             totalRecords={filteredClients.length}
             columns={columns}
             data={filteredClients}
@@ -169,6 +170,7 @@ function AdminClients() {
               itemsPerPage: 4,
               totalRecords: filteredClients.length,
               onPageChange: setCurrentPage,
+              entityLabel: 'clientes',
             }}
           />
         </div>

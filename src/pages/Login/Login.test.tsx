@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Login } from './Login'
 
@@ -18,6 +18,8 @@ function renderLogin() {
 }
 
 describe('Login Page Component', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
   it('renders the brand copy, heading and form fields', () => {
     renderLogin()
 
