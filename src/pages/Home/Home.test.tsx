@@ -13,6 +13,7 @@ function renderHome() {
         <Route path="/login" element={<p>Login page</p>} />
         <Route path="/register" element={<p>Register page</p>} />
         <Route path="/admin/clientes-pme" element={<p>Admin page</p>} />
+        <Route path="/demo" element={<p>Demo page</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -61,5 +62,14 @@ describe('Home Page Component', () => {
     await user.click(screen.getByRole('button', { name: 'Ir para Clientes PME' }))
 
     expect(await screen.findByText('Admin page')).toBeInTheDocument()
+  })
+
+  it('navigates to the complete demonstration', async () => {
+    const user = userEvent.setup()
+    renderHome()
+
+    await user.click(screen.getByRole('button', { name: 'Abrir demonstração completa' }))
+
+    expect(await screen.findByText('Demo page')).toBeInTheDocument()
   })
 })

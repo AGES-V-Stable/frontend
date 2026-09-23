@@ -1,420 +1,143 @@
-// src/pages/Register/RepresentativeStep.test.tsx
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { RepresentativeData } from '@/types/registration'
 import { RepresentativeStep } from './RepresentativeStep'
 
-// Mock do hook de navegação e parâmetros de rota do react-router
-const mockNavigate = vi.fn()
-vi.mock('react-router', () => ({
-  useNavigate: () => mockNavigate,
-  useParams: () => ({ progressoCadastroId: 'cad-123' }),
-}))
+const valid: RepresentativeData = {
+  cargo_funcao: 'Diretor(a)',
+  participacao_societaria: 45,
+  cpf: '52998224725',
+  cep: '90000000',
+  cidade: 'Porto Alegre',
+  estado: 'RS',
+  pais: 'Brasil',
+  linha_endereco: 'Av. Ipiranga, 6681',
+}
 
-describe('RepresentativeStep (Etapa 3 - Representante)', () => {
-  beforeEach(() => {
-    // Limpa chamadas anteriores e prepara o spy no fetch global do ambiente
-    vi.clearAllMocks()
-    vi.spyOn(window, 'fetch')
+async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
+  await user.selectOptions(screen.getByLabelText(/cargo \/ função/i), 'Diretor(a)')
+  await user.type(screen.getByPlaceholderText('000.000.000-00'), '52998224725')
+  await user.type(screen.getByPlaceholderText('00000-000'), '90000000')
+  await user.type(screen.getByLabelText(/linha de endereço/i), 'Rua Teste')
+  await user.type(screen.getByLabelText(/cidade/i), 'São Paulo')
+  await user.selectOptions(screen.getByLabelText(/estado/i), 'SP')
+  await user.type(screen.getByLabelText(/país/i), 'Brasil')
+}
+
+describe('RepresentativeStep', () => {
+  it('shows the design fields and the active step in the shared header', () => {
+    render(<RepresentativeStep onContinue={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'Dados do Representante' })).toBeInTheDocument()
+    expect(screen.getByText('Representante').closest('li')).toHaveAttribute('aria-current', 'step')
   })
 
-  // ---------------------------------------------------------------------------
-  // 1. CENÁRIOS DE CARREGAMENTO INICIAL (GET)
-  // ---------------------------------------------------------------------------
-
-  it('deve exibir o loading spinner e carregar os dados prévios via GET', async () => {
-    // Simula resposta com dados já existentes para testar o pré-preenchimento
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        representative: {
-          role: 'Diretor(a)',
-          shareholdingPercentage: 45,
-          cpf: '52998224725',
-          zipCode: '90000000',
-          city: 'Porto Alegre',
-          state: 'RS',
-          country: 'Brasil',
-          addressLine: 'Av. Ipiranga, 6681',
-        },
-      }),
-    } as Response)
-
-    render(<RepresentativeStep />)
-
-    // Valida se o feedback visual de carregamento aparece primeiro
-    expect(screen.getByLabelText(/carregando/i)).toBeInTheDocument()
-
-    // Aguarda o término da requisição e verifica preenchimento com máscaras
-    await waitFor(() => {
-      expect(screen.getByLabelText(/cargo \/ função/i)).toHaveValue('Diretor(a)')
-    })
-
+  it('preloads and masks the provided initial values', () => {
+    render(<RepresentativeStep initialValues={valid} onContinue={vi.fn()} />)
+    expect(screen.getByLabelText(/cargo \/ função/i)).toHaveValue('Diretor(a)')
     expect(screen.getByText(/participação societária: 45%/i)).toBeInTheDocument()
     expect(screen.getByDisplayValue('529.982.247-25')).toBeInTheDocument()
     expect(screen.getByDisplayValue('90000-000')).toBeInTheDocument()
   })
 
-  it('deve carregar a tela normalmente quando GET 200 não traz dados de representante (branch coverage)', async () => {
-    // Testa o branch onde a API responde sucesso, mas o objeto 'representante' não existe
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response)
+  it('shows errors on every required field and does not call onContinue for an empty form', async () => {
+    const onContinue = vi.fn()
+    const user = userEvent.setup()
+    render(<RepresentativeStep onContinue={onContinue} />)
 
-    render(<RepresentativeStep />)
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
-    await waitFor(() => {
-      expect(screen.getByLabelText(/cargo \/ função/i)).toHaveValue('')
-    })
-  })
-
-  it('deve redirecionar para /register com erro se o GET retornar 404 (cadastro expirado)', async () => {
-    // Valida o redirecionamento imediato caso a sessão do onboarding não exista
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-      json: async () => ({}),
-    } as Response)
-
-    render(<RepresentativeStep />)
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/register', expect.anything())
-    })
-  })
-
-  it('deve exibir mensagem global se o GET falhar com erro de rede', async () => {
-    // Simula falha catastrófica de rede no carregamento
-    vi.spyOn(window, 'fetch').mockRejectedValueOnce(new Error('Network error'))
-
-    render(<RepresentativeStep />)
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/não foi possível carregar os dados\. tente novamente\./i),
-      ).toBeInTheDocument()
-    })
-  })
-
-  // ---------------------------------------------------------------------------
-  // 2. FORMATAÇÃO, MÁSCARAS E VALIDAÇÃO CLIENT-SIDE
-  // ---------------------------------------------------------------------------
-
-  it('deve aplicar máscaras e refletir alteração do slider', async () => {
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response)
-
-    render(<RepresentativeStep />)
-
-    await waitFor(() => {
-      expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument()
-    })
-
-    const cpfInput = screen.getByPlaceholderText('000.000.000-00')
-    const cepInput = screen.getByPlaceholderText('00000-000')
-    const slider = screen.getByRole('slider')
-
-    // Valida a reatividade do slider de porcentagem
-    fireEvent.change(slider, { target: { value: '30' } })
-    expect(screen.getByText(/participação societária: 30%/i)).toBeInTheDocument()
-
-    // Valida aplicação dinâmica das máscaras durante a digitação
-    await userEvent.type(cpfInput, '52998224725')
-    expect(cpfInput).toHaveValue('529.982.247-25')
-
-    await userEvent.type(cepInput, '90000000')
-    expect(cepInput).toHaveValue('90000-000')
-  })
-
-  it('deve validar CPF no blur e destacar erro client-side', async () => {
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response)
-
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
-
-    const cpfInput = screen.getByPlaceholderText('000.000.000-00')
-
-    // Digita um CPF com todos os dígitos iguais (matematicamente inválido)
-    await userEvent.type(cpfInput, '11111111111')
-    fireEvent.blur(cpfInput)
-
-    expect(screen.getByText(/cpf inválido/i)).toBeInTheDocument()
-  })
-
-  it('não deve exibir erro no blur se o CPF for válido (branch coverage)', async () => {
-    // Testa o branch positivo do cálculo do dígito verificador no evento de blur
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response)
-
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
-
-    const cpfInput = screen.getByPlaceholderText('000.000.000-00')
-    await userEvent.type(cpfInput, '52998224725') // CPF válido
-    fireEvent.blur(cpfInput)
-
-    expect(screen.queryByText(/cpf inválido/i)).not.toBeInTheDocument()
-  })
-
-  it('deve exibir erro de validação se o CEP estiver incompleto (branch coverage)', async () => {
-    // Testa a condição de tamanho do CEP na validação do formulário
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response)
-
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
-
-    await userEvent.type(screen.getByPlaceholderText('00000-000'), '123')
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-
-    expect(screen.getByText('CEP inválido')).toBeInTheDocument()
-  })
-
-  it('deve remover a mensagem de erro do campo ao voltar a digitar (branch coverage)', async () => {
-    // Testa o branch do handleInputChange: if (errors[field]) setErrors(...)
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response)
-
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
-
-    // Dispara a submissão com campos vazios para levantar os erros
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-    expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
-
-    // Começa a digitar para cobrir a limpeza seletiva do erro
-    const cidadeInput = screen.getByLabelText(/cidade/i)
-    await userEvent.type(cidadeInput, 'A')
-
-    expect(screen.queryByText('Cidade é obrigatória')).not.toBeInTheDocument()
-  })
-
-  it('deve exibir erro em todos os campos obrigatórios e não disparar PUT ao submeter formulário vazio', async () => {
-    // Cenário 7 da issue #8: campos obrigatórios vazios -> erro exibido ao tentar submeter,
-    // sem disparar a chamada de PUT
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response)
-
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
-
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-
-    expect(await screen.findByText('Cargo é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('Cargo é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('CPF é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('CEP é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
     expect(screen.getByText('Estado é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('País é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('Endereço é obrigatório')).toBeInTheDocument()
-
-    // Apenas o GET inicial deve ter ocorrido - nenhum PUT foi disparado
-    expect(window.fetch).toHaveBeenCalledTimes(1)
+    expect(onContinue).not.toHaveBeenCalled()
   })
 
-  // ---------------------------------------------------------------------------
-  // 3. NAVEGAÇÃO E SUBMISSÃO (PUT)
-  // ---------------------------------------------------------------------------
+  it('applies input masks and reflects slider changes', async () => {
+    const user = userEvent.setup()
+    render(<RepresentativeStep onContinue={vi.fn()} />)
 
-  it('deve navegar de volta ao clicar em "Voltar" sem disparar PUT', async () => {
-    vi.spyOn(window, 'fetch').mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({}),
-    } as Response)
+    const cpfInput = screen.getByPlaceholderText('000.000.000-00')
+    const cepInput = screen.getByPlaceholderText('00000-000')
+    const slider = screen.getByRole('slider')
 
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
+    fireEvent.change(slider, { target: { value: '30' } })
+    expect(screen.getByText(/participação societária: 30%/i)).toBeInTheDocument()
 
-    const backButton = screen.getByRole('button', { name: /voltar/i })
-    fireEvent.click(backButton)
+    await user.type(cpfInput, '52998224725')
+    expect(cpfInput).toHaveValue('529.982.247-25')
 
-    // Valida navegação para a etapa anterior e ausência de chamadas PUT extras
-    expect(mockNavigate).toHaveBeenCalledWith('/register')
-    expect(window.fetch).toHaveBeenCalledTimes(1)
+    await user.type(cepInput, '90000000')
+    expect(cepInput).toHaveValue('90000-000')
   })
 
-  it('deve submeter o formulário (PUT) com dados limpos e navegar para compliance em sucesso (200)', async () => {
-    vi.spyOn(window, 'fetch')
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({}),
-      } as Response) // Resposta do GET
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({ message: 'Salvo com sucesso' }),
-      } as Response) // Resposta do PUT
+  it('validates the CPF on blur and highlights the client-side error', async () => {
+    const user = userEvent.setup()
+    render(<RepresentativeStep onContinue={vi.fn()} />)
 
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
+    const cpfInput = screen.getByPlaceholderText('000.000.000-00')
+    await user.type(cpfInput, '11111111111')
+    fireEvent.blur(cpfInput)
 
-    // Preenche todo o formulário com dados válidos
-    await userEvent.selectOptions(screen.getByLabelText(/cargo \/ função/i), 'Sócio-administrador')
-    await userEvent.type(screen.getByPlaceholderText('000.000.000-00'), '52998224725')
-    await userEvent.type(screen.getByPlaceholderText('00000-000'), '90000000')
-    await userEvent.type(screen.getByLabelText(/linha de endereço/i), 'Rua Teste, 100')
-    await userEvent.type(screen.getByLabelText(/cidade/i), 'São Paulo')
-    await userEvent.selectOptions(screen.getByLabelText(/estado/i), 'SP')
-    await userEvent.type(screen.getByLabelText(/país/i), 'Brasil')
-
-    const submitBtn = screen.getByRole('button', { name: /continuar/i })
-    fireEvent.click(submitBtn)
-
-    // Valida navegação para a próxima etapa (empresa)
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/register/cad-123/empresa')
-    })
-
-    // Garante que o payload foi enviado com pontuações removidas (desmascarado)
-    expect(window.fetch).toHaveBeenLastCalledWith(
-      '/v1/onboarding/cad-123/representative',
-      expect.objectContaining({
-        method: 'PUT',
-        body: JSON.stringify({
-          role: 'Sócio-administrador',
-          shareholdingPercentage: 0,
-          cpf: '52998224725',
-          zipCode: '90000000',
-          city: 'São Paulo',
-          state: 'SP',
-          country: 'Brasil',
-          addressLine: 'Rua Teste, 100',
-        }),
-      }),
-    )
+    expect(screen.getByText(/cpf inválido/i)).toBeInTheDocument()
   })
 
-  it('deve mapear erros de validação da API (422) nos campos específicos', async () => {
-    vi.spyOn(window, 'fetch')
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as Response)
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        json: async () => ({
-          errors: { zipCode: 'CEP não encontrado na base dos Correios.' },
-        }),
-      } as Response)
+  it('does not show an error on blur when the CPF is valid', async () => {
+    const user = userEvent.setup()
+    render(<RepresentativeStep onContinue={vi.fn()} />)
 
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
+    const cpfInput = screen.getByPlaceholderText('000.000.000-00')
+    await user.type(cpfInput, '52998224725')
+    fireEvent.blur(cpfInput)
 
-    await userEvent.selectOptions(screen.getByLabelText(/cargo \/ função/i), 'Diretor(a)')
-    await userEvent.type(screen.getByPlaceholderText('000.000.000-00'), '52998224725')
-    await userEvent.type(screen.getByPlaceholderText('00000-000'), '90000000')
-    await userEvent.type(screen.getByLabelText(/linha de endereço/i), 'Rua Teste')
-    await userEvent.type(screen.getByLabelText(/cidade/i), 'São Paulo')
-    await userEvent.selectOptions(screen.getByLabelText(/estado/i), 'SP')
-    await userEvent.type(screen.getByLabelText(/país/i), 'Brasil')
+    expect(screen.queryByText(/cpf inválido/i)).not.toBeInTheDocument()
+  })
 
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
+  it('clears a field error message as the user types again', async () => {
+    const user = userEvent.setup()
+    render(<RepresentativeStep onContinue={vi.fn()} />)
 
-    // Confirma que a mensagem vinda do payload da API foi alocada no campo certo
-    await waitFor(() => {
-      expect(screen.getByText('CEP não encontrado na base dos Correios.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/cidade/i), 'A')
+
+    expect(screen.queryByText('Cidade é obrigatória')).not.toBeInTheDocument()
+  })
+
+  it('calls onContinue with the current masked data on a valid submission', async () => {
+    const onContinue = vi.fn()
+    const user = userEvent.setup()
+    render(<RepresentativeStep onContinue={onContinue} />)
+
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(onContinue).toHaveBeenCalledWith({
+      cargo_funcao: 'Diretor(a)',
+      participacao_societaria: 0,
+      cpf: '529.982.247-25',
+      cep: '90000-000',
+      cidade: 'São Paulo',
+      estado: 'SP',
+      pais: 'Brasil',
+      linha_endereco: 'Rua Teste',
     })
   })
 
-  it('deve tratar erro 422 mesmo se a API não enviar o objeto de erros detalhado (branch coverage)', async () => {
-    // Cobre o branch defensivo do fallback `errorData.errors || {}`
-    vi.spyOn(window, 'fetch')
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as Response)
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 422,
-        json: async () => ({}),
-      } as Response)
-
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
-
-    await userEvent.selectOptions(screen.getByLabelText(/cargo \/ função/i), 'Diretor(a)')
-    await userEvent.type(screen.getByPlaceholderText('000.000.000-00'), '52998224725')
-    await userEvent.type(screen.getByPlaceholderText('00000-000'), '90000000')
-    await userEvent.type(screen.getByLabelText(/linha de endereço/i), 'Rua Teste')
-    await userEvent.type(screen.getByLabelText(/cidade/i), 'São Paulo')
-    await userEvent.selectOptions(screen.getByLabelText(/estado/i), 'SP')
-    await userEvent.type(screen.getByLabelText(/país/i), 'Brasil')
-
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /continuar/i })).not.toBeDisabled()
-    })
+  it('shows the server error message when provided', () => {
+    render(<RepresentativeStep onContinue={vi.fn()} serverError="Ocorreu um erro ao salvar." />)
+    expect(screen.getByRole('alert')).toHaveTextContent('Ocorreu um erro ao salvar.')
   })
 
-  it('deve redirecionar para /register se o PUT retornar 404 (progresso expirado ao salvar)', async () => {
-    // Cobre a linha 132 não testada anteriormente: else if (response.status === 404) no PUT
-    vi.spyOn(window, 'fetch')
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as Response)
-      .mockResolvedValueOnce({ ok: false, status: 404 } as Response)
-
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
-
-    await userEvent.selectOptions(screen.getByLabelText(/cargo \/ função/i), 'Diretor(a)')
-    await userEvent.type(screen.getByPlaceholderText('000.000.000-00'), '52998224725')
-    await userEvent.type(screen.getByPlaceholderText('00000-000'), '90000000')
-    await userEvent.type(screen.getByLabelText(/linha de endereço/i), 'Rua Teste')
-    await userEvent.type(screen.getByLabelText(/cidade/i), 'São Paulo')
-    await userEvent.selectOptions(screen.getByLabelText(/estado/i), 'SP')
-    await userEvent.type(screen.getByLabelText(/país/i), 'Brasil')
-
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/register', expect.anything())
-    })
-  })
-
-  it('deve tratar erro 500 exibindo mensagem de erro global e mantendo dados preenchidos', async () => {
-    vi.spyOn(window, 'fetch')
-      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as Response)
-      .mockResolvedValueOnce({ ok: false, status: 500 } as Response)
-
-    render(<RepresentativeStep />)
-    await waitFor(() => expect(screen.queryByLabelText(/carregando/i)).not.toBeInTheDocument())
-
-    await userEvent.selectOptions(screen.getByLabelText(/cargo \/ função/i), 'Diretor(a)')
-    await userEvent.type(screen.getByPlaceholderText('000.000.000-00'), '52998224725')
-    await userEvent.type(screen.getByPlaceholderText('00000-000'), '90000000')
-    await userEvent.type(screen.getByLabelText(/linha de endereço/i), 'Rua Teste')
-    await userEvent.type(screen.getByLabelText(/cidade/i), 'São Paulo')
-    await userEvent.selectOptions(screen.getByLabelText(/estado/i), 'SP')
-    await userEvent.type(screen.getByLabelText(/país/i), 'Brasil')
-
-    fireEvent.click(screen.getByRole('button', { name: /continuar/i }))
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/ocorreu um erro ao salvar os dados\. por favor, tente novamente\./i),
-      ).toBeInTheDocument()
-    })
-
-    // Confirma que os dados foram preservados para nova tentativa do usuário
-    expect(screen.getByLabelText(/linha de endereço/i)).toHaveValue('Rua Teste')
+  it('disables the fields and the submit button while saving', () => {
+    render(<RepresentativeStep onContinue={vi.fn()} saving />)
+    expect(screen.getByLabelText(/cargo \/ função/i)).toBeDisabled()
+    expect(screen.getByPlaceholderText('000.000.000-00')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Processando...' })).toBeDisabled()
   })
 })

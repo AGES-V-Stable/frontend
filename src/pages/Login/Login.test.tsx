@@ -3,9 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { PATHS } from '@/routes/paths'
 import { authService } from '@/services/login'
 import { Login } from './Login'
-import { PATHS } from '@/routes/paths'
 
 vi.mock('@/services/login', () => ({
   authService: {
@@ -28,9 +28,9 @@ function renderLogin() {
 }
 
 describe('Login Page Component', () => {
-  // Limpa os mocks antes de cada teste para o ADMIN não interferir no USER
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
   })
 
   it('renders the brand copy, heading and form fields', () => {
@@ -84,13 +84,10 @@ describe('Login Page Component', () => {
     expect(await screen.findByText('Forgot Password page')).toBeInTheDocument()
   })
 
-  it('navigates to the admin clients page when role array contains ADMIN', async () => {
+  it('stores the token and navigates admins to the clients page', async () => {
     const user = userEvent.setup()
-
-    // Payload mock: { "role": ["ADMIN"] } em Base64
     const mockAdminToken = 'header.eyJyb2xlIjpbIkFETUlOIl19.signature'
     vi.mocked(authService.login).mockResolvedValueOnce({ token: mockAdminToken })
-
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'admin@empresa.com')
@@ -98,15 +95,13 @@ describe('Login Page Component', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText('Admin page')).toBeInTheDocument()
+    expect(localStorage.getItem('token')).toBe(mockAdminToken)
   })
 
-  it('navigates to the home page when role array contains USER', async () => {
+  it('stores the token and navigates users to the home page', async () => {
     const user = userEvent.setup()
-
-    // Payload mock: { "role": ["USER"] } em Base64
     const mockUserToken = 'header.eyJyb2xlIjpbIlVTRVIiXX0=.signature'
     vi.mocked(authService.login).mockResolvedValueOnce({ token: mockUserToken })
-
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'cliente@empresa.com')
@@ -114,19 +109,23 @@ describe('Login Page Component', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText('Home page')).toBeInTheDocument()
+    expect(localStorage.getItem('token')).toBe(mockUserToken)
   })
 
-  it('shows generic invalid credentials error when API fails', async () => {
+  it('shows and clears credential errors after a failed login', async () => {
     const user = userEvent.setup()
     vi.mocked(authService.login).mockRejectedValueOnce(new Error('Unauthorized'))
-
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
-    await user.type(screen.getByLabelText('Senha'), 'senha-errada')
+    await user.type(screen.getByLabelText('Senha'), 'senha-super-secreta')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findAllByText('E-mail ou senha inválidos')).toHaveLength(2)
+    await user.type(screen.getByLabelText('E-mail'), 'x')
+    expect(screen.getAllByText('E-mail ou senha inválidos')).toHaveLength(1)
+    await user.type(screen.getByLabelText('Senha'), 'x')
+    expect(screen.queryByText('E-mail ou senha inválidos')).not.toBeInTheDocument()
   })
 
   it('navigates to the register page when "Cadastrar PME" is clicked', async () => {

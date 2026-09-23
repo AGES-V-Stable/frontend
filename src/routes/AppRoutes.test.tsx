@@ -43,17 +43,22 @@ describe('AppRoutes Navigation & Routing', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('Register')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Dados de acesso' })).toBeInTheDocument()
   })
 
   it('given a valid onboarding id, when navigating to the representative path, then it should render RepresentativeStep', async () => {
+    const registrationId = '123e4567-e89b-12d3-a456-426614174000'
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) }),
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ token: registrationId, empresaId: 'empresa-1', etapaAtual: 3 }),
+      }),
     )
 
     render(
-      <MemoryRouter initialEntries={[representativePath('cad-123')]}>
+      <MemoryRouter initialEntries={[representativePath(registrationId)]}>
         <AppRoutes />
       </MemoryRouter>,
     )
