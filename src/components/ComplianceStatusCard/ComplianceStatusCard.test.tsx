@@ -1,12 +1,21 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 
 import { ComplianceStatusCard } from './ComplianceStatusCard'
 import { ComplianceStatus } from './ComplianceStatusType'
 
+function renderCard(status: ComplianceStatus) {
+  return render(
+    <MemoryRouter>
+      <ComplianceStatusCard status={status} />
+    </MemoryRouter>,
+  )
+}
+
 describe('ComplianceStatusCard Component', () => {
-  it('given status EM_ANALISE, when rendered, then it should display the analysis content', () => {
-    render(<ComplianceStatusCard status={ComplianceStatus.EM_ANALISE} />)
+  it('given status IN_REVIEW, when rendered, then it should display the analysis content', () => {
+    renderCard(ComplianceStatus.IN_REVIEW)
 
     expect(screen.getByText('Em análise')).toBeInTheDocument()
     expect(screen.getByText('Seu cadastro está em análise')).toBeInTheDocument()
@@ -15,8 +24,8 @@ describe('ComplianceStatusCard Component', () => {
     expect(screen.getByAltText('svg em análise')).toBeInTheDocument()
   })
 
-  it('given status APROVADO, when rendered, then it should display the approved content', () => {
-    render(<ComplianceStatusCard status={ComplianceStatus.APROVADO} />)
+  it('given status APPROVED, when rendered, then it should display the approved content', () => {
+    renderCard(ComplianceStatus.APPROVED)
 
     expect(screen.getByText('Aprovado')).toBeInTheDocument()
     expect(screen.getByText('Cadastro aprovado')).toBeInTheDocument()
@@ -24,8 +33,8 @@ describe('ComplianceStatusCard Component', () => {
     expect(screen.getByRole('button', { name: 'Acessar plataforma' })).toBeInTheDocument()
   })
 
-  it('given status NAO_APROVADO, when rendered, then it should display the not approved content', () => {
-    render(<ComplianceStatusCard status={ComplianceStatus.NAO_APROVADO} />)
+  it('given status NOT_APPROVED, when rendered, then it should display the not approved content', () => {
+    renderCard(ComplianceStatus.NOT_APPROVED)
 
     expect(screen.getByText('Não aprovado')).toBeInTheDocument()
     expect(screen.getByText('Cadastro não aprovado')).toBeInTheDocument()

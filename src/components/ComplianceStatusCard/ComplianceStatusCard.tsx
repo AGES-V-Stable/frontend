@@ -2,11 +2,15 @@ import clockIcon from '@/assets/iconClock/clock.svg'
 import checkIcon from '@/assets/iconCheck/check.svg'
 import closeIcon from '@/assets/iconClose/close.svg'
 import { ComplianceStatus } from './ComplianceStatusType'
+import { useNavigate } from 'react-router'
+
 import { Button } from '../Button'
 
 export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
+  const navigate = useNavigate()
+
   switch (status) {
-    case ComplianceStatus.EM_ANALISE:
+    case ComplianceStatus.IN_REVIEW:
       return (
         <div className="flex flex-col gap-y-5 items-center justify-center py-[61px] px-[70px] bg-[#FFFFFF] rounded-[16px] border border-[#BBCABF]">
           <img
@@ -35,7 +39,7 @@ export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
           </div>
         </div>
       )
-    case ComplianceStatus.APROVADO:
+    case ComplianceStatus.APPROVED:
       return (
         <div className="flex flex-col gap-y-5 items-center justify-center py-[61px] px-[70px] bg-[#FFFFFF] rounded-[16px] border border-[#BBCABF]">
           <img
@@ -58,11 +62,11 @@ export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
             </p>
           </div>
           <div className="max-w-220 w-[220px]">
-            <Button label="Acessar plataforma" variant="primary" onClick={() => {}} />
+            <Button label="Acessar plataforma" variant="primary" onClick={() => navigate('/')} />
           </div>
         </div>
       )
-    case ComplianceStatus.NAO_APROVADO:
+    case ComplianceStatus.NOT_APPROVED:
       return (
         <div className="flex flex-col gap-y-5 items-center justify-center py-[61px] px-[70px] bg-[#FFFFFF] rounded-[16px] border border-[#BBCABF]">
           <img
@@ -85,7 +89,7 @@ export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
             </p>
           </div>
           <div className="max-w-220 w-[220px]">
-            <Button label="Revisar dados" variant="primary" onClick={() => {}} />
+            <Button label="Revisar dados" variant="primary" onClick={() => navigate('/register')} />
           </div>
         </div>
       )
