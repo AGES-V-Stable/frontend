@@ -107,33 +107,40 @@ describe('liveness service', () => {
 
   describe('session persistence helpers', () => {
     it('given no session has been saved, when reading the liveness status, then it should default to idle', () => {
-      expect(getLivenessStatus()).toBe('idle')
-      expect(getLivenessId()).toBeNull()
+      expect(getLivenessStatus('cadastro-1')).toBe('idle')
+      expect(getLivenessId('cadastro-1')).toBeNull()
     })
 
     it('given a liveness session is saved, when reading it back, then it should return the stored id and status', () => {
-      saveLivenessSession('liveness-1', 'pending')
+      saveLivenessSession('cadastro-1', 'liveness-1', 'pending')
 
-      expect(getLivenessId()).toBe('liveness-1')
-      expect(getLivenessStatus()).toBe('pending')
+      expect(getLivenessId('cadastro-1')).toBe('liveness-1')
+      expect(getLivenessStatus('cadastro-1')).toBe('pending')
     })
 
     it('given a saved session, when updating only the status, then it should keep the stored id', () => {
-      saveLivenessSession('liveness-1', 'pending')
+      saveLivenessSession('cadastro-1', 'liveness-1', 'pending')
 
-      setLivenessStatus('success')
+      setLivenessStatus('cadastro-1', 'success')
 
-      expect(getLivenessId()).toBe('liveness-1')
-      expect(getLivenessStatus()).toBe('success')
+      expect(getLivenessId('cadastro-1')).toBe('liveness-1')
+      expect(getLivenessStatus('cadastro-1')).toBe('success')
+    })
+
+    it('given a session belongs to another cadastro, when reading it, then it should be ignored', () => {
+      saveLivenessSession('cadastro-antigo', 'liveness-1', 'success')
+
+      expect(getLivenessId('cadastro-atual')).toBeNull()
+      expect(getLivenessStatus('cadastro-atual')).toBe('idle')
     })
 
     it('given a saved session, when clearing it, then both the id and status should be removed', () => {
-      saveLivenessSession('liveness-1', 'success')
+      saveLivenessSession('cadastro-1', 'liveness-1', 'success')
 
       clearLivenessSession()
 
-      expect(getLivenessId()).toBeNull()
-      expect(getLivenessStatus()).toBe('idle')
+      expect(getLivenessId('cadastro-1')).toBeNull()
+      expect(getLivenessStatus('cadastro-1')).toBe('idle')
     })
   })
 })

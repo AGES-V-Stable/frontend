@@ -8,6 +8,7 @@ import { httpRequest } from './httpClient'
 
 export const LIVENESS_ID_STORAGE_KEY = 'vstable:liveness:id'
 export const LIVENESS_STATUS_STORAGE_KEY = 'vstable:liveness:status'
+export const LIVENESS_KYC_ID_STORAGE_KEY = 'vstable:liveness:kyc-verification-id'
 
 const KNOWN_STATUSES: LivenessStatus[] = ['idle', 'pending', 'success', 'failure']
 
@@ -56,25 +57,44 @@ export async function submitLivenessResult(
   })
 }
 
-export function saveLivenessSession(id: string, status: LivenessStatus): void {
+export function saveLivenessSession(
+  kycVerificationId: string,
+  id: string,
+  status: LivenessStatus,
+): void {
+  localStorage.setItem(LIVENESS_KYC_ID_STORAGE_KEY, kycVerificationId)
   localStorage.setItem(LIVENESS_ID_STORAGE_KEY, id)
   localStorage.setItem(LIVENESS_STATUS_STORAGE_KEY, status)
 }
 
-export function getLivenessId(): string | null {
+export function getLivenessId(kycVerificationId?: string): string | null {
+  if (
+    !kycVerificationId ||
+    localStorage.getItem(LIVENESS_KYC_ID_STORAGE_KEY) !== kycVerificationId
+  ) {
+    return null
+  }
   return localStorage.getItem(LIVENESS_ID_STORAGE_KEY)
 }
 
-export function getLivenessStatus(): LivenessStatus {
+export function getLivenessStatus(kycVerificationId?: string): LivenessStatus {
+  if (
+    !kycVerificationId ||
+    localStorage.getItem(LIVENESS_KYC_ID_STORAGE_KEY) !== kycVerificationId
+  ) {
+    return 'idle'
+  }
   const status = localStorage.getItem(LIVENESS_STATUS_STORAGE_KEY)
   return (KNOWN_STATUSES as string[]).includes(status ?? '') ? (status as LivenessStatus) : 'idle'
 }
 
-export function setLivenessStatus(status: LivenessStatus): void {
+export function setLivenessStatus(kycVerificationId: string, status: LivenessStatus): void {
+  if (localStorage.getItem(LIVENESS_KYC_ID_STORAGE_KEY) !== kycVerificationId) return
   localStorage.setItem(LIVENESS_STATUS_STORAGE_KEY, status)
 }
 
 export function clearLivenessSession(): void {
+  localStorage.removeItem(LIVENESS_KYC_ID_STORAGE_KEY)
   localStorage.removeItem(LIVENESS_ID_STORAGE_KEY)
   localStorage.removeItem(LIVENESS_STATUS_STORAGE_KEY)
 }
