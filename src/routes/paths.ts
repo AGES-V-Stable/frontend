@@ -16,6 +16,10 @@ export const PATHS = {
   DEMO_REGISTER_REPRESENTATIVE: '/demo/register/representante',
   DEMO_REGISTER_COMPLIANCE: '/demo/register/compliance',
   DEMO_ADMIN_CLIENTS: '/demo/admin/clientes-pme',
+  REGISTER_STATUS: '/register/status',
+  FORGOT_PASSWORD: '/esqueci-senha',
+  ADMIN_TRANSFERS: '/admin/transferencias',
+  ADMIN_BENEFICIARIES: '/admin/beneficiarios',
 } as const
 
 export type Path = (typeof PATHS)[keyof typeof PATHS]

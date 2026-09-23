@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+
+if ! npx --no -- commitlint --edit "$1"; then
+  echo ""
+  echo "❌ [COMMITLINT FALHOU] A mensagem de commit não segue o padrão Conventional Commits!"
+  echo ""
+  echo "📖 Formato obrigatório: <tipo>(<escopo opcional>): <descrição curta>"
+  echo ""
+  echo "✨ Tipos permitidos:"
+  echo "   feat     -> Nova funcionalidade (ex: feat(auth): validação com Zod)"
+  echo "   fix      -> Correção de bug (ex: fix(login): trata erro 401 no submit)"
+  echo "   docs     -> Documentação (ex: docs: atualiza guia de instalação)"
+  echo "   style    -> Formatação, ponto e vírgula, espaços (sem alteração lógica)"
+  echo "   refactor -> Refatoração de código que não corrige bug nem adiciona feature"
+  echo "   perf     -> Mudança de código focada em melhoria de performance"
+  echo "   test     -> Adição ou correção de testes unitários/integração"
+  echo "   build    -> Alterações no sistema de build ou dependências externas"
+  echo "   ci       -> Alterações em arquivos de configuração e scripts de CI/CD"
+  echo "   chore    -> Outras mudanças que não modificam código de src ou testes"
+  echo "   revert   -> Reversão de commit anterior"
+  echo ""
+  echo "💡 Exemplo válido: git commit -m \"feat(clients): adiciona filtros de busca\""
+  echo ""
+  exit 1
+fi

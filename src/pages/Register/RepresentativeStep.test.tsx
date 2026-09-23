@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { RepresentativeData } from '@/types/registration'
@@ -65,7 +65,6 @@ describe('RepresentativeStep', () => {
     const cepInput = screen.getByPlaceholderText('00000-000')
     const slider = screen.getByRole('slider')
 
-    // userEvent cannot drive a range input's value directly.
     fireEvent.change(slider, { target: { value: '30' } })
     expect(screen.getByText(/participação societária: 30%/i)).toBeInTheDocument()
 
@@ -110,7 +109,7 @@ describe('RepresentativeStep', () => {
     expect(screen.queryByText('Cidade é obrigatória')).not.toBeInTheDocument()
   })
 
-  it('calls onContinue with the current (still masked) data on a valid submission', async () => {
+  it('calls onContinue with the current masked data on a valid submission', async () => {
     const onContinue = vi.fn()
     const user = userEvent.setup()
     render(<RepresentativeStep onContinue={onContinue} />)

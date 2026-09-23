@@ -1,25 +1,27 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
 import { PATHS } from '@/routes/paths'
 import { authService } from '@/services/login'
+import { parseJwt } from '@/utils/jwt'
 
-interface LoginData {
-  email: string
-  password: string
-}
+import { LoginSchema, type LoginFormData } from '@/schemas/auth'
 
-type LoginErrors = Partial<Record<keyof LoginData, string>>
+type LoginErrors = Partial<Record<keyof LoginFormData, string>>
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+function validate(data: LoginFormData): LoginErrors {
+  const result = LoginSchema.safeParse(data)
+  if (result.success) return {}
 
-function validate(data: LoginData): LoginErrors {
   const errors: LoginErrors = {}
-  if (!data.email.trim()) errors.email = 'E-mail é obrigatório'
-  else if (!EMAIL_REGEX.test(data.email.trim())) errors.email = 'E-mail inválido'
-  if (!data.password) errors.password = 'Senha é obrigatória'
+  for (const issue of result.error.issues) {
+    const field = issue.path[0] as keyof LoginFormData
+    if (!errors[field]) {
+      errors[field] = issue.message
+    }
+  }
   return errors
 }
 
@@ -58,7 +60,16 @@ function Login() {
 
       localStorage.setItem('token', token)
 
-      navigate('/')
+      const payload = parseJwt(token)
+      const userRoles: string[] = payload?.role || []
+
+      const isAdmin = userRoles.includes('ADMIN') || userRoles.includes('ROLE_ADMIN')
+
+      if (isAdmin) {
+        navigate(PATHS.ADMIN_CLIENTS)
+      } else {
+        navigate(PATHS.HOME)
+      }
     } catch {
       setErrors({
         email: 'E-mail ou senha inválidos',
@@ -117,6 +128,14 @@ function Login() {
               variant="secondary"
               onClick={() => navigate(PATHS.REGISTER)}
             />
+          </div>
+          <div className="flex justify-center -mt-7">
+            <Link
+              to={PATHS.FORGOT_PASSWORD}
+              className="text-[16px] font-medium text-[#059669] hover:text-[#047857] hover:underline transition-colors"
+            >
+              Esqueci minha senha
+            </Link>
           </div>
         </form>
       </div>

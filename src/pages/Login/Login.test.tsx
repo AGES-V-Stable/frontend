@@ -1,25 +1,38 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { PATHS } from '@/routes/paths'
+import { authService } from '@/services/login'
 import { Login } from './Login'
 
-afterEach(() => vi.unstubAllGlobals())
+vi.mock('@/services/login', () => ({
+  authService: {
+    login: vi.fn(),
+  },
+}))
 
 function renderLogin() {
   return render(
-    <MemoryRouter initialEntries={['/login']}>
+    <MemoryRouter initialEntries={[PATHS.LOGIN]}>
       <Routes>
-        <Route path="/" element={<p>Home page</p>} />
-        <Route path="/register" element={<p>Register page</p>} />
-        <Route path="/login" element={<Login />} />
+        <Route path={PATHS.HOME} element={<p>Home page</p>} />
+        <Route path={PATHS.ADMIN_CLIENTS} element={<p>Admin page</p>} />
+        <Route path={PATHS.REGISTER} element={<p>Register page</p>} />
+        <Route path={PATHS.FORGOT_PASSWORD} element={<p>Forgot Password page</p>} />
+        <Route path={PATHS.LOGIN} element={<Login />} />
       </Routes>
     </MemoryRouter>,
   )
 }
 
 describe('Login Page Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
+
   it('renders the brand copy, heading and form fields', () => {
     renderLogin()
 
@@ -63,32 +76,45 @@ describe('Login Page Component', () => {
     expect(screen.queryByText('E-mail é obrigatório')).not.toBeInTheDocument()
   })
 
-  it('navigates to the home page after a valid submission', async () => {
-    const setItem = vi.fn()
-    vi.stubGlobal('localStorage', { setItem })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () => new Response(null, { status: 200, headers: { Authorization: 'Bearer token' } }),
-      ),
-    )
+  it('navigates to the forgot password page when the link is clicked', async () => {
     const user = userEvent.setup()
     renderLogin()
 
-    await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
-    await user.type(screen.getByLabelText('Senha'), 'senha-super-secreta')
+    await user.click(screen.getByRole('link', { name: 'Esqueci minha senha' }))
+    expect(await screen.findByText('Forgot Password page')).toBeInTheDocument()
+  })
+
+  it('stores the token and navigates admins to the clients page', async () => {
+    const user = userEvent.setup()
+    const mockAdminToken = 'header.eyJyb2xlIjpbIkFETUlOIl19.signature'
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: mockAdminToken })
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'admin@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByText('Admin page')).toBeInTheDocument()
+    expect(localStorage.getItem('token')).toBe(mockAdminToken)
+  })
+
+  it('stores the token and navigates users to the home page', async () => {
+    const user = userEvent.setup()
+    const mockUserToken = 'header.eyJyb2xlIjpbIlVTRVIiXX0=.signature'
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: mockUserToken })
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'cliente@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText('Home page')).toBeInTheDocument()
-    expect(setItem).toHaveBeenCalledWith('token', 'token')
+    expect(localStorage.getItem('token')).toBe(mockUserToken)
   })
 
   it('shows and clears credential errors after a failed login', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response(null, { status: 401 })),
-    )
     const user = userEvent.setup()
+    vi.mocked(authService.login).mockRejectedValueOnce(new Error('Unauthorized'))
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
@@ -102,7 +128,7 @@ describe('Login Page Component', () => {
     expect(screen.queryByText('E-mail ou senha inválidos')).not.toBeInTheDocument()
   })
 
-  it('navigates to the register page when "Cadastrar PME" is clicked, without requiring valid data', async () => {
+  it('navigates to the register page when "Cadastrar PME" is clicked', async () => {
     const user = userEvent.setup()
     renderLogin()
 
