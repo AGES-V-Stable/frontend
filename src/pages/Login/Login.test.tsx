@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { Login } from './Login'
 import { authService } from '@/services/login'
+import { Login } from './Login'
 import { PATHS } from '@/routes/paths'
 
 vi.mock('@/services/login', () => ({

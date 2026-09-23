@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
+import { companyPath, PATHS } from '@/routes/paths'
 import { maskCEP, maskCPF } from '@/utils/masks'
 import { isValidCPF } from '@/utils/validators'
 
@@ -55,7 +56,7 @@ const ESTADOS = [
 ]
 
 export const RepresentativeStep: React.FC = () => {
-  const { progresso_cadastro_id } = useParams<{ progresso_cadastro_id: string }>()
+  const { progressoCadastroId } = useParams<{ progressoCadastroId: string }>()
   const navigate = useNavigate()
 
   const [formData, setFormData] = useState<RepresentativeData>({
@@ -77,18 +78,23 @@ export const RepresentativeStep: React.FC = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const response = await fetch(`/v1/cadastros/${progresso_cadastro_id}`)
+        const response = await fetch(`/v1/onboarding/${progressoCadastroId}`)
         if (response.status === 404) {
-          navigate('/cadastro', { state: { error: 'Cadastro não encontrado ou expirado.' } })
+          navigate(PATHS.REGISTER, { state: { error: 'Cadastro não encontrado ou expirado.' } })
           return
         }
         if (response.ok) {
           const data = await response.json()
-          if (data.representante) {
+          if (data.representative) {
             setFormData({
-              ...data.representante,
-              cpf: maskCPF(data.representante.cpf) || '',
-              cep: maskCEP(data.representante.cep || ''),
+              cargo_funcao: data.representative.role,
+              participacao_societaria: data.representative.shareholdingPercentage,
+              cpf: maskCPF(data.representative.cpf) || '',
+              cep: maskCEP(data.representative.zipCode || ''),
+              cidade: data.representative.city,
+              estado: data.representative.state,
+              pais: data.representative.country,
+              linha_endereco: data.representative.addressLine,
             })
           }
         }
@@ -99,7 +105,7 @@ export const RepresentativeStep: React.FC = () => {
       }
     }
     fetchInitialData()
-  }, [progresso_cadastro_id, navigate])
+  }, [progressoCadastroId, navigate])
 
   const validateForm = () => {
     const newErrors: typeof errors = {}
@@ -141,25 +147,48 @@ export const RepresentativeStep: React.FC = () => {
     setGlobalError(null)
 
     const payload = {
-      ...formData,
+      role: formData.cargo_funcao,
+      shareholdingPercentage: formData.participacao_societaria,
       cpf: formData.cpf.replace(/\D/g, ''),
-      cep: formData.cep.replace(/\D/g, ''),
+      zipCode: formData.cep.replace(/\D/g, ''),
+      city: formData.cidade,
+      state: formData.estado,
+      country: formData.pais,
+      addressLine: formData.linha_endereco,
     }
 
     try {
-      const response = await fetch(`/v1/cadastros/${progresso_cadastro_id}/representante`, {
+      const response = await fetch(`/v1/onboarding/${progressoCadastroId}/representative`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
       if (response.ok) {
-        navigate(`/cadastro/${progresso_cadastro_id}/compliance`)
+        navigate(companyPath(progressoCadastroId!))
       } else if (response.status === 422) {
         const errorData = await response.json()
-        setErrors(errorData.errors || {})
+        const apiErrors: Record<string, string> = errorData.errors || {}
+        const fieldByWireName: Record<string, keyof RepresentativeData> = {
+          role: 'cargo_funcao',
+          shareholdingPercentage: 'participacao_societaria',
+          cpf: 'cpf',
+          zipCode: 'cep',
+          city: 'cidade',
+          state: 'estado',
+          country: 'pais',
+          addressLine: 'linha_endereco',
+        }
+        setErrors(
+          Object.fromEntries(
+            Object.entries(apiErrors).map(([field, message]) => [
+              fieldByWireName[field] ?? field,
+              message,
+            ]),
+          ),
+        )
       } else if (response.status === 404) {
-        navigate('/cadastro', { state: { error: 'Progresso expirado. Inicie novamente. ' } })
+        navigate(PATHS.REGISTER, { state: { error: 'Progresso expirado. Inicie novamente. ' } })
       } else {
         throw new Error('Erro interno')
       }
@@ -347,7 +376,7 @@ export const RepresentativeStep: React.FC = () => {
         <Button
           label="Voltar"
           variant="secondary"
-          onClick={() => navigate(`/cadastro/${progresso_cadastro_id}/acesso`)}
+          onClick={() => navigate(PATHS.REGISTER)}
           disabled={isLoading}
         />
         <Button

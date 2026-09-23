@@ -8,11 +8,15 @@ describe('PATHS configuration', () => {
       HOME: '/',
       LOGIN: '/login',
       REGISTER: '/register',
+      REGISTER_REPRESENTATIVE: '/register/:progressoCadastroId/representante',
       REGISTER_COMPANY: '/register/empresa',
       REGISTER_COMPANY_PROGRESS: '/register/:progressoCadastroId/empresa',
       REGISTER_COMPLIANCE: '/register/:progressoCadastroId/compliance',
+      REGISTER_STATUS: '/register/status',
       ADMIN_CLIENTS: '/admin/clientes-pme',
       FORGOT_PASSWORD: '/esqueci-senha',
+      ADMIN_TRANSFERS: '/admin/transferencias',
+      ADMIN_BENEFICIARIES: '/admin/beneficiarios',
     }
 
     const actualPaths = PATHS

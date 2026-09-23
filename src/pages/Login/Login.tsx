@@ -7,20 +7,21 @@ import { PATHS } from '@/routes/paths'
 import { authService } from '@/services/login'
 import { parseJwt } from '@/utils/jwt'
 
-interface LoginData {
-  email: string
-  password: string
-}
+import { LoginSchema, type LoginFormData } from '@/schemas/auth'
 
-type LoginErrors = Partial<Record<keyof LoginData, string>>
+type LoginErrors = Partial<Record<keyof LoginFormData, string>>
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+function validate(data: LoginFormData): LoginErrors {
+  const result = LoginSchema.safeParse(data)
+  if (result.success) return {}
 
-function validate(data: LoginData): LoginErrors {
   const errors: LoginErrors = {}
-  if (!data.email.trim()) errors.email = 'E-mail é obrigatório'
-  else if (!EMAIL_REGEX.test(data.email.trim())) errors.email = 'E-mail inválido'
-  if (!data.password) errors.password = 'Senha é obrigatória'
+  for (const issue of result.error.issues) {
+    const field = issue.path[0] as keyof LoginFormData
+    if (!errors[field]) {
+      errors[field] = issue.message
+    }
+  }
   return errors
 }
 
