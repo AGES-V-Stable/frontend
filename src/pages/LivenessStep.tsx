@@ -14,7 +14,6 @@ import {
   submitLivenessResult,
 } from '@/services/liveness'
 import {
-  ApiError,
   clearAccessToken,
   clearRepresentativePersonalData,
   getRepresentativePersonalData,
@@ -31,7 +30,7 @@ export interface LivenessStepProps {
 function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
   const navigate = useNavigate()
 
-  const [status, setStatus] = useState<LivenessStatus>(() => getLivenessStatus(progressoCadastroId))
+  const [status, setStatus] = useState<LivenessStatus>(() => getLivenessStatus())
   const [isStarting, setIsStarting] = useState(false)
   const [isChecking, setIsChecking] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -46,31 +45,23 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
 
     setErrorMessage(null)
     setCheckMessage(null)
-
-    // A aba precisa ser criada durante o clique. Se window.open for chamado só
-    // depois do await, o navegador já não o considera uma ação direta do usuário
-    // e pode bloquear o pop-up. Além disso, usar "noopener" no terceiro argumento
-    // faz alguns navegadores retornarem null mesmo quando a aba foi aberta, o que
-    // gerava o falso erro de pop-up bloqueado visto na interface.
-    const livenessTab = window.open('about:blank', '_blank')
-    if (!livenessTab) {
-      setErrorMessage(
-        'Não foi possível abrir a verificação facial em uma nova aba. Permita pop-ups para este site e tente novamente.',
-      )
-      return
-    }
-    livenessTab.opener = null
-
     setIsStarting(true)
     try {
       const { id, livenessUrl } = await startLivenessVerification(progressoCadastroId)
-      saveLivenessSession(progressoCadastroId, id, 'pending')
+      saveLivenessSession(id, 'pending')
       setStatus('pending')
 
-      // Navega a aba já autorizada pelo clique, preservando o wizard nesta aba.
-      livenessTab.location.replace(livenessUrl)
+      // Abre em uma aba nova para preservar o estado do wizard nesta aba
+      // enquanto o usuário completa a verificação na Avenia.
+      const livenessTab = window.open(livenessUrl, '_blank', 'noopener,noreferrer')
+      if (!livenessTab) {
+        setErrorMessage(
+          'Não foi possível abrir a verificação facial em uma nova aba. Permita pop-ups para este site e tente novamente.',
+        )
+        clearLivenessSession()
+        setStatus('idle')
+      }
     } catch {
-      livenessTab.close()
       setErrorMessage('Não foi possível iniciar a verificação facial. Tente novamente.')
     } finally {
       setIsStarting(false)
@@ -82,7 +73,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
   // confirmação é manual: o usuário volta pra esta aba e clica em "Verificar
   // conclusão", que consulta o backend (proxy fino pra Avenia).
   const handleCheck = useCallback(async () => {
-    const livenessId = getLivenessId(progressoCadastroId)
+    const livenessId = getLivenessId()
     if (!livenessId || !progressoCadastroId) {
       setErrorMessage('Não foi possível confirmar o cadastro. Reinicie a verificação.')
       return
@@ -94,7 +85,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
     try {
       const { ready } = await checkLivenessStatus(progressoCadastroId, livenessId)
       if (ready) {
-        setLivenessStatus(progressoCadastroId, 'success')
+        setLivenessStatus('success')
         setStatus('success')
       } else {
         setCheckMessage(
@@ -116,7 +107,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
   }, [])
 
   const handleContinue = useCallback(async () => {
-    const livenessId = getLivenessId(progressoCadastroId)
+    const livenessId = getLivenessId()
     if (!livenessId || !progressoCadastroId) {
       setErrorMessage('Não foi possível confirmar o cadastro. Reinicie a verificação.')
       return
@@ -134,9 +125,22 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
       await submitLivenessResult(progressoCadastroId, livenessId)
       // O documento e o liveness já estão salvos na verificação de KYC no
       // backend; o KYC finaliza combinando eles com esses dados pessoais, que
-      // vão direto para a Avenia sem serem persistidos no nosso banco.
-      await submitKyc(progressoCadastroId, personalData)
-      clearLivenessSession()
+      // vão direto para a Avenia sem serem persistidos no nosso banco. A
+      // finalização é idempotente no backend: pode devolver aprovado, em
+      // análise ou rejeitado sem necessariamente ter reenviado nada de novo.
+      const result = await submitKyc(progressoCadastroId, personalData)
+
+      if (result.status === 'REJECTED') {
+        setErrorMessage(
+          result.resultMessage
+            ? `Verificação de identidade rejeitada: ${result.resultMessage}`
+            : 'Verificação de identidade rejeitada. Entre em contato com o suporte.',
+        )
+        return
+      }
+
+      // APPROVED ou UNDER_REVIEW: o cadastro segue — a análise de UNDER_REVIEW
+      // continua em segundo plano do lado da Avenia/compliance.
       clearRepresentativePersonalData()
       clearAccessToken()
       if (onContinue) {
@@ -144,12 +148,8 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
       } else {
         navigate(PATHS.HOME)
       }
-    } catch (error) {
-      setErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : 'Não foi possível confirmar a verificação. Tente novamente.',
-      )
+    } catch {
+      setErrorMessage('Não foi possível confirmar a verificação. Tente novamente.')
     } finally {
       setIsSubmitting(false)
     }

@@ -45,6 +45,10 @@ export interface KycPersonalPayload {
   streetAddress: string
 }
 
+export type KycStatus = 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED'
+
 export interface KycSubmitResult {
   aveniaProcessId: string
+  status: KycStatus
+  resultMessage?: string | null
 }
