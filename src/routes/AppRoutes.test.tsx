@@ -63,6 +63,18 @@ describe('AppRoutes Navigation & Routing', () => {
     })
   })
 
+  it('given the user navigates to the forgot password path, when AppRoutes is rendered, then it should render the placeholder screen', () => {
+    const initialRoute = PATHS.FORGOT_PASSWORD
+
+    render(
+      <MemoryRouter initialEntries={[initialRoute]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Recuperação de Senha (Em breve)')).toBeInTheDocument()
+  })
+
   it('given the user navigates to an unknown route, when AppRoutes is rendered, then it should redirect to the Home page', () => {
     const unknownRoute = '/unknown-non-existent-route'
 

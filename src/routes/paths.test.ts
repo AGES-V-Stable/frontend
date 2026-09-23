@@ -14,6 +14,7 @@ describe('PATHS configuration', () => {
       REGISTER_COMPLIANCE: '/register/:progressoCadastroId/compliance',
       REGISTER_STATUS: '/register/status',
       ADMIN_CLIENTS: '/admin/clientes-pme',
+      FORGOT_PASSWORD: '/esqueci-senha',
       ADMIN_TRANSFERS: '/admin/transferencias',
       ADMIN_BENEFICIARIES: '/admin/beneficiarios',
     }

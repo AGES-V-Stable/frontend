@@ -12,6 +12,8 @@ import { BeneficiaryView } from '@/pages/admin/beneficiaryView'
 import { PATHS } from './paths'
 import { RegisterStatus } from '@/pages/RegisterStatus/RegisterStatus'
 
+const ForgotPassWordPlaceHolder = () => <div className="p-8">Recuperação de Senha (Em breve)</div>
+
 function AppRoutes() {
   return (
     <Routes>
@@ -21,6 +23,7 @@ function AppRoutes() {
       <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
+      <Route path={PATHS.FORGOT_PASSWORD} element={<ForgotPassWordPlaceHolder />} />
       <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeStep />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
       <Route path={PATHS.REGISTER_COMPANY_PROGRESS} element={<CompanyRegistration />} />
