@@ -79,17 +79,18 @@ describe('beneficiary service', () => {
 
   it('creates a bank-account beneficiary via POST /v1/companies/{companyId}/beneficiaries', async () => {
     const payload: BeneficiaryCreatePayload = {
-      tipoBeneficiario: 'Pessoa jurídica',
-      nomeCompleto: 'João da Silva Comércio Ltda.',
-      documentoFiscal: '12345678000190',
-      pais: 'Brasil',
-      endereco: 'Rua A, 100',
-      metodoRecebimento: 'conta_bancaria',
-      banco: 'Banco XYZ',
+      beneficiaryType: 'Pessoa jurídica',
+      legalName: 'João da Silva Comércio Ltda.',
+      identificationDocument: '12345678000190',
+      country: 'Brasil',
+      address: 'Rua A, 100',
+      confirmed: true,
+      receivingMethod: 'BANK_ACCOUNT',
+      bankName: 'Banco XYZ',
       swiftBic: 'BOFAUS3N',
-      ibanNumeroConta: 'BR1800000000141455970000123456',
-      moedaRecebimento: 'USD',
-      apelido: 'Fornecedor principal',
+      accountNumber: 'BR1800000000141455970000123456',
+      currency: 'USD',
+      nickname: 'Fornecedor principal',
     }
     const mock = vi.fn(async () => new Response(JSON.stringify({ id: 'b1' }), { status: 201 }))
     vi.stubGlobal('fetch', mock)
@@ -108,15 +109,16 @@ describe('beneficiary service', () => {
 
   it('creates a wallet beneficiary and encodes the companyId', async () => {
     const payload: BeneficiaryCreatePayload = {
-      tipoBeneficiario: 'Pessoa jurídica',
-      nomeCompleto: 'João da Silva Comércio Ltda.',
-      documentoFiscal: '12345678000190',
-      pais: 'Brasil',
-      endereco: 'Rua A, 100',
-      metodoRecebimento: 'wallet_cripto',
-      enderecoWallet: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-      redeBlockchain: 'Polygon',
-      apelido: 'Fornecedor principal',
+      beneficiaryType: 'Pessoa jurídica',
+      legalName: 'João da Silva Comércio Ltda.',
+      identificationDocument: '12345678000190',
+      country: 'Brasil',
+      address: 'Rua A, 100',
+      confirmed: true,
+      receivingMethod: 'CRYPTO_WALLET',
+      walletAddress: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+      blockchainNetwork: 'polygon',
+      nickname: 'Fornecedor principal',
     }
     const mock = vi.fn(async () => new Response(JSON.stringify({ id: 'b2' }), { status: 201 }))
     vi.stubGlobal('fetch', mock)
@@ -139,13 +141,14 @@ describe('beneficiary service', () => {
 
     await expect(
       createBeneficiary('c1', {
-        tipoBeneficiario: 'Pessoa jurídica',
-        nomeCompleto: 'X',
-        documentoFiscal: 'Y',
-        pais: 'Brasil',
-        endereco: 'Z',
-        metodoRecebimento: 'conta_bancaria',
-        apelido: 'X',
+        beneficiaryType: 'Pessoa jurídica',
+        legalName: 'X',
+        identificationDocument: 'Y',
+        country: 'Brasil',
+        address: 'Z',
+        confirmed: true,
+        receivingMethod: 'BANK_ACCOUNT',
+        nickname: 'X',
       }),
     ).rejects.toBeInstanceOf(ApiError)
     vi.unstubAllGlobals()
