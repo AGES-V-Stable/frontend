@@ -50,7 +50,11 @@ const bankFields: { name: Field; label: string; placeholder: string }[] = [
     placeholder: 'Ex.: BR1800000000141455970000123456',
   },
   { name: 'moedaRecebimento', label: 'Moeda de recebimento', placeholder: 'Ex.: USD' },
-  { name: 'apelidoConta', label: 'Apelido do beneficiário', placeholder: 'Ex.: Fornecedor principal' },
+  {
+    name: 'apelidoConta',
+    label: 'Apelido do beneficiário',
+    placeholder: 'Ex.: Fornecedor principal',
+  },
 ]
 
 const WALLET_ADDRESS_FIELD = {
@@ -318,82 +322,82 @@ export function BeneficiaryCreate() {
               </button>
             </div>
 
-            {method === 'conta_bancaria'
-              ? bankFields.map(({ name, label, placeholder }) => (
-                  <div key={name} className="flex min-h-[102px] items-center">
-                    <Input
-                      id={`beneficiary-${name}`}
-                      name={name}
-                      label={`${label} *`}
-                      placeholder={placeholder}
-                      disabled={saving}
-                      value={data[name]}
-                      onChange={(event) => change(name, event.target.value)}
-                      error={errors[name]}
-                      className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
-                    />
-                  </div>
-                ))
-              : (
-                  <>
-                    <div className="flex min-h-[102px] items-center">
-                      <Input
-                        id="beneficiary-enderecoWallet"
-                        name={WALLET_ADDRESS_FIELD.name}
-                        label={`${WALLET_ADDRESS_FIELD.label} *`}
-                        placeholder={WALLET_ADDRESS_FIELD.placeholder}
-                        disabled={saving}
-                        value={data.enderecoWallet}
-                        onChange={(event) => change('enderecoWallet', event.target.value)}
-                        error={errors.enderecoWallet}
-                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
-                      />
-                    </div>
-                    <div className="flex min-h-[102px] flex-col justify-center gap-1">
-                      <label htmlFor="redeBlockchain" className="text-[14px] text-[#3C4A42]">
-                        Rede blockchain *
-                      </label>
-                      <select
-                        id="redeBlockchain"
-                        name="redeBlockchain"
-                        value={data.redeBlockchain}
-                        disabled={saving}
-                        onChange={(event) => change('redeBlockchain', event.target.value)}
-                        aria-invalid={!!errors.redeBlockchain}
-                        className={`w-full rounded-lg border bg-[#F8F9FB] px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669] ${
-                          errors.redeBlockchain ? 'border-red-500' : 'border-[#BBCABF]'
-                        }`}
-                      >
-                        <option value="" disabled>
-                          Selecione...
-                        </option>
-                        {REDES_BLOCKCHAIN.map((rede) => (
-                          <option key={rede} value={rede}>
-                            {rede}
-                          </option>
-                        ))}
-                      </select>
-                      {errors.redeBlockchain && (
-                        <p role="alert" className="text-sm text-red-500">
-                          {errors.redeBlockchain}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex min-h-[102px] items-center">
-                      <Input
-                        id="beneficiary-apelidoWallet"
-                        name={WALLET_NICKNAME_FIELD.name}
-                        label={`${WALLET_NICKNAME_FIELD.label} *`}
-                        placeholder={WALLET_NICKNAME_FIELD.placeholder}
-                        disabled={saving}
-                        value={data.apelidoWallet}
-                        onChange={(event) => change('apelidoWallet', event.target.value)}
-                        error={errors.apelidoWallet}
-                        className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
-                      />
-                    </div>
-                  </>
-                )}
+            {method === 'conta_bancaria' ? (
+              bankFields.map(({ name, label, placeholder }) => (
+                <div key={name} className="flex min-h-[102px] items-center">
+                  <Input
+                    id={`beneficiary-${name}`}
+                    name={name}
+                    label={`${label} *`}
+                    placeholder={placeholder}
+                    disabled={saving}
+                    value={data[name]}
+                    onChange={(event) => change(name, event.target.value)}
+                    error={errors[name]}
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
+                  />
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="flex min-h-[102px] items-center">
+                  <Input
+                    id="beneficiary-enderecoWallet"
+                    name={WALLET_ADDRESS_FIELD.name}
+                    label={`${WALLET_ADDRESS_FIELD.label} *`}
+                    placeholder={WALLET_ADDRESS_FIELD.placeholder}
+                    disabled={saving}
+                    value={data.enderecoWallet}
+                    onChange={(event) => change('enderecoWallet', event.target.value)}
+                    error={errors.enderecoWallet}
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
+                  />
+                </div>
+                <div className="flex min-h-[102px] flex-col justify-center gap-1">
+                  <label htmlFor="redeBlockchain" className="text-[14px] text-[#3C4A42]">
+                    Rede blockchain *
+                  </label>
+                  <select
+                    id="redeBlockchain"
+                    name="redeBlockchain"
+                    value={data.redeBlockchain}
+                    disabled={saving}
+                    onChange={(event) => change('redeBlockchain', event.target.value)}
+                    aria-invalid={!!errors.redeBlockchain}
+                    className={`w-full rounded-lg border bg-[#F8F9FB] px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669] ${
+                      errors.redeBlockchain ? 'border-red-500' : 'border-[#BBCABF]'
+                    }`}
+                  >
+                    <option value="" disabled>
+                      Selecione...
+                    </option>
+                    {REDES_BLOCKCHAIN.map((rede) => (
+                      <option key={rede} value={rede}>
+                        {rede}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.redeBlockchain && (
+                    <p role="alert" className="text-sm text-red-500">
+                      {errors.redeBlockchain}
+                    </p>
+                  )}
+                </div>
+                <div className="flex min-h-[102px] items-center">
+                  <Input
+                    id="beneficiary-apelidoWallet"
+                    name={WALLET_NICKNAME_FIELD.name}
+                    label={`${WALLET_NICKNAME_FIELD.label} *`}
+                    placeholder={WALLET_NICKNAME_FIELD.placeholder}
+                    disabled={saving}
+                    value={data.apelidoWallet}
+                    onChange={(event) => change('apelidoWallet', event.target.value)}
+                    error={errors.apelidoWallet}
+                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
+                  />
+                </div>
+              </>
+            )}
           </section>
         </div>
 
