@@ -19,7 +19,7 @@ function Input({ label, error, id, className = '', ...inputProps }: InputType) {
         id={inputId}
         aria-invalid={!!error}
         aria-describedby={errorId}
-        className={`w-full py-3.5 px-3 text-[16px] placeholder:text-[#6B7280] border border-[#BBCABF] rounded-lg bg-[#F8F9FB] ${className}`}
+        className={`w-full py-3.5 px-3 text-[16px] placeholder:text-[#6B7280] border rounded-lg bg-[#F8F9FB] ${error ? 'border-red-500' : 'border-[#BBCABF]'} ${className}`}
       />
       {error && (
         <p id={errorId} role="alert" className="text-sm text-red-500">

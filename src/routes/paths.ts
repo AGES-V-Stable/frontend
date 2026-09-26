@@ -20,6 +20,8 @@ export const PATHS = {
   FORGOT_PASSWORD: '/esqueci-senha',
   ADMIN_TRANSFERS: '/admin/transferencias',
   ADMIN_BENEFICIARIES: '/admin/beneficiarios',
+  BENEFICIARIES: '/beneficiarios',
+  BENEFICIARIES_NEW: '/beneficiarios/novo',
 } as const
 
 export type Path = (typeof PATHS)[keyof typeof PATHS]

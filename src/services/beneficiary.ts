@@ -1,5 +1,6 @@
 import type { Beneficiary } from '@/data/mockBeneficiary'
 import { normalizeListResponse } from './apiEnvelope'
+import { request } from './registration'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -30,4 +31,35 @@ export const getBeneficiary = async (id: string): Promise<Beneficiary> => {
   }
 
   return payload as Beneficiary
+}
+
+export interface BeneficiaryCreatePayload {
+  tipoBeneficiario: string
+  nomeCompleto: string
+  documentoFiscal: string
+  pais: string
+  endereco: string
+  metodoRecebimento: 'conta_bancaria' | 'wallet_cripto'
+  banco?: string
+  swiftBic?: string
+  ibanNumeroConta?: string
+  moedaRecebimento?: string
+  enderecoWallet?: string
+  redeBlockchain?: string
+  apelido: string
+}
+
+export interface BeneficiaryCreateResult {
+  id: string
+}
+
+export function createBeneficiary(companyId: string, payload: BeneficiaryCreatePayload) {
+  return request<BeneficiaryCreateResult>(
+    `/companies/${encodeURIComponent(companyId)}/beneficiaries`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  )
 }
