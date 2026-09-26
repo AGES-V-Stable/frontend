@@ -26,6 +26,8 @@ describe('PATHS configuration', () => {
       FORGOT_PASSWORD: '/esqueci-senha',
       ADMIN_TRANSFERS: '/admin/transferencias',
       ADMIN_BENEFICIARIES: '/admin/beneficiarios',
+      BENEFICIARIES: '/beneficiarios',
+      BENEFICIARIES_NEW: '/beneficiarios/novo',
     }
 
     const actualPaths = PATHS
