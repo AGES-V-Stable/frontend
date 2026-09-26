@@ -119,17 +119,18 @@ describe('BeneficiaryCreate', () => {
 
     await waitFor(() =>
       expect(createBeneficiary).toHaveBeenCalledWith('company-1', {
-        tipoBeneficiario: 'Pessoa jurídica',
-        nomeCompleto: 'Fornecedor Global Ltda.',
-        documentoFiscal: '12345678900',
-        pais: 'Brasil',
-        endereco: 'Av. Paulista, 1000',
-        metodoRecebimento: 'conta_bancaria',
-        banco: 'Banco XYZ',
+        beneficiaryType: 'Pessoa jurídica',
+        legalName: 'Fornecedor Global Ltda.',
+        identificationDocument: '12345678900',
+        country: 'Brasil',
+        address: 'Av. Paulista, 1000',
+        confirmed: true,
+        receivingMethod: 'BANK_ACCOUNT',
+        bankName: 'Banco XYZ',
         swiftBic: 'BOFAUS3N',
-        ibanNumeroConta: 'BR1800000000141455970000123456',
-        moedaRecebimento: 'USD',
-        apelido: 'Fornecedor principal',
+        accountNumber: 'BR1800000000141455970000123456',
+        currency: 'USD',
+        nickname: 'Fornecedor principal',
       }),
     )
 
@@ -157,15 +158,16 @@ describe('BeneficiaryCreate', () => {
 
     await waitFor(() =>
       expect(createBeneficiary).toHaveBeenCalledWith('company-1', {
-        tipoBeneficiario: 'Pessoa jurídica',
-        nomeCompleto: 'Fornecedor Global Ltda.',
-        documentoFiscal: '12345678900',
-        pais: 'Brasil',
-        endereco: 'Av. Paulista, 1000',
-        metodoRecebimento: 'wallet_cripto',
-        enderecoWallet: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-        redeBlockchain: 'Polygon',
-        apelido: 'Fornecedor cripto',
+        beneficiaryType: 'Pessoa jurídica',
+        legalName: 'Fornecedor Global Ltda.',
+        identificationDocument: '12345678900',
+        country: 'Brasil',
+        address: 'Av. Paulista, 1000',
+        confirmed: true,
+        receivingMethod: 'CRYPTO_WALLET',
+        walletAddress: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+        blockchainNetwork: 'polygon',
+        nickname: 'Fornecedor cripto',
       }),
     )
   })

@@ -34,19 +34,20 @@ export const getBeneficiary = async (id: string): Promise<Beneficiary> => {
 }
 
 export interface BeneficiaryCreatePayload {
-  tipoBeneficiario: string
-  nomeCompleto: string
-  documentoFiscal: string
-  pais: string
-  endereco: string
-  metodoRecebimento: 'conta_bancaria' | 'wallet_cripto'
-  banco?: string
+  beneficiaryType: string
+  legalName: string
+  identificationDocument: string
+  country: string
+  address: string
+  receivingMethod: 'BANK_ACCOUNT' | 'CRYPTO_WALLET'
+  bankName?: string
   swiftBic?: string
-  ibanNumeroConta?: string
-  moedaRecebimento?: string
-  enderecoWallet?: string
-  redeBlockchain?: string
-  apelido: string
+  accountNumber?: string
+  currency?: string
+  walletAddress?: string
+  blockchainNetwork?: string
+  nickname: string
+  confirmed: boolean
 }
 
 export interface BeneficiaryCreateResult {

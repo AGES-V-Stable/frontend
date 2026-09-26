@@ -172,29 +172,30 @@ export function BeneficiaryCreate() {
     }
 
     const base = {
-      tipoBeneficiario: data.tipoBeneficiario,
-      nomeCompleto: data.razaoSocial,
-      documentoFiscal: data.documentoFiscal,
-      pais: data.pais,
-      endereco: data.endereco,
+      beneficiaryType: data.tipoBeneficiario,
+      legalName: data.razaoSocial,
+      identificationDocument: data.documentoFiscal,
+      country: data.pais,
+      address: data.endereco,
+      confirmed: true,
     }
     const payload: BeneficiaryCreatePayload =
       method === 'conta_bancaria'
         ? {
             ...base,
-            metodoRecebimento: 'conta_bancaria',
-            banco: data.banco,
+            receivingMethod: 'BANK_ACCOUNT',
+            bankName: data.banco,
             swiftBic: data.swiftBic,
-            ibanNumeroConta: data.ibanNumeroConta,
-            moedaRecebimento: data.moedaRecebimento,
-            apelido: data.apelidoConta,
+            accountNumber: data.ibanNumeroConta,
+            currency: data.moedaRecebimento,
+            nickname: data.apelidoConta,
           }
         : {
             ...base,
-            metodoRecebimento: 'wallet_cripto',
-            enderecoWallet: data.enderecoWallet,
-            redeBlockchain: data.redeBlockchain,
-            apelido: data.apelidoWallet,
+            receivingMethod: 'CRYPTO_WALLET',
+            walletAddress: data.enderecoWallet,
+            blockchainNetwork: data.redeBlockchain.toLowerCase(),
+            nickname: data.apelidoWallet,
           }
 
     setSaving(true)
