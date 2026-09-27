@@ -60,7 +60,7 @@ function AdminTransfers() {
   const closeTransferDetails = () => setSelectedTransfer(null)
 
   return (
-    <div className="flex min-h-screen bg-[#F1F5F9]">
+    <div className="flex min-h-screen bg-slate-100">
       <Sidebar
         className="sticky top-0"
         logo={
@@ -80,8 +80,8 @@ function AdminTransfers() {
         <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
           <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
-              <h1 className="text-2xl font-bold text-[#0F172A]">Histórico de Transferências</h1>
-              <p className="mt-1 text-xs text-[#64748B]">
+              <h1 className="text-2xl font-bold text-slate-900">Histórico de Transferências</h1>
+              <p className="mt-1 text-xs text-slate-500">
                 Acompanhe todas as operações realizadas pelas empresas na plataforma.
               </p>
             </div>
@@ -137,44 +137,44 @@ function AdminTransfers() {
           onClose={closeTransferDetails}
         >
           {selectedTransfer && (
-            <div className="space-y-5 text-sm text-[#0F172A]">
+            <div className="space-y-5 text-sm text-slate-900">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   ID da Transação
                 </p>
                 <p className="mt-1 text-base font-semibold">{selectedTransfer.id}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Empresa
                 </p>
                 <p className="mt-1">{selectedTransfer.empresa}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Beneficiário
                 </p>
                 <p className="mt-1">{selectedTransfer.beneficiario}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Data
                 </p>
                 <p className="mt-1">{formatDate(selectedTransfer.data)}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Tipo
                 </p>
                 <p className="mt-1">{selectedTransfer.tipo}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Valor
                 </p>
                 <p className="mt-1">
@@ -183,7 +183,7 @@ function AdminTransfers() {
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Status
                 </p>
                 <p className="mt-1">{selectedTransfer.status}</p>

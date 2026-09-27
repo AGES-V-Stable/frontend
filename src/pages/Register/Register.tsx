@@ -58,14 +58,14 @@ function Register() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F1F5F9] px-4 py-8 md:px-8">
-      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10">
+    <main className="min-h-screen bg-slate-100 px-4 py-8 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-sage-300 bg-white px-4 py-[30px] md:px-10">
         <RegistrationHeader
           activeStep={0}
           description="Crie seu acesso para iniciar o cadastro institucional."
         />
         <form className="mx-auto grid w-full max-w-xl gap-4 py-4" onSubmit={submit} noValidate>
-          <h2 className="text-xl font-bold text-[#0F172A]">Dados de acesso</h2>
+          <h2 className="text-xl font-bold text-slate-900">Dados de acesso</h2>
           <Input
             label="Nome completo"
             value={form.nomeCompleto}
@@ -109,7 +109,7 @@ function Register() {
           <div className="mt-2 grid gap-3 sm:grid-cols-2">
             <Link
               to={PATHS.LOGIN}
-              className="inline-flex items-center justify-center rounded-lg border border-[#BBCABF] px-6 py-3 text-[#334155]"
+              className="inline-flex items-center justify-center rounded-lg border border-sage-300 px-6 py-3 text-slate-700"
             >
               Voltar ao login
             </Link>

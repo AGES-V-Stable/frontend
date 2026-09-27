@@ -123,8 +123,8 @@ export default function ComplianceStep({
   }
 
   return (
-    <main className="min-h-screen bg-[#F1F5F9] px-4 py-8 md:px-8">
-      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10">
+    <main className="min-h-screen bg-slate-100 px-4 py-8 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-sage-300 bg-white px-4 py-[30px] md:px-10">
         <RegistrationHeader
           activeStep={3}
           description="Envie os documentos necessários para a análise de compliance."
@@ -148,7 +148,7 @@ export default function ComplianceStep({
                 onChange={(e) =>
                   handleChange('tipoDocumento', e.target.value as TipoDocumento | '')
                 }
-                className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#059669] ${errors.tipoDocumento ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ${errors.tipoDocumento ? 'border-red-500' : 'border-gray-300'}`}
                 aria-describedby={errors.tipoDocumento ? 'tipoDocumento-error' : undefined}
               >
                 <option value="">Selecione...</option>
@@ -176,10 +176,10 @@ export default function ComplianceStep({
                 aria-label="Área de upload de documentos"
                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
                   isDragging
-                    ? 'border-[#059669] bg-green-50'
+                    ? 'border-primary bg-green-50'
                     : errors.documentos
                       ? 'border-red-400'
-                      : 'border-gray-300 hover:border-[#059669]'
+                      : 'border-gray-300 hover:border-primary'
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -191,7 +191,7 @@ export default function ComplianceStep({
               >
                 <p className="text-sm text-gray-600">
                   Arraste e solte arquivos aqui ou{' '}
-                  <span className="text-[#059669] font-medium">clique para selecionar</span>
+                  <span className="text-primary font-medium">clique para selecionar</span>
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
                   PDF, JPG, JPEG ou PNG — máx. 10 MB por arquivo

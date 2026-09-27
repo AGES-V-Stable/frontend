@@ -1,0 +1,69 @@
+/*
+ * Tokens de cor do design system.
+ * Apenas as cores que ja estao aplicadas no projeto hoje.
+ *
+ * Ficam em @theme com prefixo --color-, entao o Tailwind gera as classes
+ * direto: text-slate-900, bg-primary, border-sage-300, hover:bg-primary-hover...
+ * Tambem continuam disponiveis como variavel CSS: var(--color-slate-900).
+ *
+ * Nomes iguais aos da paleta nativa do Tailwind (emerald-50, slate-900...)
+ * sobrescrevem a cor nativa. Todos esses tem o mesmo valor do Tailwind, entao
+ * nada muda visualmente. As cores que divergem da paleta nativa ganharam nome
+ * proprio (surface, gray-666, placeholder) para nao alterar bg-gray-50 etc.
+ */
+
+@theme {
+  /* ---------- Emerald (marca) ---------- */
+  --color-emerald-50: #ecfdf5; /* fundo de badge de sucesso */
+  --color-emerald-600: #059669; /* cor principal */
+  --color-emerald-700: #047857; /* hover do botao primario */
+
+  /* ---------- Verdes (sidebar) ---------- */
+  --color-green-100: #ccf2e8; /* contador da sidebar */
+  --color-green-200: #a8dbcd; /* item ativo da sidebar */
+  --color-green-500: #009e73; /* borda do item ativo da sidebar */
+  --color-green-700: #007f5d; /* texto sobre fundo verde claro */
+
+  /* ---------- Verde-acinzentado (bordas, sidebar) ---------- */
+  --color-sage-200: #ccd8d2; /* divisorias da sidebar */
+  --color-sage-300: #bbcabf; /* borda padrao: inputs, cards, tabela */
+  --color-sage-600: #66736c; /* descricao da conta na sidebar */
+  --color-sage-800: #3c4a42; /* label de input */
+
+  /* ---------- Cinzas azulados ---------- */
+  --color-slate-100: #f1f5f9; /* fundo das paginas */
+  --color-slate-300: #cbd5e1; /* texto de contraste no login */
+  --color-slate-500: #64748b; /* texto secundario / legendas */
+  --color-slate-600: #475569; /* texto de apoio */
+  --color-slate-700: #334155; /* texto do botao neutro */
+  --color-slate-900: #0f172a; /* titulos e texto forte */
+
+  /* ---------- Cinzas neutros ---------- */
+  --color-gray-500: #6b7280; /* placeholder do Input */
+
+  /* ---------- Azuis ---------- */
+  --color-blue-50: #eff6ff; /* fundo do badge info / card em analise */
+  --color-blue-700: #1d4ed8; /* texto do badge info */
+  --color-sky-600: #0284c7; /* card "em analise" do compliance */
+
+  /* ---------- Vermelhos ---------- */
+  --color-red-50: #fef2f2; /* fundo do badge de erro / card nao aprovado */
+  --color-red-600: #dc2626; /* card "nao aprovado" do compliance */
+  --color-red-700: #b91c1c; /* texto do badge de erro */
+
+  /* ---------- Ambar ---------- */
+  --color-amber-50: #fffbeb; /* fundo do badge de alerta */
+  --color-amber-700: #b45309; /* texto do badge de alerta */
+
+  /* ---------- Neutro ---------- */
+  --color-white: #ffffff; /* cards, sidebar */
+
+  /* ---------- Cores proprias (divergem da paleta nativa) ---------- */
+  --color-surface: #f8f9fb; /* fundo de input e cabecalho de tabela */
+  --color-gray-666: #666666; /* item inativo da sidebar */
+  --color-placeholder: #718096; /* placeholder dos filtros */
+
+  /* ---------- Apelidos de marca ---------- */
+  --color-primary: var(--color-emerald-600);
+  --color-primary-hover: var(--color-emerald-700);
+}
