@@ -4,11 +4,26 @@ import { useLocation, useNavigate } from 'react-router'
 import { Drawer } from '@/components/Drawer'
 import { AdminNavIcon, Sidebar, type AdminNavIconId } from '@/components/Sidebar'
 import { Table } from '@/components/Table'
+import { TransferFilters, type TransferFilterValues } from '@/components/TransferFilters'
 import { type Transfer } from '@/data/mockTransfers'
 import { transferTableColumns as columns } from '@/config/transferTableColumns'
 import { PATHS } from '@/routes/paths'
 import { getTransfers, getTransfersById, type GetTransfersResponse } from '@/services/transfers'
 import { formatCurrency, formatDate } from '@/utils/formatters'
+
+const transferStatuses = ['Concluída', 'Processando', 'Falha']
+const transferTypes = ['Pagamento', 'Recebimento']
+
+const emptyFilters: TransferFilterValues = {
+  search: '',
+  beneficiary: '',
+  startDate: '',
+  endDate: '',
+  minAmount: '',
+  maxAmount: '',
+  status: '',
+  type: '',
+}
 
 const sidebarMenuItems = [
   { id: 'home', label: 'Início', path: PATHS.HOME },
@@ -32,6 +47,7 @@ function AdminTransfers() {
   const [drawerData, setDrawerData] = useState<Transfer | null>(null)
   const [isDrawerLoading, setIsDrawerLoading] = useState(false)
   const [drawerError, setDrawerError] = useState<string | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<TransferFilterValues>(emptyFilters)
 
   const limit = 12
 
@@ -40,11 +56,11 @@ function AdminTransfers() {
     return matchedItem?.id ?? 'transfers'
   }, [location.pathname])
 
-  const fetchTransfers = async (page: number) => {
+  const fetchTransfers = async (page: number, filters: TransferFilterValues) => {
     setIsLoading(true)
     setError(null)
     try {
-      const data: GetTransfersResponse = await getTransfers(page, limit)
+      const data: GetTransfersResponse = await getTransfers(page, limit, filters)
       setTransfers(data.data)
       setTotalPages(data.totalPages)
       setTotalItems(data.totalItems)
@@ -57,8 +73,19 @@ function AdminTransfers() {
   }
 
   useEffect(() => {
-    fetchTransfers(currentPage)
-  }, [currentPage])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchTransfers(currentPage, appliedFilters)
+  }, [currentPage, appliedFilters])
+
+  const applyFilters = (filters: TransferFilterValues) => {
+    setAppliedFilters(filters)
+    setCurrentPage(1)
+  }
+
+  const clearFilters = () => {
+    setAppliedFilters(emptyFilters)
+    setCurrentPage(1)
+  }
 
   useEffect(() => {
     if (!selectedTransferId) {
@@ -112,6 +139,13 @@ function AdminTransfers() {
             </div>
           </header>
 
+          <TransferFilters
+            statuses={transferStatuses}
+            types={transferTypes}
+            onApply={applyFilters}
+            onClear={clearFilters}
+          />
+
           {error && (
             <div
               role="alert"
@@ -119,7 +153,7 @@ function AdminTransfers() {
             >
               <p>{error}</p>
               <button
-                onClick={() => fetchTransfers(currentPage)}
+                onClick={() => fetchTransfers(currentPage, appliedFilters)}
                 className="rounded-md bg-red-100 px-4 py-2 font-medium text-red-800 hover:bg-red-200 transition-colors"
               >
                 Tentar novamente
