@@ -73,7 +73,7 @@ function AdminClients() {
   const closeClientDetails = () => setSelectedClient(null)
 
   return (
-    <div className="flex min-h-screen bg-[#F1F5F9]">
+    <div className="flex min-h-screen bg-slate-100">
       <Sidebar
         className="sticky top-0"
         logo={
@@ -93,15 +93,15 @@ function AdminClients() {
         <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
           <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
-              <h1 className="text-2xl font-bold text-[#0F172A]">Clientes PME</h1>
-              <p className="mt-1 text-xs text-[#64748B]">
+              <h1 className="text-2xl font-bold text-slate-900">Clientes PME</h1>
+              <p className="mt-1 text-xs text-slate-500">
                 Visualize e audite todas as contas cadastradas na plataforma.
               </p>
             </div>
             <button
               type="button"
               onClick={() => window.open(PATHS.REGISTER, '_blank', 'noopener,noreferrer')}
-              className="h-11 rounded-md bg-[#059669] px-5 text-sm font-medium text-white"
+              className="h-11 rounded-md bg-primary px-5 text-sm font-medium text-white"
             >
               Cadastrar representante
             </button>
@@ -118,7 +118,7 @@ function AdminClients() {
           {filteredClients.length === 0 && (
             <p
               role="status"
-              className="rounded-lg border border-[#BBCABF] bg-white px-6 py-5 text-sm text-[#475569]"
+              className="rounded-lg border border-sage-300 bg-white px-6 py-5 text-sm text-slate-600"
             >
               Nenhum cliente encontrado para os filtros informados.
             </p>
@@ -154,44 +154,44 @@ function AdminClients() {
           onClose={closeClientDetails}
         >
           {selectedClient && (
-            <div className="space-y-5 text-sm text-[#0F172A]">
+            <div className="space-y-5 text-sm text-slate-900">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Empresa
                 </p>
                 <p className="mt-1 text-base font-semibold">{selectedClient.empresa}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   CNPJ
                 </p>
                 <p className="mt-1">{selectedClient.cnpj}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Cidade / UF
                 </p>
                 <p className="mt-1">{selectedClient.cidade}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Responsável
                 </p>
                 <p className="mt-1">{selectedClient.responsavel}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Status
                 </p>
                 <p className="mt-1">{selectedClient.status}</p>
               </div>
 
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Última atualização
                 </p>
                 <p className="mt-1">{selectedClient.atualizacao}</p>

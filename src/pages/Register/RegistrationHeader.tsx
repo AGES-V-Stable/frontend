@@ -12,11 +12,11 @@ export function RegistrationHeader({
   return (
     <>
       <header className="flex flex-col items-center text-center">
-        <span className="text-2xl font-bold tracking-widest text-[#059669]">V-STABLE</span>
-        <h1 className="mt-2 flex min-h-10 items-center text-2xl font-bold text-[#0F172A]">
+        <span className="text-2xl font-bold tracking-widest text-primary">V-STABLE</span>
+        <h1 className="mt-2 flex min-h-10 items-center text-2xl font-bold text-slate-900">
           Cadastro Institucional
         </h1>
-        <p className="mt-1 flex min-h-7 items-center text-xs text-[#64748B]">{description}</p>
+        <p className="mt-1 flex min-h-7 items-center text-xs text-slate-500">{description}</p>
       </header>
 
       <ol
@@ -36,23 +36,23 @@ export function RegistrationHeader({
               {index < steps.length - 1 && (
                 <span
                   aria-hidden="true"
-                  className={`absolute left-[calc(50%+22px)] right-[calc(-50%+22px)] top-[17px] h-0.5 md:left-[calc(50%+31px)] md:right-[calc(-50%+31px)] ${completed ? 'bg-[#059669]' : 'bg-[#BBCABF]'}`}
+                  className={`absolute left-[calc(50%+22px)] right-[calc(-50%+22px)] top-[17px] h-0.5 md:left-[calc(50%+31px)] md:right-[calc(-50%+31px)] ${completed ? 'bg-primary' : 'bg-sage-300'}`}
                 />
               )}
               <span
                 className={`relative flex size-9 items-center justify-center rounded-full border-2 text-sm font-medium ${
                   completed
-                    ? 'border-[#059669] bg-emerald-50 text-[#059669]'
+                    ? 'border-primary bg-emerald-50 text-primary'
                     : active
-                      ? 'border-[#059669] bg-[#059669] text-white'
-                      : 'border-[#BBCABF] bg-white text-[#64748B]'
+                      ? 'border-primary bg-primary text-white'
+                      : 'border-sage-300 bg-white text-slate-500'
                 }`}
               >
                 {completed ? '✓' : index + 1}
               </span>
               <span
                 className={`flex min-h-6 items-center text-[10px] sm:text-xs ${
-                  index <= activeStep ? 'text-[#059669]' : 'text-[#64748B]'
+                  index <= activeStep ? 'text-primary' : 'text-slate-500'
                 }`}
               >
                 {step}
@@ -61,7 +61,7 @@ export function RegistrationHeader({
           )
         })}
       </ol>
-      <hr className="border-[#BBCABF]" />
+      <hr className="border-sage-300" />
     </>
   )
 }

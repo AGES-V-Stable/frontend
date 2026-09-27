@@ -11,10 +11,10 @@ export function StatusBadge({ label, variant }: StatusBadgeProps) {
   const textClasses = "font-['IBM_Plex_Sans'] font-bold text-[14px] leading-none"
 
   const variants = {
-    success: 'bg-[var(--Semantic-Success-Subtle,#ECFDF5)] text-[#059669]',
-    warning: 'bg-[#FFFBEB] text-[#B45309]',
-    error: 'bg-[#FEF2F2] text-[#B91C1C]',
-    info: 'bg-[#EFF6FF] text-[#1D4ED8]',
+    success: 'bg-emerald-50 text-primary',
+    warning: 'bg-amber-50 text-amber-700',
+    error: 'bg-red-50 text-red-700',
+    info: 'bg-blue-50 text-blue-700',
   }
 
   const inferVariant = (labelText: string): StatusVariant => {

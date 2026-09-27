@@ -67,14 +67,3 @@
   --color-primary: var(--color-emerald-600);
   --color-primary-hover: var(--color-emerald-700);
 }
-
-/*
- * Nomes vindos do Figma, referenciados como var(--Neutral-Grey-Border, #BBCABF)
- * em Table.tsx, TablePagination.tsx e StatusBadge.tsx. Mantidos ate esses
- * usos serem trocados pelas classes (border-sage-300, bg-surface, bg-emerald-50).
- */
-:root {
-  --Neutral-Grey-Border: var(--color-sage-300);
-  --Neutral-Grey-Surface: var(--color-surface);
-  --Semantic-Success-Subtle: var(--color-emerald-50);
-}
