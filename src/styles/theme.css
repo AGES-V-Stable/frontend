@@ -2,72 +2,79 @@
  * Tokens de cor do design system.
  * Apenas as cores que ja estao aplicadas no projeto hoje.
  *
- * Uso no Tailwind: text-[var(--emerald-600)], bg-[var(--slate-100)] etc.
- * (ficam em :root, e nao em @theme, para nao sobrescrever a paleta nativa
- * do Tailwind — o projeto usa text-gray-700, bg-emerald-50, border-slate-200...)
+ * Ficam em @theme com prefixo --color-, entao o Tailwind gera as classes
+ * direto: text-slate-900, bg-primary, border-sage-300, hover:bg-primary-hover...
+ * Tambem continuam disponiveis como variavel CSS: var(--color-slate-900).
+ *
+ * Nomes iguais aos da paleta nativa do Tailwind (emerald-50, slate-900...)
+ * sobrescrevem a cor nativa. Todos esses tem o mesmo valor do Tailwind, entao
+ * nada muda visualmente. As cores que divergem da paleta nativa ganharam nome
+ * proprio (surface, gray-666, placeholder) para nao alterar bg-gray-50 etc.
  */
 
-:root {
+@theme {
   /* ---------- Emerald (marca) ---------- */
-  /* mesma rampa emerald do Tailwind, ja usada via bg-emerald-50/text-emerald-700 */
-  --emerald-50: #ecfdf5; /* fundo de badge de sucesso */
-  --emerald-600: #059669; /* cor principal */
-  --emerald-700: #047857; /* hover do botao primario */
+  --color-emerald-50: #ecfdf5; /* fundo de badge de sucesso */
+  --color-emerald-600: #059669; /* cor principal */
+  --color-emerald-700: #047857; /* hover do botao primario */
 
   /* ---------- Verdes (sidebar) ---------- */
-  --green-100: #ccf2e8; /* contador da sidebar */
-  --green-200: #a8dbcd; /* item ativo da sidebar */
-  --green-500: #009e73; /* borda do item ativo da sidebar */
-  --green-700: #007f5d; /* texto sobre fundo verde claro */
+  --color-green-100: #ccf2e8; /* contador da sidebar */
+  --color-green-200: #a8dbcd; /* item ativo da sidebar */
+  --color-green-500: #009e73; /* borda do item ativo da sidebar */
+  --color-green-700: #007f5d; /* texto sobre fundo verde claro */
 
   /* ---------- Verde-acinzentado (bordas, sidebar) ---------- */
-  --sage-200: #ccd8d2; /* divisorias da sidebar */
-  --sage-300: #bbcabf; /* borda padrao: inputs, cards, tabela */
-  --sage-600: #66736c; /* descricao da conta na sidebar */
-  --sage-800: #3c4a42; /* label de input */
+  --color-sage-200: #ccd8d2; /* divisorias da sidebar */
+  --color-sage-300: #bbcabf; /* borda padrao: inputs, cards, tabela */
+  --color-sage-600: #66736c; /* descricao da conta na sidebar */
+  --color-sage-800: #3c4a42; /* label de input */
 
   /* ---------- Cinzas azulados ---------- */
-  --slate-100: #f1f5f9; /* fundo das paginas */
-  --slate-300: #cbd5e1; /* texto de contraste no login */
-  --slate-400: #718096; /* placeholder dos filtros */
-  --slate-500: #64748b; /* texto secundario / legendas */
-  --slate-600: #475569; /* texto de apoio */
-  --slate-700: #334155; /* texto do botao neutro */
-  --slate-900: #0f172a; /* titulos e texto forte */
+  --color-slate-100: #f1f5f9; /* fundo das paginas */
+  --color-slate-300: #cbd5e1; /* texto de contraste no login */
+  --color-slate-500: #64748b; /* texto secundario / legendas */
+  --color-slate-600: #475569; /* texto de apoio */
+  --color-slate-700: #334155; /* texto do botao neutro */
+  --color-slate-900: #0f172a; /* titulos e texto forte */
 
   /* ---------- Cinzas neutros ---------- */
-  --gray-50: #f8f9fb; /* fundo de input e cabecalho de tabela */
-  --gray-500: #6b7280; /* placeholder do Input */
-  --gray-600: #666666; /* item inativo da sidebar */
+  --color-gray-500: #6b7280; /* placeholder do Input */
 
   /* ---------- Azuis ---------- */
-  --blue-50: #eff6ff; /* fundo do badge info / card em analise */
-  --blue-700: #1d4ed8; /* texto do badge info */
-  --sky-600: #0284c7; /* card "em analise" do compliance */
+  --color-blue-50: #eff6ff; /* fundo do badge info / card em analise */
+  --color-blue-700: #1d4ed8; /* texto do badge info */
+  --color-sky-600: #0284c7; /* card "em analise" do compliance */
 
   /* ---------- Vermelhos ---------- */
-  --red-50: #fef2f2; /* fundo do badge de erro / card nao aprovado */
-  --red-600: #dc2626; /* card "nao aprovado" do compliance */
-  --red-700: #b91c1c; /* texto do badge de erro */
+  --color-red-50: #fef2f2; /* fundo do badge de erro / card nao aprovado */
+  --color-red-600: #dc2626; /* card "nao aprovado" do compliance */
+  --color-red-700: #b91c1c; /* texto do badge de erro */
 
   /* ---------- Ambar ---------- */
-  --amber-50: #fffbeb; /* fundo do badge de alerta */
-  --amber-700: #b45309; /* texto do badge de alerta */
+  --color-amber-50: #fffbeb; /* fundo do badge de alerta */
+  --color-amber-700: #b45309; /* texto do badge de alerta */
 
   /* ---------- Neutro ---------- */
-  --white: #ffffff; /* cards, sidebar */
+  --color-white: #ffffff; /* cards, sidebar */
+
+  /* ---------- Cores proprias (divergem da paleta nativa) ---------- */
+  --color-surface: #f8f9fb; /* fundo de input e cabecalho de tabela */
+  --color-gray-666: #666666; /* item inativo da sidebar */
+  --color-placeholder: #718096; /* placeholder dos filtros */
 
   /* ---------- Apelidos de marca ---------- */
-  --primary: var(--emerald-600);
-  --primary-hover: var(--emerald-700);
+  --color-primary: var(--color-emerald-600);
+  --color-primary-hover: var(--color-emerald-700);
+}
 
-  /*
-   * Nomes vindos do Figma, ja referenciados no codigo como
-   * var(--Neutral-Grey-Border, #BBCABF) em Table.tsx, TablePagination.tsx e
-   * StatusBadge.tsx. Ate agora so o fallback valia, porque as variaveis nunca
-   * foram definidas; agora resolvem, com o mesmo valor de antes.
-   */
-  --Neutral-Grey-Border: var(--sage-300);
-  --Neutral-Grey-Surface: var(--gray-50);
-  --Semantic-Success-Subtle: var(--emerald-50);
+/*
+ * Nomes vindos do Figma, referenciados como var(--Neutral-Grey-Border, #BBCABF)
+ * em Table.tsx, TablePagination.tsx e StatusBadge.tsx. Mantidos ate esses
+ * usos serem trocados pelas classes (border-sage-300, bg-surface, bg-emerald-50).
+ */
+:root {
+  --Neutral-Grey-Border: var(--color-sage-300);
+  --Neutral-Grey-Surface: var(--color-surface);
+  --Semantic-Success-Subtle: var(--color-emerald-50);
 }
