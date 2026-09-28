@@ -8,6 +8,9 @@ import { Register } from '@/pages/Register'
 import { CompanyRegistration } from '@/pages/Register/CompanyRegistration'
 import { Demo, DemoCompany, DemoCompliance, DemoRepresentative } from '@/pages/Demo'
 import { BeneficiaryView } from '@/pages/admin/beneficiaryView'
+import { ClientLayout } from '@/pages/client/ClientLayout'
+import { BeneficiariesLanding } from '@/pages/client/beneficiaries/BeneficiariesLanding'
+import { BeneficiaryCreate } from '@/pages/client/beneficiaryCreate'
 
 import { PATHS } from './paths'
 import { RegisterStatus } from '@/pages/RegisterStatus/RegisterStatus'
@@ -21,6 +24,15 @@ function AppRoutes() {
       <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
       <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
       <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
+      <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
+      <Route
+        path={PATHS.BENEFICIARIES_NEW}
+        element={
+          <ClientLayout activeItemId="beneficiaries">
+            <BeneficiaryCreate />
+          </ClientLayout>
+        }
+      />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.FORGOT_PASSWORD} element={<ForgotPassWordPlaceHolder />} />

@@ -17,7 +17,7 @@ export class ApiError extends Error {
     this.status = status
   }
 }
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, options)
   if (!response.ok) {
     const body = await response.json().catch(() => null)

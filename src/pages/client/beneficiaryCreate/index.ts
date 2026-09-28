@@ -1,0 +1,1 @@
+export { BeneficiaryCreate } from './BeneficiaryCreate'
