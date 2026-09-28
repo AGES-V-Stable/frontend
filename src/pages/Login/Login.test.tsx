@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PATHS } from '@/routes/paths'
 import { authService } from '@/services/login'
@@ -32,6 +32,8 @@ describe('Login Page Component', () => {
     vi.clearAllMocks()
     localStorage.clear()
   })
+
+  afterEach(() => vi.unstubAllGlobals())
 
   it('renders the brand copy, heading and form fields', () => {
     renderLogin()
@@ -78,6 +80,15 @@ describe('Login Page Component', () => {
 
   it('navigates to the forgot password page when the link is clicked', async () => {
     const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 200,
+          headers: { Authorization: 'Bearer token123' },
+        }),
+      ),
+    )
     renderLogin()
 
     await user.click(screen.getByRole('link', { name: 'Esqueci minha senha' }))
