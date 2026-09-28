@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+
+echo ""
+echo "🔍 [PRE-COMMIT] Verificando linting e formatação com ESLint e Prettier..."
+echo ""
+
+if ! npx lint-staged; then
+  echo ""
+  echo "❌ [PRE-COMMIT FALHOU] Erros de linting ou formatação encontrados nos arquivos staged."
+  echo "💡 Dica: Corrija os erros apontados ou execute 'npm run lint:fix' e 'npm run format'."
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "✅ [PRE-COMMIT] Código formatado e padronizado com sucesso!"
+echo ""

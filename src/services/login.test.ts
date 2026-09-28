@@ -18,7 +18,7 @@ describe('authService.login', () => {
     await authService.login({ email: 'user@empresa.com', password: 'secret' })
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:8080/login',
+      'http://localhost:8080/v1/login',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

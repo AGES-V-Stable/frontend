@@ -1,8 +1,13 @@
 import type {
+  AccessData,
   CompanyData,
   CompanyRegistrationResult,
+  ComplianceSubmissionResult,
   RegistrationProgress,
+  RepresentativeData,
+  RepresentativeSubmissionResult,
 } from '@/types/registration'
+import type { ComplianceFormData } from '@/types/compliance'
 
 const API_BASE = '/v1'
 export class ApiError extends Error {
@@ -28,6 +33,23 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export function getRegistration(id: string, signal?: AbortSignal) {
   return request<RegistrationProgress>(`/cadastros/${encodeURIComponent(id)}`, { signal })
 }
+
+export function createRegistration(data: AccessData, idempotencyKey = crypto.randomUUID()) {
+  return request<RegistrationProgress>('/cadastros/representante/acesso', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey,
+    },
+    body: JSON.stringify({
+      nomeCompleto: data.nomeCompleto.trim(),
+      email: data.email.trim().toLowerCase(),
+      senha: data.senha,
+      confirmarSenha: data.confirmarSenha,
+    }),
+  })
+}
+
 export function saveCompany(id: string, data: CompanyData) {
   return request<CompanyRegistrationResult>(`/cadastros/${encodeURIComponent(id)}/empresa`, {
     method: 'POST',
@@ -41,5 +63,30 @@ export function saveCompany(id: string, data: CompanyData) {
       cidade: data.cidade.trim() || null,
       estado: data.estado.trim(),
     }),
+  })
+}
+
+export function saveRepresentative(id: string, data: RepresentativeData) {
+  return request<RepresentativeSubmissionResult>(
+    `/cadastros/${encodeURIComponent(id)}/representante`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...data,
+        cpf: data.cpf.replace(/\D/g, ''),
+        cep: data.cep.replace(/\D/g, ''),
+      }),
+    },
+  )
+}
+
+export function submitCompliance(id: string, data: ComplianceFormData) {
+  const body = new FormData()
+  body.append('tipo_documento', data.tipoDocumento)
+  data.documentos.forEach(({ file }) => body.append('documentos', file))
+  return request<ComplianceSubmissionResult>(`/cadastros/${encodeURIComponent(id)}/compliance`, {
+    method: 'POST',
+    body,
   })
 }

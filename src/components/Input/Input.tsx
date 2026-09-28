@@ -9,7 +9,7 @@ function Input({ label, error, id, className = '', ...inputProps }: InputType) {
   return (
     <div className="flex flex-col gap-y-1 w-full">
       {label && (
-        <label htmlFor={inputId} className="text-[14px] text-[#3C4A42]">
+        <label htmlFor={inputId} className="text-[14px] text-sage-800">
           {label}
         </label>
       )}
@@ -19,7 +19,7 @@ function Input({ label, error, id, className = '', ...inputProps }: InputType) {
         id={inputId}
         aria-invalid={!!error}
         aria-describedby={errorId}
-        className={`w-full py-3.5 px-3 text-[16px] placeholder:text-[#6B7280] border border-[#BBCABF] rounded-lg bg-[#F8F9FB] ${className}`}
+        className={`w-full py-3.5 px-3 text-[16px] placeholder:text-gray-500 border border-sage-300 rounded-lg bg-surface ${className}`}
       />
       {error && (
         <p id={errorId} role="alert" className="text-sm text-red-500">

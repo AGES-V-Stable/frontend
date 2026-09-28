@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+
+echo ""
+echo "🧪 [PRE-PUSH] Executando testes antes de enviar ao repositório remoto..."
+echo ""
+
+if ! npm run test; then
+  echo ""
+  echo "❌ [PRE-PUSH FALHOU] Um ou mais testes falharam!"
+  echo "💡 Dica: Execute 'npm run test:watch' para diagnosticar e corrigir as falhas antes do push."
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "✅ [PRE-PUSH] Todos os testes passaram com sucesso! Prosseguindo com o push..."
+echo ""

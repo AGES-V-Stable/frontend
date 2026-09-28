@@ -1,25 +1,27 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
 import { PATHS } from '@/routes/paths'
 import { authService } from '@/services/login'
+import { parseJwt } from '@/utils/jwt'
 
-interface LoginData {
-  email: string
-  password: string
-}
+import { LoginSchema, type LoginFormData } from '@/schemas/auth'
 
-type LoginErrors = Partial<Record<keyof LoginData, string>>
+type LoginErrors = Partial<Record<keyof LoginFormData, string>>
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+function validate(data: LoginFormData): LoginErrors {
+  const result = LoginSchema.safeParse(data)
+  if (result.success) return {}
 
-function validate(data: LoginData): LoginErrors {
   const errors: LoginErrors = {}
-  if (!data.email.trim()) errors.email = 'E-mail é obrigatório'
-  else if (!EMAIL_REGEX.test(data.email.trim())) errors.email = 'E-mail inválido'
-  if (!data.password) errors.password = 'Senha é obrigatória'
+  for (const issue of result.error.issues) {
+    const field = issue.path[0] as keyof LoginFormData
+    if (!errors[field]) {
+      errors[field] = issue.message
+    }
+  }
   return errors
 }
 
@@ -58,7 +60,16 @@ function Login() {
 
       localStorage.setItem('token', token)
 
-      navigate('/')
+      const payload = parseJwt(token)
+      const userRoles: string[] = payload?.role || []
+
+      const isAdmin = userRoles.includes('ADMIN') || userRoles.includes('ROLE_ADMIN')
+
+      if (isAdmin) {
+        navigate(PATHS.ADMIN_CLIENTS)
+      } else {
+        navigate(PATHS.HOME)
+      }
     } catch {
       setErrors({
         email: 'E-mail ou senha inválidos',
@@ -69,22 +80,22 @@ function Login() {
 
   return (
     <div className="flex items-center min-h-screen">
-      <div className="bg-[#0F172A] min-h-screen w-[760px] flex flex-col items-center justify-center px-18">
+      <div className="bg-slate-900 min-h-screen w-[760px] flex flex-col items-center justify-center px-18">
         <img src="/favicon.png" alt="logo" />
         <div className="flex flex-col gap-y-[18px]">
-          <h1 className="text-[#FFFFFF] text-[32px] font-bold">
+          <h1 className="text-white text-[32px] font-bold">
             Infraestrutura financeira para operações globais.
           </h1>
-          <p className="text-[#CBD5E1] text-[18px] font-semibold">
+          <p className="text-slate-300 text-[18px] font-semibold">
             Acesse sua conta V-Stable para acompanhar movimentações, usuários e operações em um só
             lugar.
           </p>
         </div>
       </div>
-      <div className="bg-[#FFFFFF] flex flex-col items-center justify-center min-h-screen w-full gap-y-[20px]">
+      <div className="bg-white flex flex-col items-center justify-center min-h-screen w-full gap-y-[20px]">
         <div className="flex flex-col gap-y-[10px]">
-          <h1 className="text-[#0F172A] text-[32px] font-bold">Bem-vindo à V-Stable!</h1>
-          <p className="text-[#64748B] text-[18px] font-semibold">
+          <h1 className="text-slate-900 text-[32px] font-bold">Bem-vindo à V-Stable!</h1>
+          <p className="text-slate-500 text-[18px] font-semibold">
             Acesse sua conta com suas credenciais
           </p>
         </div>
@@ -117,6 +128,14 @@ function Login() {
               variant="secondary"
               onClick={() => navigate(PATHS.REGISTER)}
             />
+          </div>
+          <div className="flex justify-center -mt-7">
+            <Link
+              to={PATHS.FORGOT_PASSWORD}
+              className="text-[16px] font-medium text-primary hover:text-primary-hover hover:underline transition-colors"
+            >
+              Esqueci minha senha
+            </Link>
           </div>
         </form>
       </div>
