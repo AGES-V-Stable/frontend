@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/Button/Button'
-import { startDocumentUpload, submitDocumentResult, uploadFileToS3 } from '@/services/compliance'
 import type { ComplianceFormData, SelectedFile, TipoDocumento } from '@/types/compliance'
+import { RegistrationHeader } from './RegistrationHeader'
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png']
@@ -46,24 +46,25 @@ function validate(data: ComplianceFormData): ValidationErrors {
   return errors
 }
 
-export interface ComplianceStepProps {
-  /** id do progresso de cadastro em andamento — necessário para iniciar o upload. */
-  progressoCadastroId?: string
-  onContinue?: () => void
+interface ComplianceStepProps {
+  onContinue: (data: ComplianceFormData) => Promise<void>
+  saving?: boolean
+  serverError?: string
 }
 
-export default function ComplianceStep({ progressoCadastroId, onContinue }: ComplianceStepProps) {
+export default function ComplianceStep({
+  onContinue,
+  saving = false,
+  serverError = '',
+}: ComplianceStepProps) {
   const [form, setForm] = useState<ComplianceFormData>({
     tipoDocumento: '',
     documentos: [],
   })
   const [errors, setErrors] = useState<ValidationErrors>({})
   const [submitted, setSubmitted] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [fileErrors, setFileErrors] = useState<string[]>([])
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const addFiles = useCallback(
@@ -122,40 +123,9 @@ export default function ComplianceStep({ progressoCadastroId, onContinue }: Comp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitted(true)
-    setSubmitError(null)
     const errs = validate(form)
     setErrors(errs)
-    if (Object.keys(errs).length > 0) return
-
-    if (!progressoCadastroId) {
-      setSubmitError(
-        'Não foi possível confirmar o cadastro. Recarregue a página e tente novamente.',
-      )
-      return
-    }
-
-    const tipoDocumento = form.tipoDocumento as TipoDocumento
-    const doubleSided = isDoubleSided(tipoDocumento)
-    const [frontFile, backFile] = form.documentos
-
-    setIsSubmitting(true)
-    try {
-      const { id, uploadUrlFront, uploadUrlBack } = await startDocumentUpload(
-        progressoCadastroId,
-        tipoDocumento,
-        doubleSided,
-      )
-      await uploadFileToS3(uploadUrlFront, frontFile.file)
-      if (doubleSided && uploadUrlBack) {
-        await uploadFileToS3(uploadUrlBack, backFile.file)
-      }
-      await submitDocumentResult(progressoCadastroId, id)
-      setSuccess(true)
-    } catch {
-      setSubmitError('Não foi possível enviar o documento. Tente novamente.')
-    } finally {
-      setIsSubmitting(false)
-    }
+    if (Object.keys(errs).length === 0) void onContinue(form)
   }
 
   const handleChange = <K extends keyof ComplianceFormData>(
@@ -167,51 +137,16 @@ export default function ComplianceStep({ progressoCadastroId, onContinue }: Comp
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center py-10 px-4">
-      <div className="mb-8">
-        <span className="text-2xl font-bold tracking-widest text-[#059669]">V-STABLE</span>
-      </div>
+    <main className="min-h-screen bg-slate-100 px-4 py-8 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-sage-300 bg-white px-4 py-[30px] md:px-10">
+        <RegistrationHeader
+          activeStep={3}
+          description="Envie os documentos necessários para a análise de compliance."
+        />
 
-      <div className="flex items-center mb-8" aria-label="Passo 3 de 4">
-        {([1, 2, 3, 4] as const).map((step) => (
-          <div key={step} className="flex items-center">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                step < 3
-                  ? 'bg-[#059669] text-white'
-                  : step === 3
-                    ? 'bg-[#059669] text-white ring-2 ring-[#059669] ring-offset-2'
-                    : 'bg-gray-200 text-gray-500'
-              }`}
-              aria-current={step === 3 ? 'step' : undefined}
-            >
-              {step < 3 ? '✓' : step}
-            </div>
-            {step < 4 && (
-              <div className={`w-12 h-0.5 mx-1 ${step < 3 ? 'bg-[#059669]' : 'bg-gray-200'}`} />
-            )}
-          </div>
-        ))}
-      </div>
+        <div className="mx-auto w-full max-w-lg py-2">
+          <h1 className="text-xl font-semibold text-gray-800 mb-6">Compliance e documentos</h1>
 
-      <div className="bg-white rounded-2xl shadow-md w-full max-w-lg p-8">
-        <h1 className="text-xl font-semibold text-gray-800 mb-6">Compliance e documentos</h1>
-
-        {success ? (
-          <div className="text-center py-8">
-            <div role="alert">
-              <p className="text-[#059669] font-semibold text-lg">
-                Formulário enviado com sucesso!
-              </p>
-              <p className="text-gray-500 mt-2 text-sm">
-                Seus documentos foram recebidos para análise.
-              </p>
-            </div>
-            <div className="mt-6">
-              <Button label="Continuar" onClick={() => onContinue?.()} />
-            </div>
-          </div>
-        ) : (
           <form onSubmit={handleSubmit} noValidate>
             <div className="mb-4">
               <label
@@ -223,10 +158,11 @@ export default function ComplianceStep({ progressoCadastroId, onContinue }: Comp
               <select
                 id="tipoDocumento"
                 value={form.tipoDocumento}
+                disabled={saving}
                 onChange={(e) =>
                   handleChange('tipoDocumento', e.target.value as TipoDocumento | '')
                 }
-                className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#059669] ${errors.tipoDocumento ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ${errors.tipoDocumento ? 'border-red-500' : 'border-gray-300'}`}
                 aria-describedby={errors.tipoDocumento ? 'tipoDocumento-error' : undefined}
               >
                 <option value="">Selecione...</option>
@@ -250,23 +186,26 @@ export default function ComplianceStep({ progressoCadastroId, onContinue }: Comp
               <div
                 role="button"
                 tabIndex={0}
+                aria-disabled={saving}
                 aria-label="Área de upload de documentos"
                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
                   isDragging
-                    ? 'border-[#059669] bg-green-50'
+                    ? 'border-primary bg-green-50'
                     : errors.documentos
                       ? 'border-red-400'
-                      : 'border-gray-300 hover:border-[#059669]'
+                      : 'border-gray-300 hover:border-primary'
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+                onClick={() => !saving && fileInputRef.current?.click()}
+                onKeyDown={(e) =>
+                  !saving && (e.key === 'Enter' || e.key === ' ') && fileInputRef.current?.click()
+                }
               >
                 <p className="text-sm text-gray-600">
                   Arraste e solte arquivos aqui ou{' '}
-                  <span className="text-[#059669] font-medium">clique para selecionar</span>
+                  <span className="text-primary font-medium">clique para selecionar</span>
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
                   {isDoubleSided(form.tipoDocumento)
@@ -284,6 +223,7 @@ export default function ComplianceStep({ progressoCadastroId, onContinue }: Comp
                 onChange={handleFileInput}
                 aria-label="Selecionar arquivos"
                 data-testid="file-input"
+                disabled={saving}
               />
               {errors.documentos && (
                 <p className="text-red-500 text-xs mt-1">{errors.documentos}</p>
@@ -313,6 +253,7 @@ export default function ComplianceStep({ progressoCadastroId, onContinue }: Comp
                     <button
                       type="button"
                       onClick={() => removeFile(doc.id)}
+                      disabled={saving}
                       className="ml-3 text-gray-400 hover:text-red-500 transition-colors"
                       aria-label={`Remover ${doc.file.name}`}
                     >
@@ -323,20 +264,19 @@ export default function ComplianceStep({ progressoCadastroId, onContinue }: Comp
               </ul>
             )}
 
-            {submitError && (
-              <p role="alert" className="text-red-500 text-xs mb-4">
-                {submitError}
+            {serverError && (
+              <p role="alert" className="mb-4 text-sm text-red-600">
+                {serverError}
               </p>
             )}
-
             <Button
               type="submit"
-              label={isSubmitting ? 'Enviando...' : 'Continuar'}
-              disabled={isSubmitting}
+              label={saving ? 'Enviando documentos...' : 'Continuar'}
+              disabled={saving}
             />
           </form>
-        )}
+        </div>
       </div>
-    </div>
+    </main>
   )
 }

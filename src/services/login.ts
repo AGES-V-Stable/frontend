@@ -9,7 +9,7 @@ interface LoginResponse {
 
 import { env } from '@/schemas/env'
 
-const API_URL = env.VITE_API_URL
+const API_URL = `${env.VITE_API_URL.replace(/\/$/, '')}/v1`
 
 async function login(data: LoginData): Promise<LoginResponse> {
   const response = await fetch(`${API_URL}/login`, {

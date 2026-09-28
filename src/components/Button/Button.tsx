@@ -10,20 +10,20 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ label, variant = 'primary', disabled, className = '', ...props }, ref) => {
     const baseStyles =
-      'inline-flex items-center justify-center text-[16px] font-normal rounded-[8px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#059669] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
+      'inline-flex items-center justify-center text-[16px] font-normal rounded-[8px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
 
     const paddingStyles = 'px-[24px] py-[12px]'
 
     const wFullStyle = 'w-full'
 
     const variants = {
-      neutral: 'bg-white border border-[#BBCABF] text-[#334155] hover:bg-slate-50',
+      neutral: 'bg-white border border-sage-300 text-slate-700 hover:bg-slate-50',
       primary:
-        'bg-[#059669] text-white hover:bg-[#047857] disabled:hover:bg-[#059669] border border-transparent',
+        'bg-primary text-white hover:bg-primary-hover disabled:hover:bg-primary border border-transparent',
       secondary:
-        'bg-transparent border border-[#059669] text-[#059669] hover:bg-[#047857] hover:text-white disabled:hover:bg-transparent disabled:hover:text-[#059669]',
+        'bg-transparent border border-primary text-primary hover:bg-primary-hover hover:text-white disabled:hover:bg-transparent disabled:hover:text-primary',
       tertiary:
-        'bg-transparent text-[#059669] hover:bg-gray-100 disabled:hover:bg-transparent border border-transparent',
+        'bg-transparent text-primary hover:bg-gray-100 disabled:hover:bg-transparent border border-transparent',
     }
 
     return (

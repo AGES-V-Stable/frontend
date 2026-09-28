@@ -3,15 +3,29 @@ import { describe, expect, it } from 'vitest'
 import { compliancePath, livenessPath, PATHS, registrationCompletePath } from './paths'
 
 describe('PATHS configuration', () => {
-  it('given route definitions, when accessing PATHS, then it should match the expected route paths', () => {
+  it('matches the expected route paths', () => {
     const expectedPaths = {
       HOME: '/',
       LOGIN: '/login',
       REGISTER: '/register',
+      REGISTER_COMPANY: '/register/empresa',
+      REGISTER_REPRESENTATIVE: '/register/representante',
       REGISTER_COMPLIANCE: '/register/:kycVerificationId/compliance',
       COMPLIANCE_LIVENESS: '/register/:kycVerificationId/compliance/liveness',
       REGISTER_COMPLETE: '/register/:kycVerificationId/concluido',
       ADMIN_CLIENTS: '/admin/clientes-pme',
+      DEMO: '/demo',
+      DEMO_HOME: '/demo/home',
+      DEMO_LOGIN: '/demo/login',
+      DEMO_REGISTER: '/demo/register',
+      DEMO_REGISTER_COMPANY: '/demo/register/empresa',
+      DEMO_REGISTER_REPRESENTATIVE: '/demo/register/representante',
+      DEMO_REGISTER_COMPLIANCE: '/demo/register/compliance',
+      DEMO_ADMIN_CLIENTS: '/demo/admin/clientes-pme',
+      REGISTER_STATUS: '/register/status',
+      FORGOT_PASSWORD: '/esqueci-senha',
+      ADMIN_TRANSFERS: '/admin/transferencias',
+      ADMIN_BENEFICIARIES: '/admin/beneficiarios',
     }
 
     const actualPaths = PATHS
@@ -19,7 +33,7 @@ describe('PATHS configuration', () => {
     expect(actualPaths).toEqual(expectedPaths)
   })
 
-  it('given PATHS object, when verifying individual endpoints, then route properties should match exact path strings', () => {
+  it('matches exact path strings for individual endpoints', () => {
     const homePath = PATHS.HOME
     const loginPath = PATHS.LOGIN
     const registerPath = PATHS.REGISTER

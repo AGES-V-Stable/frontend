@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import AppRoutes from './AppRoutes'
 import { compliancePath, livenessPath, PATHS, registrationCompletePath } from './paths'
@@ -8,6 +8,10 @@ import { compliancePath, livenessPath, PATHS, registrationCompletePath } from '.
 const id = '11111111-1111-4111-8111-111111111111'
 
 describe('AppRoutes Navigation & Routing', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('given the user navigates to the root path, when AppRoutes is rendered, then it should render the Home page', () => {
     const initialRoute = PATHS.HOME
 
@@ -32,7 +36,7 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByRole('heading', { name: 'Bem-vindo à V-Stable!' })).toBeInTheDocument()
   })
 
-  it('given the user navigates to the register path, when AppRoutes is rendered, then it should render the Register wizard', () => {
+  it('given the user navigates to the register path, when AppRoutes is rendered, then it should render the access step of the register wizard', () => {
     const initialRoute = PATHS.REGISTER
 
     render(
@@ -41,8 +45,17 @@ describe('AppRoutes Navigation & Routing', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('heading', { name: 'Cadastro Institucional' })).toBeInTheDocument()
-    expect(screen.getByText('Representante').closest('li')).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByRole('heading', { name: 'Dados de acesso' })).toBeInTheDocument()
+  })
+
+  it('given the company or representative steps are opened without navigation state, when AppRoutes is rendered, then it should redirect back to the access step', () => {
+    render(
+      <MemoryRouter initialEntries={[PATHS.REGISTER_REPRESENTATIVE]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Dados de acesso' })).toBeInTheDocument()
   })
 
   it('given the user navigates to the compliance path with a kyc verification id, when AppRoutes is rendered, then it should render the ComplianceStep page with that id wired in', () => {
@@ -52,7 +65,8 @@ describe('AppRoutes Navigation & Routing', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('heading', { name: 'Compliance e documentos' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Cadastro Institucional' })).toBeInTheDocument()
+    expect(screen.getByText('Compliance e documentos')).toBeInTheDocument()
   })
 
   it('given the user navigates to the compliance liveness path with a kyc verification id, when AppRoutes is rendered, then it should render the LivenessStep page with that id wired in', () => {
@@ -76,6 +90,18 @@ describe('AppRoutes Navigation & Routing', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Cadastro enviado' })).toBeInTheDocument()
+  })
+
+  it('given the user navigates to the forgot password path, when AppRoutes is rendered, then it should render the placeholder screen', () => {
+    const initialRoute = PATHS.FORGOT_PASSWORD
+
+    render(
+      <MemoryRouter initialEntries={[initialRoute]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Recuperação de Senha (Em breve)')).toBeInTheDocument()
   })
 
   it('given the user navigates to an unknown route, when AppRoutes is rendered, then it should redirect to the Home page', () => {

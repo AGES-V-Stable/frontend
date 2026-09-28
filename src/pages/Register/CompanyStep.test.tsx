@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
+import AppRoutes from '@/routes/AppRoutes'
+import { PATHS } from '@/routes/paths'
 import { CompanyStep, type CompanyData } from './CompanyStep'
 
 const valid: CompanyData = {
@@ -127,5 +130,16 @@ describe('CompanyStep', () => {
     expect(screen.getByRole('textbox', { name: 'Razão Social *' })).toHaveFocus()
     await user.keyboard('{Enter}')
     expect(onContinue).toHaveBeenCalledOnce()
+  })
+})
+
+describe('Company registration route', () => {
+  it('redirects back to the access step when opened without access data in navigation state', () => {
+    render(
+      <MemoryRouter initialEntries={[PATHS.REGISTER_COMPANY]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('heading', { name: 'Dados de acesso' })).toBeInTheDocument()
   })
 })

@@ -4,7 +4,7 @@ import { Input } from '@/components/Input'
 import { maskCEP, maskCNPJ } from '@/utils/masks'
 import { isValidCNPJ } from '@/utils/validators'
 import type { CompanyData } from '@/types/registration'
-import { RegistrationSteps } from './RegistrationSteps'
+import { RegistrationHeader } from './RegistrationHeader'
 
 export type { CompanyData } from '@/types/registration'
 
@@ -84,7 +84,7 @@ export function CompanyStep({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#F1F5F9] px-4 py-8 md:px-8">
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8 md:px-8">
       <form
         ref={formRef}
         noValidate
@@ -106,31 +106,20 @@ export function CompanyStep({
           }
           onContinue({ ...data })
         }}
-        className="flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10"
+        className="flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-sage-300 bg-white px-4 py-[30px] md:px-10"
       >
-        <header className="flex flex-col items-center text-center">
-          <img
-            src="/images/register/v-stable-logo.png"
-            alt="V-Stable"
-            className="h-[68px] w-full max-w-[350px] object-contain"
-          />
-          <h1 className="mt-2 flex min-h-10 items-center text-2xl font-bold text-[#0F172A]">
-            Cadastro Institucional
-          </h1>
-          <p className="mt-1 flex min-h-7 items-center text-xs text-[#64748B]">
-            Preencha os dados da empresa para iniciar o processo de cadastro.
-          </p>
-        </header>
-        <RegistrationSteps currentIndex={1} />
-        <hr className="border-[#BBCABF]" />
+        <RegistrationHeader
+          activeStep={1}
+          description="Preencha os dados da empresa para iniciar o processo de cadastro."
+        />
         {serverError && (
           <p role="alert" className="text-red-700">
             {serverError}
           </p>
         )}
         <div className="flex min-h-8 items-center justify-between gap-3">
-          <h2 className="text-base font-bold text-[#0F172A]">Dados da empresa</h2>
-          <span className="shrink-0 text-sm font-medium text-[#059669]">Etapa 2 de 4</span>
+          <h2 className="text-base font-bold text-slate-900">Dados da empresa</h2>
+          <span className="shrink-0 text-sm font-medium text-primary">Etapa 2 de 5</span>
         </div>
         <div className="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
           {fields.map(({ name, label, placeholder, required }) => (
@@ -151,12 +140,12 @@ export function CompanyStep({
                 inputMode={
                   name === 'cnpj' || (name === 'cep' && brazil(data.pais)) ? 'numeric' : 'text'
                 }
-                className="h-[50px] text-sm! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
+                className="h-[50px] text-sm! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               />
             </div>
           ))}
         </div>
-        <p className="flex min-h-7 items-center text-xs text-[#64748B]">
+        <p className="flex min-h-7 items-center text-xs text-slate-500">
           * Campos obrigatórios. Os dados poderão ser revisados antes do envio para análise.
         </p>
         <div className="flex flex-col gap-3 md:flex-row md:justify-end md:gap-[70px]">

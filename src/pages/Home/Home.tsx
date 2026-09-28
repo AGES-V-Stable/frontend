@@ -40,6 +40,12 @@ function Home() {
           />
         </div>
       </main>
+      <Button
+        label="Abrir demonstração completa"
+        variant="primary"
+        className="!w-auto fixed bottom-6 right-6 shadow-lg"
+        onClick={() => navigate(PATHS.DEMO)}
+      />
     </div>
   )
 }
