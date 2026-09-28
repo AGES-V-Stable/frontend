@@ -60,7 +60,8 @@ function BeneficiaryView() {
           country: appliedFilters.country,
           document: isDocument ? appliedFilters.companyOrCnpj.replace(/\D/g, '') : undefined,
           // Se não for documento numérico puro (ex: UUID), pode passar como companyId
-          companyId: !isDocument && appliedFilters.companyOrCnpj ? appliedFilters.companyOrCnpj : undefined,
+          companyId:
+            !isDocument && appliedFilters.companyOrCnpj ? appliedFilters.companyOrCnpj : undefined,
         })
         if (active) {
           setBeneficiaries(data.content)
@@ -85,7 +86,9 @@ function BeneficiaryView() {
   )
   // const statuses = [...new Set(beneficiaries.map((item) => item.status))]
   // const currencies = [...new Set(beneficiaries.map((item) => item.currency))]
-  const countries = [...new Set(beneficiaries.map((item) => item.country).filter(Boolean))] as string[]
+  const countries = [
+    ...new Set(beneficiaries.map((item) => item.country).filter(Boolean)),
+  ] as string[]
 
   const openDetails = async (beneficiary: Beneficiary) => {
     setSelectedBeneficiary(beneficiary)
@@ -169,7 +172,9 @@ function BeneficiaryView() {
               totalRecords={totalRecords}
               columns={beneficiaryTableColumns}
               data={beneficiaries}
-              actions={[{ label: 'Ver detalhes', onClick: (item) => openDetails(item as Beneficiary) }]}
+              actions={[
+                { label: 'Ver detalhes', onClick: (item) => openDetails(item as Beneficiary) },
+              ]}
               pagination={{
                 currentPage,
                 totalPages,
@@ -200,19 +205,27 @@ function BeneficiaryView() {
                 <dd className="mt-1 text-base font-semibold">{selectedDetails.nickname}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase text-slate-500">ID da Empresa Proprietária</dt>
+                <dt className="text-xs font-medium uppercase text-slate-500">
+                  ID da Empresa Proprietária
+                </dt>
                 <dd className="mt-1 font-mono text-xs">{selectedDetails.companyId}</dd>
               </div>
               <div>
                 <dt className="text-xs font-medium uppercase text-slate-500">Documento</dt>
-                <dd className="mt-1">{selectedDetails.identificationDocument ? maskCNPJ(selectedDetails.identificationDocument) : 'N/A'}</dd>
+                <dd className="mt-1">
+                  {selectedDetails.identificationDocument
+                    ? maskCNPJ(selectedDetails.identificationDocument)
+                    : 'N/A'}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs font-medium uppercase text-slate-500">País</dt>
                 <dd className="mt-1">{selectedDetails.country || 'N/A'}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase text-slate-500">Método de Recebimento</dt>
+                <dt className="text-xs font-medium uppercase text-slate-500">
+                  Método de Recebimento
+                </dt>
                 <dd className="mt-1">{selectedDetails.receivingMethod}</dd>
               </div>
               {selectedDetails.receivingMethod === 'BANK_ACCOUNT' && (
@@ -223,7 +236,9 @@ function BeneficiaryView() {
                   </div>
                   <div>
                     <dt className="text-xs font-medium uppercase text-slate-500">Conta / Tipo</dt>
-                    <dd className="mt-1">{selectedDetails.accountNumber} ({selectedDetails.accountType})</dd>
+                    <dd className="mt-1">
+                      {selectedDetails.accountNumber} ({selectedDetails.accountType})
+                    </dd>
                   </div>
                 </>
               )}
@@ -241,7 +256,9 @@ function BeneficiaryView() {
                   </div>
                   <div>
                     <dt className="text-xs font-medium uppercase text-slate-500">Endereço</dt>
-                    <dd className="mt-1 font-mono text-xs break-all">{selectedDetails.walletAddress}</dd>
+                    <dd className="mt-1 font-mono text-xs break-all">
+                      {selectedDetails.walletAddress}
+                    </dd>
                   </div>
                 </>
               )}
