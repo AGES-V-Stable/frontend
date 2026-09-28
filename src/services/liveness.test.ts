@@ -107,33 +107,43 @@ describe('liveness service', () => {
 
   describe('session persistence helpers', () => {
     it('given no session has been saved, when reading the liveness status, then it should default to idle', () => {
-      expect(getLivenessStatus()).toBe('idle')
-      expect(getLivenessId()).toBeNull()
+      expect(getLivenessStatus('cadastro-1')).toBe('idle')
+      expect(getLivenessId('cadastro-1')).toBeNull()
     })
 
-    it('given a liveness session is saved, when reading it back, then it should return the stored id and status', () => {
-      saveLivenessSession('liveness-1', 'pending')
+    it('given a liveness session is saved, when reading it back for the same cadastro, then it should return the stored id and status', () => {
+      saveLivenessSession('liveness-1', 'pending', 'cadastro-1')
 
-      expect(getLivenessId()).toBe('liveness-1')
-      expect(getLivenessStatus()).toBe('pending')
+      expect(getLivenessId('cadastro-1')).toBe('liveness-1')
+      expect(getLivenessStatus('cadastro-1')).toBe('pending')
+    })
+
+    // Reproduz o bug real: sem esse escopo, um liveness salvo para um cadastro vazava
+    // pra outro cadastro no mesmo navegador, reenviando um id de uma subconta errada na
+    // Avenia (que rejeita a finalização do KYC nesse caso).
+    it('given a liveness session saved for a different cadastro, when reading it back for another one, then it should not return the stale session', () => {
+      saveLivenessSession('liveness-1', 'success', 'cadastro-antigo')
+
+      expect(getLivenessId('cadastro-novo')).toBeNull()
+      expect(getLivenessStatus('cadastro-novo')).toBe('idle')
     })
 
     it('given a saved session, when updating only the status, then it should keep the stored id', () => {
-      saveLivenessSession('liveness-1', 'pending')
+      saveLivenessSession('liveness-1', 'pending', 'cadastro-1')
 
       setLivenessStatus('success')
 
-      expect(getLivenessId()).toBe('liveness-1')
-      expect(getLivenessStatus()).toBe('success')
+      expect(getLivenessId('cadastro-1')).toBe('liveness-1')
+      expect(getLivenessStatus('cadastro-1')).toBe('success')
     })
 
-    it('given a saved session, when clearing it, then both the id and status should be removed', () => {
-      saveLivenessSession('liveness-1', 'success')
+    it('given a saved session, when clearing it, then both the id, status and scope should be removed', () => {
+      saveLivenessSession('liveness-1', 'success', 'cadastro-1')
 
       clearLivenessSession()
 
-      expect(getLivenessId()).toBeNull()
-      expect(getLivenessStatus()).toBe('idle')
+      expect(getLivenessId('cadastro-1')).toBeNull()
+      expect(getLivenessStatus('cadastro-1')).toBe('idle')
     })
   })
 })

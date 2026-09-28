@@ -8,6 +8,7 @@ import { httpRequest } from './httpClient'
 
 export const LIVENESS_ID_STORAGE_KEY = 'vstable:liveness:id'
 export const LIVENESS_STATUS_STORAGE_KEY = 'vstable:liveness:status'
+export const LIVENESS_SCOPE_STORAGE_KEY = 'vstable:liveness:kycVerificationId'
 
 const KNOWN_STATUSES: LivenessStatus[] = ['idle', 'pending', 'success', 'failure']
 
@@ -56,16 +57,35 @@ export async function submitLivenessResult(
   })
 }
 
-export function saveLivenessSession(id: string, status: LivenessStatus): void {
+export function saveLivenessSession(
+  id: string,
+  status: LivenessStatus,
+  kycVerificationId: string,
+): void {
   localStorage.setItem(LIVENESS_ID_STORAGE_KEY, id)
   localStorage.setItem(LIVENESS_STATUS_STORAGE_KEY, status)
+  localStorage.setItem(LIVENESS_SCOPE_STORAGE_KEY, kycVerificationId)
 }
 
-export function getLivenessId(): string | null {
+/**
+ * A sessão de liveness salva só vale para o kycVerificationId em que foi criada — sem
+ * essa checagem, um liveness concluído (ou pendente) de um cadastro anterior no mesmo
+ * navegador "vazava" para um cadastro novo (mesmo com um kycVerificationId diferente,
+ * ligado a outra subconta na Avenia), fazendo a etapa aparecer já concluída sem o
+ * usuário nunca ter feito a verificação para esse cadastro. A Avenia rejeita a
+ * finalização do KYC nesse caso, já que documento e selfie precisam ser da mesma sessão.
+ */
+function isScopedToCurrentRegistration(kycVerificationId: string): boolean {
+  return localStorage.getItem(LIVENESS_SCOPE_STORAGE_KEY) === kycVerificationId
+}
+
+export function getLivenessId(kycVerificationId: string): string | null {
+  if (!isScopedToCurrentRegistration(kycVerificationId)) return null
   return localStorage.getItem(LIVENESS_ID_STORAGE_KEY)
 }
 
-export function getLivenessStatus(): LivenessStatus {
+export function getLivenessStatus(kycVerificationId: string): LivenessStatus {
+  if (!isScopedToCurrentRegistration(kycVerificationId)) return 'idle'
   const status = localStorage.getItem(LIVENESS_STATUS_STORAGE_KEY)
   return (KNOWN_STATUSES as string[]).includes(status ?? '') ? (status as LivenessStatus) : 'idle'
 }
@@ -77,4 +97,5 @@ export function setLivenessStatus(status: LivenessStatus): void {
 export function clearLivenessSession(): void {
   localStorage.removeItem(LIVENESS_ID_STORAGE_KEY)
   localStorage.removeItem(LIVENESS_STATUS_STORAGE_KEY)
+  localStorage.removeItem(LIVENESS_SCOPE_STORAGE_KEY)
 }

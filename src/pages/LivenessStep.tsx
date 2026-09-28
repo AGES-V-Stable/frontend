@@ -14,6 +14,7 @@ import {
   submitLivenessResult,
 } from '@/services/liveness'
 import {
+  ApiError,
   clearAccessToken,
   clearRepresentativePersonalData,
   getRepresentativePersonalData,
@@ -30,12 +31,15 @@ export interface LivenessStepProps {
 function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
   const navigate = useNavigate()
 
-  const [status, setStatus] = useState<LivenessStatus>(() => getLivenessStatus())
+  const [status, setStatus] = useState<LivenessStatus>(() =>
+    progressoCadastroId ? getLivenessStatus(progressoCadastroId) : 'idle',
+  )
   const [isStarting, setIsStarting] = useState(false)
   const [isChecking, setIsChecking] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [checkMessage, setCheckMessage] = useState<string | null>(null)
+  const [manualLivenessUrl, setManualLivenessUrl] = useState<string | null>(null)
 
   const handleStart = useCallback(async () => {
     if (!progressoCadastroId) {
@@ -45,23 +49,41 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
 
     setErrorMessage(null)
     setCheckMessage(null)
+    setManualLivenessUrl(null)
     setIsStarting(true)
+
+    // Tentamos abrir a aba já aqui, de forma síncrona dentro do clique do
+    // usuário — se essa chamada viesse depois do await abaixo, o navegador não
+    // reconheceria mais a "user activation" do clique e bloquearia o pop-up de
+    // verdade (independente de "noopener"). Não passamos "noopener" nas
+    // features: com ele, o Chrome/Firefox retornam null de propósito mesmo
+    // quando a aba abre com sucesso (não há referência pra devolver) — em vez
+    // disso, zeramos `.opener` manualmente pelo mesmo isolamento de segurança.
+    //
+    // Mesmo assim, alguns navegadores/configurações ainda bloqueiam esse
+    // window.open mesmo sendo síncrono (ex.: bloqueio de pop-up mais agressivo
+    // no Firefox). Nesse caso não travamos o fluxo: a verificação já foi
+    // iniciada no backend, então seguimos para o estado "pending" normalmente
+    // e oferecemos um link manual, em vez de forçar o usuário a ficar preso na
+    // tela de "Iniciar verificação facial".
+    const livenessTab = window.open('', '_blank', 'noreferrer')
+    if (livenessTab) livenessTab.opener = null
+
     try {
       const { id, livenessUrl } = await startLivenessVerification(progressoCadastroId)
-      saveLivenessSession(id, 'pending')
+      saveLivenessSession(id, 'pending', progressoCadastroId)
       setStatus('pending')
 
-      // Abre em uma aba nova para preservar o estado do wizard nesta aba
-      // enquanto o usuário completa a verificação na Avenia.
-      const livenessTab = window.open(livenessUrl, '_blank', 'noopener,noreferrer')
-      if (!livenessTab) {
+      if (livenessTab) {
+        livenessTab.location.href = livenessUrl
+      } else {
+        setManualLivenessUrl(livenessUrl)
         setErrorMessage(
-          'Não foi possível abrir a verificação facial em uma nova aba. Permita pop-ups para este site e tente novamente.',
+          'Não foi possível abrir a verificação facial automaticamente. Permita pop-ups para este site ou use o link abaixo; depois clique em "Verificar conclusão".',
         )
-        clearLivenessSession()
-        setStatus('idle')
       }
     } catch {
+      livenessTab?.close()
       setErrorMessage('Não foi possível iniciar a verificação facial. Tente novamente.')
     } finally {
       setIsStarting(false)
@@ -73,7 +95,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
   // confirmação é manual: o usuário volta pra esta aba e clica em "Verificar
   // conclusão", que consulta o backend (proxy fino pra Avenia).
   const handleCheck = useCallback(async () => {
-    const livenessId = getLivenessId()
+    const livenessId = progressoCadastroId ? getLivenessId(progressoCadastroId) : null
     if (!livenessId || !progressoCadastroId) {
       setErrorMessage('Não foi possível confirmar o cadastro. Reinicie a verificação.')
       return
@@ -104,10 +126,11 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
     setStatus('idle')
     setErrorMessage(null)
     setCheckMessage(null)
+    setManualLivenessUrl(null)
   }, [])
 
   const handleContinue = useCallback(async () => {
-    const livenessId = getLivenessId()
+    const livenessId = progressoCadastroId ? getLivenessId(progressoCadastroId) : null
     if (!livenessId || !progressoCadastroId) {
       setErrorMessage('Não foi possível confirmar o cadastro. Reinicie a verificação.')
       return
@@ -143,13 +166,21 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
       // continua em segundo plano do lado da Avenia/compliance.
       clearRepresentativePersonalData()
       clearAccessToken()
+      clearLivenessSession()
       if (onContinue) {
         onContinue()
       } else {
         navigate(PATHS.HOME)
       }
-    } catch {
-      setErrorMessage('Não foi possível confirmar a verificação. Tente novamente.')
+    } catch (error) {
+      // 422 (rejeição de negócio da Avenia, ex.: "CPF já usado em outro cadastro") traz uma
+      // mensagem acionável do backend; qualquer outro status é tratado como falha genérica de
+      // comunicação, sem detalhes técnicos pro usuário.
+      setErrorMessage(
+        error instanceof ApiError && error.status === 422
+          ? error.message
+          : 'Não foi possível confirmar a verificação. Tente novamente.',
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -182,6 +213,17 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
         <p role="alert" className="text-sm text-red-600">
           {errorMessage}
         </p>
+      )}
+
+      {manualLivenessUrl && (
+        <a
+          href={manualLivenessUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm font-medium text-primary underline"
+        >
+          Abrir verificação facial manualmente
+        </a>
       )}
 
       {isVerified ? (
