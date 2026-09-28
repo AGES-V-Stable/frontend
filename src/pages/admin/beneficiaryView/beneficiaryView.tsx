@@ -113,7 +113,7 @@ function BeneficiaryView() {
   const selectedDetails = details ?? selectedBeneficiary
 
   return (
-    <div className="flex min-h-screen bg-[#F1F5F9]">
+    <div className="flex min-h-screen bg-slate-100">
       <Sidebar
         className="sticky top-0"
         logo={
@@ -128,8 +128,8 @@ function BeneficiaryView() {
       <main className="min-h-screen w-full px-6 py-8 lg:px-10">
         <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
           <header>
-            <h1 className="text-2xl font-bold text-[#0F172A]">Beneficiários</h1>
-            <p className="mt-1 text-xs text-[#64748B]">
+            <h1 className="text-2xl font-bold text-slate-900">Beneficiários</h1>
+            <p className="mt-1 text-xs text-slate-500">
               Consulta global de beneficiários cadastrados na plataforma.
             </p>
           </header>
@@ -147,7 +147,7 @@ function BeneficiaryView() {
             }}
           />
           {isLoading && (
-            <p role="status" className="rounded-lg bg-white px-6 py-5 text-sm text-[#475569]">
+            <p role="status" className="rounded-lg bg-white px-6 py-5 text-sm text-slate-600">
               Carregando beneficiários...
             </p>
           )}
@@ -160,7 +160,7 @@ function BeneficiaryView() {
             </p>
           )}
           {!isLoading && !loadError && beneficiaries.length === 0 && (
-            <p role="status" className="rounded-lg bg-white px-6 py-5 text-sm text-[#475569]">
+            <p role="status" className="rounded-lg bg-white px-6 py-5 text-sm text-slate-600">
               Nenhum beneficiário cadastrado.
             </p>
           )}
@@ -168,7 +168,7 @@ function BeneficiaryView() {
             !loadError &&
             beneficiaries.length > 0 &&
             filteredBeneficiaries.length === 0 && (
-              <p role="status" className="rounded-lg bg-white px-6 py-5 text-sm text-[#475569]">
+              <p role="status" className="rounded-lg bg-white px-6 py-5 text-sm text-slate-600">
                 Nenhum beneficiário encontrado para os filtros informados.
               </p>
             )}
@@ -204,31 +204,31 @@ function BeneficiaryView() {
             </p>
           )}
           {!isDetailsLoading && !detailsError && selectedDetails && (
-            <dl className="space-y-5 text-sm text-[#0F172A]">
+            <dl className="space-y-5 text-sm text-slate-900">
               <div>
-                <dt className="text-xs font-medium uppercase text-[#64748B]">Beneficiário</dt>
+                <dt className="text-xs font-medium uppercase text-slate-500">Beneficiário</dt>
                 <dd className="mt-1 text-base font-semibold">{selectedDetails.nome}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase text-[#64748B]">
+                <dt className="text-xs font-medium uppercase text-slate-500">
                   Empresa proprietária
                 </dt>
                 <dd className="mt-1">{selectedDetails.empresa}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase text-[#64748B]">CNPJ</dt>
+                <dt className="text-xs font-medium uppercase text-slate-500">CNPJ</dt>
                 <dd className="mt-1">{maskCNPJ(selectedDetails.cnpj)}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase text-[#64748B]">País</dt>
+                <dt className="text-xs font-medium uppercase text-slate-500">País</dt>
                 <dd className="mt-1">{selectedDetails.country}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase text-[#64748B]">Moeda</dt>
+                <dt className="text-xs font-medium uppercase text-slate-500">Moeda</dt>
                 <dd className="mt-1">{selectedDetails.currency}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium uppercase text-[#64748B]">Status</dt>
+                <dt className="text-xs font-medium uppercase text-slate-500">Status</dt>
                 <dd className="mt-1">{selectedDetails.status}</dd>
               </div>
             </dl>

@@ -49,7 +49,7 @@ export function BeneficiaryFilters({
   }
 
   const inputClassName =
-    'h-11 w-full rounded-md border border-[#BBCABF] bg-white px-3 text-sm text-[#0F172A] outline-none placeholder:text-[#718096] focus:border-[#059669] focus:ring-2 focus:ring-[#059669]/20'
+    'h-11 w-full rounded-md border border-sage-300 bg-white px-3 text-sm text-slate-900 outline-none placeholder:text-placeholder focus:border-primary focus:ring-2 focus:ring-primary/20'
 
   return (
     <form
@@ -57,10 +57,10 @@ export function BeneficiaryFilters({
       onSubmit={handleSubmit}
       className="rounded-lg bg-white p-5"
     >
-      <h2 className="mb-4 text-base font-semibold text-[#0F172A]">Filtros</h2>
+      <h2 className="mb-4 text-base font-semibold text-slate-900">Filtros</h2>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.35fr_1.35fr_0.95fr_0.95fr_0.95fr_auto_auto] lg:items-end">
-        <label className="text-xs font-medium text-[#0F172A]">
+        <label className="text-xs font-medium text-slate-900">
           Empresa ou CNPJ
           <input
             className={`${inputClassName} mt-1.5`}
@@ -70,7 +70,7 @@ export function BeneficiaryFilters({
           />
         </label>
 
-        <label className="text-xs font-medium text-[#0F172A]">
+        <label className="text-xs font-medium text-slate-900">
           Busca
           <input
             className={`${inputClassName} mt-1.5`}
@@ -80,7 +80,7 @@ export function BeneficiaryFilters({
           />
         </label>
 
-        <label className="text-xs font-medium text-[#0F172A]">
+        <label className="text-xs font-medium text-slate-900">
           País
           <select
             aria-label="País"
@@ -97,7 +97,7 @@ export function BeneficiaryFilters({
           </select>
         </label>
 
-        <label className="text-xs font-medium text-[#0F172A]">
+        <label className="text-xs font-medium text-slate-900">
           Moeda
           <select
             aria-label="Moeda"
@@ -114,7 +114,7 @@ export function BeneficiaryFilters({
           </select>
         </label>
 
-        <label className="text-xs font-medium text-[#0F172A]">
+        <label className="text-xs font-medium text-slate-900">
           Status
           <select
             aria-label="Status"
@@ -134,13 +134,13 @@ export function BeneficiaryFilters({
         <button
           type="button"
           onClick={handleClear}
-          className="h-11 rounded-md border border-[#059669] px-6 text-sm font-medium text-[#059669] transition-colors hover:bg-[#ECFDF5] focus:outline-none focus:ring-2 focus:ring-[#059669]/20"
+          className="h-11 rounded-md border border-primary px-6 text-sm font-medium text-primary transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           Limpar
         </button>
         <button
           type="submit"
-          className="h-11 rounded-md bg-[#059669] px-6 text-sm font-medium text-white transition-colors hover:bg-[#047857] focus:outline-none focus:ring-2 focus:ring-[#059669]/20"
+          className="h-11 rounded-md bg-primary px-6 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           Filtrar
         </button>

@@ -1,66 +1,91 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
 import { authService } from './login'
 
-describe('authService', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks()
+describe('authService.login', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
-  it('deve retornar o token com sucesso usando Bearer', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ Authorization: 'Bearer token-secreto-123' }),
+  it('calls POST /login with the correct payload', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(null, { status: 200, headers: { Authorization: 'Bearer abc123' } }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await authService.login({ email: 'user@empresa.com', password: 'secret' })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:8080/v1/login',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'user@empresa.com', password: 'secret' }),
+      }),
+    )
+  })
+
+  it('returns the token stripped of the "Bearer " prefix', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(null, { status: 200, headers: { Authorization: 'Bearer abc123' } }),
+        ),
+    )
+
+    await expect(authService.login({ email: 'a@b.com', password: 'x' })).resolves.toEqual({
+      token: 'abc123',
     })
-
-    const result = await authService.login({ email: 'a@b.com', password: '123' })
-    expect(result.token).toBe('token-secreto-123')
   })
 
-  it('deve retornar o token com sucesso sem prefixo Bearer', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers({ Authorization: 'token-secreto-456' }),
+  it('returns the token as-is when the header has no "Bearer " prefix', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(null, { status: 200, headers: { Authorization: 'abc123' } }),
+        ),
+    )
+
+    await expect(authService.login({ email: 'a@b.com', password: 'x' })).resolves.toEqual({
+      token: 'abc123',
     })
-
-    const result = await authService.login({ email: 'a@b.com', password: '123' })
-    expect(result.token).toBe('token-secreto-456')
   })
 
-  it('deve estourar erro 401 - E-mail ou senha inválidos', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({ status: 401 })
+  it('throws when the response has no Authorization header', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })))
 
-    await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
+    await expect(authService.login({ email: 'a@b.com', password: 'x' })).rejects.toThrow(
+      'Token não retornado pelo servidor',
+    )
+  })
+
+  it('throws an invalid credentials error on 401', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
+
+    await expect(authService.login({ email: 'a@b.com', password: 'x' })).rejects.toThrow(
       'E-mail ou senha inválidos',
     )
   })
 
-  it('deve estourar erro 423 - Usuário bloqueado', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({ status: 423 })
+  it('throws a blocked user error on 423', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 423 })))
 
-    await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
+    await expect(authService.login({ email: 'a@b.com', password: 'x' })).rejects.toThrow(
       'Usuário bloqueado',
     )
   })
 
-  it('deve estourar erro genérico para outros problemas', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 })
+  it('throws a generic error for other failure statuses', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 500 })))
 
-    await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
+    await expect(authService.login({ email: 'a@b.com', password: 'x' })).rejects.toThrow(
       'Erro ao realizar login',
-    )
-  })
-
-  it('deve estourar erro se a API não devolver o cabeçalho Authorization', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(), // Sem headers
-    })
-
-    await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
-      'Token não retornado pelo servidor',
     )
   })
 })
