@@ -158,7 +158,12 @@ describe('ComplianceStep', () => {
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
     expect(onContinue).toHaveBeenCalledWith(
-      expect.objectContaining({ tipoDocumento: 'CONTRATO_SOCIAL' }),
+      expect.objectContaining({
+        tipoDocumento: 'PASSPORT',
+        documentos: [
+          expect.objectContaining({ file: expect.objectContaining({ name: 'passaporte.pdf' }) }),
+        ],
+      }),
     )
   })
 

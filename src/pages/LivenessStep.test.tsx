@@ -110,16 +110,17 @@ describe('LivenessStep Page Component', () => {
     // normal de "Verificar conclusão" assim que completar a verificação por conta própria.
     expect(await screen.findByRole('alert')).toHaveTextContent('Permita pop-ups')
     expect(livenessService.getLivenessId('cadastro-1')).toBe('liveness-1')
-    expect(screen.getByRole('link', { name: 'Abrir verificação facial manualmente' })).toHaveAttribute(
-      'href',
-      'https://avenia.io/liveness/liveness-1',
-    )
+    expect(
+      screen.getByRole('link', { name: 'Abrir verificação facial manualmente' }),
+    ).toHaveAttribute('href', 'https://avenia.io/liveness/liveness-1')
     expect(screen.getByRole('button', { name: 'Verificar conclusão' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Recomeçar verificação' })).toBeInTheDocument()
   })
 
   it('given the tab opened but the backend call fails, when the user clicks the start button, then it should close the blank tab and show an error', async () => {
-    vi.mocked(livenessService.startLivenessVerification).mockRejectedValue(new Error('network error'))
+    vi.mocked(livenessService.startLivenessVerification).mockRejectedValue(
+      new Error('network error'),
+    )
     const openedWindow = { opener: {}, location: { href: '' }, close: vi.fn() } as unknown as Window
     vi.stubGlobal('open', vi.fn().mockReturnValue(openedWindow))
 
