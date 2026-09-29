@@ -4,11 +4,12 @@ import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 import AdminTransfers from './AdminTransfers'
-import { getTransfers } from '@/services/transfers'
+import { getTransfers, getTransfersById } from '@/services/transfers'
 import { mockTransfers } from '@/data/mockTransfers'
 
 vi.mock('@/services/transfers', () => ({
   getTransfers: vi.fn(),
+  getTransfersById: vi.fn(),
 }))
 
 const renderAdminTransfers = () =>
@@ -158,6 +159,8 @@ describe('AdminTransfers page', () => {
       totalPages: 1,
       currentPage: 1,
     })
+
+    vi.mocked(getTransfersById).mockResolvedValue(mockTransfers[0])
 
     renderAdminTransfers()
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { getTransfers, getTransferById } from './transfers'
+import { getTransfers, getTransfersById } from './transfers'
 
 describe('getTransfers service', () => {
   beforeEach(() => {
@@ -50,7 +50,7 @@ describe('getTransfers service', () => {
   })
 })
 
-describe('getTransferById service', () => {
+describe('getTransfersById service', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
@@ -63,7 +63,7 @@ describe('getTransferById service', () => {
       json: async () => mockApiResponse,
     })
 
-    const result = await getTransferById('t99')
+    const result = await getTransfersById('t99')
 
     expect(result).toEqual(mockApiResponse)
     expect(globalThis.fetch).toHaveBeenCalledWith(
@@ -75,7 +75,7 @@ describe('getTransferById service', () => {
   it('deve disparar um erro se a API falhar (sem fallback)', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false })
 
-    await expect(getTransferById('t99')).rejects.toThrow('Falha ao buscar detalhes da transferência')
+    await expect(getTransfersById('t99')).rejects.toThrow('Falha ao buscar detalhes da transferência')
   })
 
   it('deve disparar um erro se a API retornar formato inválido', async () => {
@@ -84,7 +84,7 @@ describe('getTransferById service', () => {
       json: async () => ({ algoErrado: true }),
     })
 
-    await expect(getTransferById('t99')).rejects.toThrow('Formato inválido retornado pela API')
+    await expect(getTransfersById('t99')).rejects.toThrow('Formato inválido retornado pela API')
   })
 })
 
