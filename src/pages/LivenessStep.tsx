@@ -170,7 +170,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
       if (onContinue) {
         onContinue()
       } else {
-        navigate(PATHS.HOME)
+        void navigate(PATHS.HOME)
       }
     } catch (error) {
       // 422 (rejeição de negócio da Avenia, ex.: "CPF já usado em outro cadastro") traz uma

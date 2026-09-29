@@ -39,7 +39,7 @@ function Register() {
     // (submitOnboarding, chamada única); até lá os dados ficam só no estado de
     // navegação entre as páginas do wizard.
     locked.current = true
-    navigate(PATHS.REGISTER_COMPANY, { state: { access: form } })
+    void navigate(PATHS.REGISTER_COMPANY, { state: { access: form } })
   }
 
   return (

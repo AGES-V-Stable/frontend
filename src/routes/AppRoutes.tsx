@@ -99,7 +99,7 @@ function RepresentativeRoute() {
         zipCode: isBrazil ? representative.cep.replace(/\D/g, '') : representative.cep.trim(),
         streetAddress: representative.linha_endereco.trim(),
       })
-      navigate(compliancePath(result.kycVerificationId))
+      void navigate(compliancePath(result.kycVerificationId))
     } catch (error) {
       setServerError(
         error instanceof ApiError && error.status < 500
@@ -152,7 +152,7 @@ function ComplianceRoute() {
         await uploadFileToS3(uploadUrlBack, backFile.file)
       }
       await submitDocumentResult(kycVerificationId, id)
-      navigate(livenessPath(kycVerificationId))
+      void navigate(livenessPath(kycVerificationId))
     } catch {
       setServerError('Não foi possível enviar o documento. Tente novamente.')
     } finally {
