@@ -1,6 +1,6 @@
 // src/utils/masks.test.ts
 import { describe, it, expect } from 'vitest'
-import { maskCPF, maskCEP } from './masks'
+import { maskCPF, maskCEP, maskPhone } from './masks'
 
 describe('Utilitários de Máscara', () => {
   describe('maskCPF', () => {
@@ -32,6 +32,31 @@ describe('Utilitários de Máscara', () => {
 
     it('deve remover caracteres não numéricos', () => {
       expect(maskCEP('12345-abc678')).toBe('12345-678')
+    })
+  })
+
+  describe('maskPhone', () => {
+    it('deve formatar telefone fixo (10 dígitos) com corte 4-4', () => {
+      expect(maskPhone('1132654321')).toBe('(11) 3265-4321')
+    })
+
+    it('deve formatar celular (11 dígitos) com corte 5-4', () => {
+      expect(maskPhone('11987654321')).toBe('(11) 98765-4321')
+    })
+
+    it('deve formatar progressivamente enquanto o usuário digita', () => {
+      expect(maskPhone('1')).toBe('1')
+      expect(maskPhone('11')).toBe('11')
+      expect(maskPhone('119')).toBe('(11) 9')
+      expect(maskPhone('1198765')).toBe('(11) 9876-5')
+    })
+
+    it('deve truncar dígitos excedentes além de 11 números', () => {
+      expect(maskPhone('119876543219999')).toBe('(11) 98765-4321')
+    })
+
+    it('deve remover caracteres não numéricos', () => {
+      expect(maskPhone('(11) 98765-4321')).toBe('(11) 98765-4321')
     })
   })
 })

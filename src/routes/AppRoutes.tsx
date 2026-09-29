@@ -134,6 +134,11 @@ function ComplianceRoute() {
     const doubleSided = tipoDocumento !== 'PASSPORT'
     const [frontFile, backFile] = data.documentos
 
+    if (!frontFile || (doubleSided && !backFile)) {
+      setServerError('Selecione os arquivos do documento antes de continuar.')
+      return
+    }
+
     setSaving(true)
     setServerError('')
     try {
