@@ -4,12 +4,13 @@ import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 import AdminTransfers from './AdminTransfers'
-import { getTransfers } from '@/services/transfers'
+import { getTransfers, getTransfersById } from '@/services/transfers'
 import { mockTransfers } from '@/data/mockTransfers'
 import type { TransferFilterValues } from '@/components/TransferFilters'
 
 vi.mock('@/services/transfers', () => ({
   getTransfers: vi.fn(),
+  getTransfersById: vi.fn(),
 }))
 
 const emptyFilters: TransferFilterValues = {
@@ -171,6 +172,8 @@ describe('AdminTransfers page', () => {
       currentPage: 1,
     })
 
+    vi.mocked(getTransfersById).mockResolvedValue(mockTransfers[0])
+
     renderAdminTransfers()
 
     await waitFor(() => {
@@ -186,8 +189,8 @@ describe('AdminTransfers page', () => {
     expect(dialog).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Detalhes da transferência' })).toBeInTheDocument()
 
-    // Check if correct data is inside drawer
-    expect(within(dialog).getByText('Tech Corp')).toBeInTheDocument()
+    // Check if correct data is inside drawer by waiting for it to load
+    expect(await within(dialog).findByText('Tech Corp')).toBeInTheDocument()
     expect(within(dialog).getByText('t1')).toBeInTheDocument()
   })
 

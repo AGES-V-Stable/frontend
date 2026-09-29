@@ -7,6 +7,9 @@ export interface Transfer {
   valor: number
   moeda: 'USD' | 'EUR' | 'BRL'
   status: 'Concluída' | 'Processando' | 'Falha'
+  cotacao?: number
+  custos?: number
+  economia?: number
 }
 
 export const mockTransfers: Transfer[] = [
@@ -19,6 +22,9 @@ export const mockTransfers: Transfer[] = [
     valor: 23062.73,
     moeda: 'USD',
     status: 'Concluída',
+    cotacao: 5.12,
+    custos: 45.0,
+    economia: 120.0,
   },
   {
     id: 't2',
@@ -29,6 +35,9 @@ export const mockTransfers: Transfer[] = [
     valor: 12480.0,
     moeda: 'EUR',
     status: 'Processando',
+    cotacao: 5.6,
+    custos: 30.0,
+    economia: 80.0,
   },
   {
     id: 't3',
@@ -39,6 +48,9 @@ export const mockTransfers: Transfer[] = [
     valor: 8940.2,
     moeda: 'USD',
     status: 'Concluída',
+    cotacao: 5.08,
+    custos: 15.0,
+    economia: 45.0,
   },
   {
     id: 't4',
@@ -69,5 +81,8 @@ export const mockTransfers: Transfer[] = [
     valor: 1250.0,
     moeda: 'USD',
     status: 'Concluída',
+    cotacao: 5.15,
+    custos: 10.0,
+    economia: 25.0,
   },
 ]

@@ -8,7 +8,7 @@ import { TransferFilters, type TransferFilterValues } from '@/components/Transfe
 import { type Transfer } from '@/data/mockTransfers'
 import { transferTableColumns as columns } from '@/config/transferTableColumns'
 import { PATHS } from '@/routes/paths'
-import { getTransfers, type GetTransfersResponse } from '@/services/transfers'
+import { getTransfers, getTransfersById, type GetTransfersResponse } from '@/services/transfers'
 import { formatCurrency, formatDate } from '@/utils/formatters'
 
 const transferStatuses = ['Concluída', 'Processando', 'Falha']
@@ -42,7 +42,11 @@ function AdminTransfers() {
   const [totalItems, setTotalItems] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null)
+
+  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null)
+  const [drawerData, setDrawerData] = useState<Transfer | null>(null)
+  const [isDrawerLoading, setIsDrawerLoading] = useState(false)
+  const [drawerError, setDrawerError] = useState<string | null>(null)
   const [appliedFilters, setAppliedFilters] = useState<TransferFilterValues>(emptyFilters)
 
   const limit = 12
@@ -83,7 +87,30 @@ function AdminTransfers() {
     setCurrentPage(1)
   }
 
-  const closeTransferDetails = () => setSelectedTransfer(null)
+  useEffect(() => {
+    if (!selectedTransferId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDrawerData(null)
+      return
+    }
+
+    const fetchDetails = async () => {
+      setIsDrawerLoading(true)
+      setDrawerError(null)
+      try {
+        const data = await getTransfersById(selectedTransferId)
+        setDrawerData(data)
+      } catch {
+        setDrawerError('Não foi possível carregar os detalhes da transferência.')
+      } finally {
+        setIsDrawerLoading(false)
+      }
+    }
+
+    void fetchDetails()
+  }, [selectedTransferId])
+
+  const closeTransferDetails = () => setSelectedTransferId(null)
 
   return (
     <div className="flex min-h-screen bg-slate-100">
@@ -148,7 +175,7 @@ function AdminTransfers() {
                 actions={[
                   {
                     label: 'Ver detalhes',
-                    onClick: (item) => setSelectedTransfer(item as Transfer),
+                    onClick: (item) => setSelectedTransferId((item as Transfer).id),
                   },
                 ]}
                 pagination={{
@@ -165,64 +192,97 @@ function AdminTransfers() {
         </div>
 
         <Drawer
-          open={Boolean(selectedTransfer)}
+          open={Boolean(selectedTransferId)}
           title="Detalhes da transferência"
           onClose={closeTransferDetails}
         >
-          {selectedTransfer && (
+          {isDrawerLoading ? (
+            <div className="flex h-32 items-center justify-center text-sm text-slate-500">
+              Carregando detalhes...
+            </div>
+          ) : drawerError ? (
+            <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">{drawerError}</div>
+          ) : drawerData ? (
             <div className="space-y-5 text-sm text-slate-900">
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   ID da Transação
                 </p>
-                <p className="mt-1 text-base font-semibold">{selectedTransfer.id}</p>
+                <p className="mt-1 text-base font-semibold">{drawerData.id}</p>
               </div>
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Empresa
                 </p>
-                <p className="mt-1">{selectedTransfer.empresa}</p>
+                <p className="mt-1">{drawerData.empresa}</p>
               </div>
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
-                  Beneficiário
+                  {drawerData.tipo === 'Recebimento' ? 'Contraparte' : 'Beneficiário'}
                 </p>
-                <p className="mt-1">{selectedTransfer.beneficiario}</p>
+                <p className="mt-1">{drawerData.beneficiario}</p>
               </div>
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Data
                 </p>
-                <p className="mt-1">{formatDate(selectedTransfer.data)}</p>
+                <p className="mt-1">{formatDate(drawerData.data)}</p>
               </div>
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Tipo
                 </p>
-                <p className="mt-1">{selectedTransfer.tipo}</p>
+                <p className="mt-1">{drawerData.tipo}</p>
               </div>
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Valor
                 </p>
-                <p className="mt-1">
-                  {formatCurrency(selectedTransfer.valor, selectedTransfer.moeda)}
-                </p>
+                <p className="mt-1">{formatCurrency(drawerData.valor, drawerData.moeda)}</p>
               </div>
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Status
                 </p>
-                <p className="mt-1">{selectedTransfer.status}</p>
+                <p className="mt-1">{drawerData.status}</p>
               </div>
+
+              {drawerData.cotacao !== undefined && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                    Cotação Comercial
+                  </p>
+                  <p className="mt-1">{formatCurrency(drawerData.cotacao, 'BRL')}</p>
+                </div>
+              )}
+
+              {drawerData.custos !== undefined && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                    Custos (Taxas)
+                  </p>
+                  <p className="mt-1">{formatCurrency(drawerData.custos, 'BRL')}</p>
+                </div>
+              )}
+
+              {drawerData.economia !== undefined && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                    Economia Estimada
+                  </p>
+                  <p className="mt-1 text-emerald-600 font-medium">
+                    {formatCurrency(drawerData.economia, 'BRL')}
+                  </p>
+                </div>
+              )}
             </div>
-          )}
+          ) : null}
         </Drawer>
       </main>
     </div>

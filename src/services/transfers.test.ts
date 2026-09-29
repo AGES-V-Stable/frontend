@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { getTransfers } from './transfers'
-import { mockTransfers } from '@/data/mockTransfers'
+import { getTransfers, getTransfersById } from './transfers'
 
 describe('getTransfers service', () => {
   beforeEach(() => {
@@ -29,41 +28,25 @@ describe('getTransfers service', () => {
     )
   })
 
-  it('deve acionar o fallback para dados mockados caso a resposta da API não seja OK', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false }) // Simula API caindo ou retornando 404/500
+  it('deve disparar um erro se a resposta da API não for OK (sem fallback)', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false })
 
-    const result = await getTransfers(1, 3)
-
-    // Como limit é 3, ele deve fatiar e retornar 3 itens
-    expect(result.data).toHaveLength(3)
-    expect(result.totalItems).toBe(mockTransfers.length)
-    expect(result.currentPage).toBe(1)
+    await expect(getTransfers(1, 3)).rejects.toThrow('Falha ao buscar transferências da API')
   })
 
-  it('deve acionar o fallback e processar a paginação corretamente (Página 2)', async () => {
-    // Simula erro bruto de rede (ECONNREFUSED, etc)
+  it('deve disparar erro de rede se a API estiver fora do ar (sem fallback)', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
 
-    const limit = 2
-    const page = 2
-    const result = await getTransfers(page, limit)
-
-    expect(result.data).toHaveLength(2)
-    expect(result.currentPage).toBe(2)
-    // O primeiro da página 2 (índice 2) deve bater com o 3º item do mock geral
-    expect(result.data[0].id).toBe(mockTransfers[2].id)
+    await expect(getTransfers(1, 3)).rejects.toThrow('Network failure')
   })
 
-  it('deve acionar o fallback se a API responder com formato json inválido/inesperado', async () => {
+  it('deve disparar um erro se a API responder com formato json inválido', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ algoErrado: true }), // Não tem o array "data" esperado
+      json: async () => ({ algoErrado: true }),
     })
 
-    const result = await getTransfers(1, 3)
-
-    // Caiu no catch e retornou o mock local
-    expect(result.totalItems).toBe(mockTransfers.length)
+    await expect(getTransfers(1, 3)).rejects.toThrow('Formato inválido retornado pela API')
   })
 
   it('não envia parâmetros de filtro vazios pra API', async () => {
@@ -95,78 +78,64 @@ describe('getTransfers service', () => {
     expect(calledUrl).not.toContain('beneficiary=')
   })
 
-  it('fallback filtra por empresa (busca por texto)', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+  it('envia todos os parâmetros de filtro quando preenchidos', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
 
-    const result = await getTransfers(1, 10, { search: 'Tech Corp' })
+    await getTransfers(1, 3, {
+      beneficiary: 'Atlas',
+      startDate: '2026-08-16',
+      endDate: '2026-08-22',
+      minAmount: '5000',
+      maxAmount: '15000',
+      type: 'Recebimento',
+    })
 
-    expect(result.totalItems).toBe(3)
-    expect(result.data.every((transfer) => transfer.empresa === 'Tech Corp')).toBe(true)
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('beneficiary=Atlas')
+    expect(calledUrl).toContain('startDate=2026-08-16')
+    expect(calledUrl).toContain('endDate=2026-08-22')
+    expect(calledUrl).toContain('minAmount=5000')
+    expect(calledUrl).toContain('maxAmount=15000')
+    expect(calledUrl).toContain('type=Recebimento')
+  })
+})
+
+describe('getTransfersById service', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
   })
 
-  it('fallback filtra por beneficiário (busca por texto)', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+  it('deve retornar os dados da API com sucesso', async () => {
+    const mockApiResponse = { id: 't99', empresa: 'Empresa Teste ID' }
 
-    const result = await getTransfers(1, 10, { beneficiary: 'Atlas' })
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockApiResponse,
+    })
 
-    expect(result.totalItems).toBe(1)
-    expect(result.data[0].id).toBe('t1')
+    const result = await getTransfersById('t99')
+
+    expect(result).toEqual(mockApiResponse)
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/transfers/t99'),
+      expect.any(Object),
+    )
   })
 
-  it('fallback filtra por status', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+  it('deve disparar um erro se a API falhar (sem fallback)', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false })
 
-    const result = await getTransfers(1, 10, { status: 'Concluída' })
-
-    expect(result.totalItems).toBe(4)
-    expect(result.data.every((transfer) => transfer.status === 'Concluída')).toBe(true)
+    await expect(getTransfersById('t99')).rejects.toThrow(
+      'Falha ao buscar detalhes da transferência',
+    )
   })
 
-  it('fallback filtra por tipo', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+  it('deve disparar um erro se a API retornar formato inválido', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ algoErrado: true }),
+    })
 
-    const result = await getTransfers(1, 10, { type: 'Recebimento' })
-
-    expect(result.totalItems).toBe(2)
-    expect(result.data.every((transfer) => transfer.tipo === 'Recebimento')).toBe(true)
-  })
-
-  it('fallback filtra por intervalo de datas', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
-
-    const result = await getTransfers(1, 10, { startDate: '2026-08-16', endDate: '2026-08-22' })
-
-    expect(result.totalItems).toBe(2)
-    expect(result.data.map((transfer) => transfer.id).sort()).toEqual(['t2', 't3'])
-  })
-
-  it('fallback filtra por faixa de valor', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
-
-    const result = await getTransfers(1, 10, { minAmount: '5000', maxAmount: '15000' })
-
-    expect(result.totalItems).toBe(3)
-    expect(result.data.map((transfer) => transfer.id).sort()).toEqual(['t2', 't3', 't4'])
-  })
-
-  it('fallback combina múltiplos filtros', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
-
-    const result = await getTransfers(1, 10, { search: 'Tech Corp', type: 'Recebimento' })
-
-    expect(result.totalItems).toBe(1)
-    expect(result.data[0].id).toBe('t3')
-  })
-
-  it('fallback pagina corretamente sobre o subconjunto já filtrado', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
-
-    const result = await getTransfers(2, 2, { search: 'Tech Corp' })
-
-    expect(result.totalItems).toBe(3)
-    expect(result.totalPages).toBe(2)
-    expect(result.currentPage).toBe(2)
-    expect(result.data).toHaveLength(1)
-    expect(result.data[0].id).toBe('t6')
+    await expect(getTransfersById('t99')).rejects.toThrow('Formato inválido retornado pela API')
   })
 })
