@@ -124,7 +124,9 @@ function ComplianceRoute() {
 
   async function handleContinue(data: ComplianceFormData) {
     if (!kycVerificationId) {
-      setServerError('Não foi possível confirmar o cadastro. Recarregue a página e tente novamente.')
+      setServerError(
+        'Não foi possível confirmar o cadastro. Recarregue a página e tente novamente.',
+      )
       return
     }
 

@@ -194,7 +194,9 @@ describe('ComplianceStep', () => {
     expect(onContinue).toHaveBeenCalledWith(
       expect.objectContaining({
         tipoDocumento: 'PASSPORT',
-        documentos: [expect.objectContaining({ file: expect.objectContaining({ name: 'passaporte.pdf' }) })],
+        documentos: [
+          expect.objectContaining({ file: expect.objectContaining({ name: 'passaporte.pdf' }) }),
+        ],
       }),
     )
   })
