@@ -31,7 +31,7 @@ describe('Home Page Component', () => {
     }
   })
 
-  it('given the Home component, when rendered, then it should display the application title text', () => {
+  it('displays the application title text', () => {
     renderHome()
 
     expect(screen.getByText('V-Stable')).toBeInTheDocument()
