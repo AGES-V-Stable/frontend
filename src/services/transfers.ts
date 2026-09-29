@@ -1,4 +1,4 @@
-import { mockTransfers, type Transfer } from '@/data/mockTransfers'
+import { type Transfer } from '@/data/mockTransfers'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -13,38 +13,38 @@ export const getTransfers = async (
   page: number = 1,
   limit: number = 6,
 ): Promise<GetTransfersResponse> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/transfers?page=${page}&limit=${limit}`, {
-      headers: {
-        Accept: 'application/json',
-      },
-    })
+  const response = await fetch(`${API_BASE_URL}/transfers?page=${page}&limit=${limit}`, {
+    headers: {
+      Accept: 'application/json',
+    },
+  })
 
-    if (response.ok) {
-      const payload = await response.json()
-      if (payload && Array.isArray(payload.data)) {
-        return payload as GetTransfersResponse
-      }
-    }
-
-    throw new Error('API failed or returned invalid format, falling back to mock')
-  } catch {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    const totalItems = mockTransfers.length
-    const totalPages = Math.max(1, Math.ceil(totalItems / limit))
-
-    const safePage = Math.max(1, Math.min(page, totalPages))
-    const startIndex = (safePage - 1) * limit
-    const endIndex = startIndex + limit
-
-    const paginatedData = mockTransfers.slice(startIndex, endIndex)
-
-    return {
-      data: paginatedData,
-      totalItems,
-      totalPages,
-      currentPage: safePage,
-    }
+  if (!response.ok) {
+    throw new Error('Falha ao buscar transferências da API')
   }
+
+  const payload = await response.json()
+  if (payload && Array.isArray(payload.data)) {
+    return payload as GetTransfersResponse
+  }
+
+  throw new Error('Formato inválido retornado pela API')
 }
+
+export const getTransferById = async (id: string): Promise<Transfer> => {
+  const response = await fetch(`${API_BASE_URL}/transfers/${id}`, {
+    headers: { Accept: 'application/json' },
+  })
+
+  if (!response.ok) {
+    throw new Error('Falha ao buscar detalhes da transferência')
+  }
+
+  const payload = await response.json()
+  if (payload && payload.id) {
+    return payload as Transfer
+  }
+
+  throw new Error('Formato inválido retornado pela API')
+}
+

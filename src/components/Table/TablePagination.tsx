@@ -8,7 +8,7 @@ export function TablePagination({
   itemsPerPage,
   totalRecords,
   onPageChange,
-  entityLabel = 'clientes',
+  entityLabel = 'registros',
 }: PaginationProps) {
   const hasPreviousPage = currentPage > 1
   const hasNextPage = currentPage < totalPages

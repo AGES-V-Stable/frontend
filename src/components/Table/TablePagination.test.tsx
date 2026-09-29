@@ -47,7 +47,7 @@ describe('TablePagination', () => {
     const prevButton = screen.getByRole('button', { name: 'Anterior' })
     const nextButton = screen.getByRole('button', { name: 'Próxima' })
 
-    expect(screen.getByText('Mostrando 0-0 de 0 clientes')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 0-0 de 0 registros')).toBeInTheDocument()
     expect(prevButton).toBeDisabled()
     expect(nextButton).toBeDisabled()
 
@@ -56,3 +56,4 @@ describe('TablePagination', () => {
     expect(onPageChange).not.toHaveBeenCalled()
   })
 })
+

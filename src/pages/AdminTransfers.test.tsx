@@ -174,8 +174,8 @@ describe('AdminTransfers page', () => {
     expect(dialog).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Detalhes da transferência' })).toBeInTheDocument()
 
-    // Check if correct data is inside drawer
-    expect(within(dialog).getByText('Tech Corp')).toBeInTheDocument()
+    // Check if correct data is inside drawer by waiting for it to load
+    expect(await within(dialog).findByText('Tech Corp')).toBeInTheDocument()
     expect(within(dialog).getByText('t1')).toBeInTheDocument()
   })
 })

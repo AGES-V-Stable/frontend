@@ -110,7 +110,7 @@ export function Table<T>({
                   colSpan={columns.length}
                   className="h-[120px] text-center font-['IBM_Plex_Sans'] text-slate-500 text-[14px]"
                 >
-                  {emptyMessage || 'Nenhum cliente cadastrado no momento.'}
+                  {emptyMessage || 'Nenhum registro encontrado.'}
                 </td>
               </tr>
             )}
