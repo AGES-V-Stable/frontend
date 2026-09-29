@@ -4,11 +4,26 @@ import { useLocation, useNavigate } from 'react-router'
 import { Drawer } from '@/components/Drawer'
 import { AdminNavIcon, Sidebar, type AdminNavIconId } from '@/components/Sidebar'
 import { Table } from '@/components/Table'
+import { TransferFilters, type TransferFilterValues } from '@/components/TransferFilters'
 import { type Transfer } from '@/data/mockTransfers'
 import { transferTableColumns as columns } from '@/config/transferTableColumns'
 import { PATHS } from '@/routes/paths'
 import { getTransfers, getTransfersById, type GetTransfersResponse } from '@/services/transfers'
 import { formatCurrency, formatDate } from '@/utils/formatters'
+
+const transferStatuses = ['Concluída', 'Processando', 'Falha']
+const transferTypes = ['Pagamento', 'Recebimento']
+
+const emptyFilters: TransferFilterValues = {
+  search: '',
+  beneficiary: '',
+  startDate: '',
+  endDate: '',
+  minAmount: '',
+  maxAmount: '',
+  status: '',
+  type: '',
+}
 
 const sidebarMenuItems = [
   { id: 'home', label: 'Início', path: PATHS.HOME },
@@ -27,11 +42,12 @@ function AdminTransfers() {
   const [totalItems, setTotalItems] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null)
   const [drawerData, setDrawerData] = useState<Transfer | null>(null)
   const [isDrawerLoading, setIsDrawerLoading] = useState(false)
   const [drawerError, setDrawerError] = useState<string | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<TransferFilterValues>(emptyFilters)
 
   const limit = 12
 
@@ -40,11 +56,11 @@ function AdminTransfers() {
     return matchedItem?.id ?? 'transfers'
   }, [location.pathname])
 
-  const fetchTransfers = async (page: number) => {
+  const fetchTransfers = async (page: number, filters: TransferFilterValues) => {
     setIsLoading(true)
     setError(null)
     try {
-      const data: GetTransfersResponse = await getTransfers(page, limit)
+      const data: GetTransfersResponse = await getTransfers(page, limit, filters)
       setTransfers(data.data)
       setTotalPages(data.totalPages)
       setTotalItems(data.totalItems)
@@ -57,11 +73,23 @@ function AdminTransfers() {
   }
 
   useEffect(() => {
-    fetchTransfers(currentPage)
-  }, [currentPage])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchTransfers(currentPage, appliedFilters)
+  }, [currentPage, appliedFilters])
+
+  const applyFilters = (filters: TransferFilterValues) => {
+    setAppliedFilters(filters)
+    setCurrentPage(1)
+  }
+
+  const clearFilters = () => {
+    setAppliedFilters(emptyFilters)
+    setCurrentPage(1)
+  }
 
   useEffect(() => {
     if (!selectedTransferId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDrawerData(null)
       return
     }
@@ -79,7 +107,7 @@ function AdminTransfers() {
       }
     }
 
-    fetchDetails()
+    void fetchDetails()
   }, [selectedTransferId])
 
   const closeTransferDetails = () => setSelectedTransferId(null)
@@ -112,6 +140,13 @@ function AdminTransfers() {
             </div>
           </header>
 
+          <TransferFilters
+            statuses={transferStatuses}
+            types={transferTypes}
+            onApply={applyFilters}
+            onClear={clearFilters}
+          />
+
           {error && (
             <div
               role="alert"
@@ -119,7 +154,7 @@ function AdminTransfers() {
             >
               <p>{error}</p>
               <button
-                onClick={() => fetchTransfers(currentPage)}
+                onClick={() => void fetchTransfers(currentPage, appliedFilters)}
                 className="rounded-md bg-red-100 px-4 py-2 font-medium text-red-800 hover:bg-red-200 transition-colors"
               >
                 Tentar novamente
@@ -166,9 +201,7 @@ function AdminTransfers() {
               Carregando detalhes...
             </div>
           ) : drawerError ? (
-            <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">
-              {drawerError}
-            </div>
+            <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">{drawerError}</div>
           ) : drawerData ? (
             <div className="space-y-5 text-sm text-slate-900">
               <div>
@@ -210,9 +243,7 @@ function AdminTransfers() {
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Valor
                 </p>
-                <p className="mt-1">
-                  {formatCurrency(drawerData.valor, drawerData.moeda)}
-                </p>
+                <p className="mt-1">{formatCurrency(drawerData.valor, drawerData.moeda)}</p>
               </div>
 
               <div>

@@ -48,6 +48,56 @@ describe('getTransfers service', () => {
 
     await expect(getTransfers(1, 3)).rejects.toThrow('Formato inválido retornado pela API')
   })
+
+  it('não envia parâmetros de filtro vazios pra API', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+
+    await getTransfers(1, 3, {
+      search: '',
+      beneficiary: '',
+      startDate: '',
+      endDate: '',
+      minAmount: '',
+      maxAmount: '',
+      status: '',
+      type: '',
+    })
+
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toBe('/api/transfers?page=1&limit=3')
+  })
+
+  it('envia somente os parâmetros de filtro preenchidos', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+
+    await getTransfers(1, 3, { search: 'Tech Corp', status: 'Concluída' })
+
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('search=Tech+Corp')
+    expect(calledUrl).toContain('status=Conclu%C3%ADda')
+    expect(calledUrl).not.toContain('beneficiary=')
+  })
+
+  it('envia todos os parâmetros de filtro quando preenchidos', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+
+    await getTransfers(1, 3, {
+      beneficiary: 'Atlas',
+      startDate: '2026-08-16',
+      endDate: '2026-08-22',
+      minAmount: '5000',
+      maxAmount: '15000',
+      type: 'Recebimento',
+    })
+
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('beneficiary=Atlas')
+    expect(calledUrl).toContain('startDate=2026-08-16')
+    expect(calledUrl).toContain('endDate=2026-08-22')
+    expect(calledUrl).toContain('minAmount=5000')
+    expect(calledUrl).toContain('maxAmount=15000')
+    expect(calledUrl).toContain('type=Recebimento')
+  })
 })
 
 describe('getTransfersById service', () => {
@@ -68,14 +118,16 @@ describe('getTransfersById service', () => {
     expect(result).toEqual(mockApiResponse)
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/transfers/t99'),
-      expect.any(Object)
+      expect.any(Object),
     )
   })
 
   it('deve disparar um erro se a API falhar (sem fallback)', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: false })
 
-    await expect(getTransfersById('t99')).rejects.toThrow('Falha ao buscar detalhes da transferência')
+    await expect(getTransfersById('t99')).rejects.toThrow(
+      'Falha ao buscar detalhes da transferência',
+    )
   })
 
   it('deve disparar um erro se a API retornar formato inválido', async () => {
@@ -87,4 +139,3 @@ describe('getTransfersById service', () => {
     await expect(getTransfersById('t99')).rejects.toThrow('Formato inválido retornado pela API')
   })
 })
-

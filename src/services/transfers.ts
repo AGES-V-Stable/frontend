@@ -9,11 +9,39 @@ export interface GetTransfersResponse {
   currentPage: number
 }
 
+export interface TransferFilterParams {
+  search?: string
+  beneficiary?: string
+  startDate?: string
+  endDate?: string
+  minAmount?: string
+  maxAmount?: string
+  status?: string
+  type?: string
+}
+
+const buildQueryParams = (page: number, limit: number, filters?: TransferFilterParams) => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+
+  if (filters?.search) params.set('search', filters.search)
+  if (filters?.beneficiary) params.set('beneficiary', filters.beneficiary)
+  if (filters?.startDate) params.set('startDate', filters.startDate)
+  if (filters?.endDate) params.set('endDate', filters.endDate)
+  if (filters?.minAmount) params.set('minAmount', filters.minAmount)
+  if (filters?.maxAmount) params.set('maxAmount', filters.maxAmount)
+  if (filters?.status) params.set('status', filters.status)
+  if (filters?.type) params.set('type', filters.type)
+
+  return params
+}
+
 export const getTransfers = async (
   page: number = 1,
   limit: number = 6,
+  filters?: TransferFilterParams,
 ): Promise<GetTransfersResponse> => {
-  const response = await fetch(`${API_BASE_URL}/transfers?page=${page}&limit=${limit}`, {
+  const params = buildQueryParams(page, limit, filters)
+  const response = await fetch(`${API_BASE_URL}/transfers?${params.toString()}`, {
     headers: {
       Accept: 'application/json',
     },

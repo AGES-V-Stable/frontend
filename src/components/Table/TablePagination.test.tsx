@@ -56,4 +56,3 @@ describe('TablePagination', () => {
     expect(onPageChange).not.toHaveBeenCalled()
   })
 })
-

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Beneficiary } from '@/data/mockBeneficiary'
+import type { Beneficiary, PaginatedBeneficiaries } from '@/types/beneficiary'
 import { getBeneficiaries, getBeneficiary } from '@/services/beneficiary'
 import BeneficiaryView from './beneficiaryView'
 
@@ -14,23 +14,33 @@ vi.mock('@/services/beneficiary', () => ({
 
 const beneficiary: Beneficiary = {
   id: '1',
-  nome: 'Maria Oliveira',
-  empresa: 'Cooperativa AgroSul',
-  cnpj: '45.123.456/0001-90',
+  companyId: 'company-1',
+  nickname: 'Maria Oliveira',
+  identificationDocument: '45123456000190',
   country: 'Brasil',
-  currency: 'BRL',
-  status: 'Ativo',
+  receivingMethod: 'BANK_ACCOUNT',
+  createdAt: '2023-01-01T00:00:00Z',
+  updatedAt: '2023-01-01T00:00:00Z',
 }
 
 const otherBeneficiary: Beneficiary = {
   id: '2',
-  nome: 'João Souza',
-  empresa: 'TechVale Serviços Ltda.',
-  cnpj: '77.888.999/0001-11',
+  companyId: 'company-1',
+  nickname: 'João Souza',
+  identificationDocument: '77888999000111',
   country: 'Brasil',
-  currency: 'BRL',
-  status: 'Ativo',
+  receivingMethod: 'PIX_KEY',
+  createdAt: '2023-01-01T00:00:00Z',
+  updatedAt: '2023-01-01T00:00:00Z',
 }
+
+const paginatedResponse = (items: Beneficiary[]): PaginatedBeneficiaries => ({
+  content: items,
+  totalElements: items.length,
+  totalPages: 1,
+  number: 0,
+  size: 10,
+})
 
 const renderPage = () =>
   render(
@@ -41,24 +51,35 @@ const renderPage = () =>
 
 describe('BeneficiaryView', () => {
   beforeEach(() => {
-    vi.mocked(getBeneficiaries).mockResolvedValue([beneficiary])
+    vi.clearAllMocks()
+    vi.mocked(getBeneficiaries).mockResolvedValue(paginatedResponse([beneficiary]))
     vi.mocked(getBeneficiary).mockResolvedValue(beneficiary)
   })
 
-  it('loads beneficiaries, applies filters and opens API details', async () => {
+  it('loads beneficiaries, applies filters via API and opens API details', async () => {
     renderPage()
 
     expect(await screen.findByText('Maria Oliveira')).toBeInTheDocument()
     expect(screen.getByText('45.123.456/0001-90')).toBeInTheDocument()
-    expect(screen.getByText('Cooperativa AgroSul')).toBeInTheDocument()
 
+    // Testa filtro sem resultados na API
+    vi.mocked(getBeneficiaries).mockResolvedValueOnce(paginatedResponse([]))
     fireEvent.change(screen.getByPlaceholderText('Buscar por empresa ou CNPJ'), {
       target: { value: 'empresa inexistente' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Nenhum beneficiário encontrado')
 
+    // Como a API é responsável pela filtragem agora, ela será chamada com os parâmetros
+    expect(getBeneficiaries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyId: 'empresa inexistente', // Passou como companyId pois tem letras
+      }),
+    )
+    expect(await screen.findByText('Nenhum beneficiário encontrado.')).toBeInTheDocument()
+    // Limpa filtro
+    vi.mocked(getBeneficiaries).mockResolvedValueOnce(paginatedResponse([beneficiary]))
     fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
+
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Ver detalhes' })).toBeInTheDocument(),
     )
@@ -67,28 +88,34 @@ describe('BeneficiaryView', () => {
     expect(
       await screen.findByRole('heading', { name: 'Detalhes do beneficiário' }),
     ).toBeInTheDocument()
-    expect(within(screen.getByRole('dialog')).getByText('Empresa proprietária')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('dialog')).getByText('ID da Empresa Proprietária'),
+    ).toBeInTheDocument()
     expect(getBeneficiary).toHaveBeenCalledWith('1')
   })
 
-  it('matches the CNPJ filter against the masked value shown in the table', async () => {
+  it('sends document filter correctly for numeric strings', async () => {
     renderPage()
-
     await screen.findByText('Maria Oliveira')
 
     fireEvent.change(screen.getByPlaceholderText('Buscar por empresa ou CNPJ'), {
-      target: { value: '0001-90' },
+      target: { value: '45.123.456/0001-90' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
 
-    expect(screen.getByText('Maria Oliveira')).toBeInTheDocument()
+    // Confirma que a string mascarada virou "document" apenas com dígitos
+    expect(getBeneficiaries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        document: '45123456000190',
+      }),
+    )
   })
 
   it('shows the empty state when the API returns no records', async () => {
-    vi.mocked(getBeneficiaries).mockResolvedValue([])
+    vi.mocked(getBeneficiaries).mockResolvedValue(paginatedResponse([]))
     renderPage()
 
-    expect(await screen.findByText('Nenhum beneficiário cadastrado.')).toBeInTheDocument()
+    expect(await screen.findByText('Nenhum beneficiário encontrado.')).toBeInTheDocument()
   })
 
   it('shows an error when the list request fails', async () => {
@@ -99,7 +126,9 @@ describe('BeneficiaryView', () => {
   })
 
   it('ignores a stale details response that resolves after a newer request', async () => {
-    vi.mocked(getBeneficiaries).mockResolvedValue([beneficiary, otherBeneficiary])
+    vi.mocked(getBeneficiaries).mockResolvedValue(
+      paginatedResponse([beneficiary, otherBeneficiary]),
+    )
     let resolveFirst!: (value: Beneficiary) => void
     vi.mocked(getBeneficiary).mockImplementationOnce(
       () =>
