@@ -70,7 +70,7 @@ function AdminTransfers() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchTransfers(currentPage, appliedFilters)
+    void fetchTransfers(currentPage, appliedFilters)
   }, [currentPage, appliedFilters])
 
   const applyFilters = (filters: TransferFilterValues) => {
@@ -127,7 +127,7 @@ function AdminTransfers() {
             >
               <p>{error}</p>
               <button
-                onClick={() => fetchTransfers(currentPage, appliedFilters)}
+                onClick={() => void fetchTransfers(currentPage, appliedFilters)}
                 className="rounded-md bg-red-100 px-4 py-2 font-medium text-red-800 hover:bg-red-200 transition-colors"
               >
                 Tentar novamente
