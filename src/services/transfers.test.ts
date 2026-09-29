@@ -65,4 +65,108 @@ describe('getTransfers service', () => {
     // Caiu no catch e retornou o mock local
     expect(result.totalItems).toBe(mockTransfers.length)
   })
+
+  it('não envia parâmetros de filtro vazios pra API', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+
+    await getTransfers(1, 3, {
+      search: '',
+      beneficiary: '',
+      startDate: '',
+      endDate: '',
+      minAmount: '',
+      maxAmount: '',
+      status: '',
+      type: '',
+    })
+
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toBe('/api/transfers?page=1&limit=3')
+  })
+
+  it('envia somente os parâmetros de filtro preenchidos', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: [] }) })
+
+    await getTransfers(1, 3, { search: 'Tech Corp', status: 'Concluída' })
+
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(calledUrl).toContain('search=Tech+Corp')
+    expect(calledUrl).toContain('status=Conclu%C3%ADda')
+    expect(calledUrl).not.toContain('beneficiary=')
+  })
+
+  it('fallback filtra por empresa (busca por texto)', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+
+    const result = await getTransfers(1, 10, { search: 'Tech Corp' })
+
+    expect(result.totalItems).toBe(3)
+    expect(result.data.every((transfer) => transfer.empresa === 'Tech Corp')).toBe(true)
+  })
+
+  it('fallback filtra por beneficiário (busca por texto)', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+
+    const result = await getTransfers(1, 10, { beneficiary: 'Atlas' })
+
+    expect(result.totalItems).toBe(1)
+    expect(result.data[0].id).toBe('t1')
+  })
+
+  it('fallback filtra por status', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+
+    const result = await getTransfers(1, 10, { status: 'Concluída' })
+
+    expect(result.totalItems).toBe(4)
+    expect(result.data.every((transfer) => transfer.status === 'Concluída')).toBe(true)
+  })
+
+  it('fallback filtra por tipo', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+
+    const result = await getTransfers(1, 10, { type: 'Recebimento' })
+
+    expect(result.totalItems).toBe(2)
+    expect(result.data.every((transfer) => transfer.tipo === 'Recebimento')).toBe(true)
+  })
+
+  it('fallback filtra por intervalo de datas', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+
+    const result = await getTransfers(1, 10, { startDate: '2026-08-16', endDate: '2026-08-22' })
+
+    expect(result.totalItems).toBe(2)
+    expect(result.data.map((transfer) => transfer.id).sort()).toEqual(['t2', 't3'])
+  })
+
+  it('fallback filtra por faixa de valor', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+
+    const result = await getTransfers(1, 10, { minAmount: '5000', maxAmount: '15000' })
+
+    expect(result.totalItems).toBe(3)
+    expect(result.data.map((transfer) => transfer.id).sort()).toEqual(['t2', 't3', 't4'])
+  })
+
+  it('fallback combina múltiplos filtros', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+
+    const result = await getTransfers(1, 10, { search: 'Tech Corp', type: 'Recebimento' })
+
+    expect(result.totalItems).toBe(1)
+    expect(result.data[0].id).toBe('t3')
+  })
+
+  it('fallback pagina corretamente sobre o subconjunto já filtrado', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network failure'))
+
+    const result = await getTransfers(2, 2, { search: 'Tech Corp' })
+
+    expect(result.totalItems).toBe(3)
+    expect(result.totalPages).toBe(2)
+    expect(result.currentPage).toBe(2)
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0].id).toBe('t6')
+  })
 })

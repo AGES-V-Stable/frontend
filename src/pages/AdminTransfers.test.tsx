@@ -6,10 +6,22 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import AdminTransfers from './AdminTransfers'
 import { getTransfers } from '@/services/transfers'
 import { mockTransfers } from '@/data/mockTransfers'
+import type { TransferFilterValues } from '@/components/TransferFilters'
 
 vi.mock('@/services/transfers', () => ({
   getTransfers: vi.fn(),
 }))
+
+const emptyFilters: TransferFilterValues = {
+  search: '',
+  beneficiary: '',
+  startDate: '',
+  endDate: '',
+  minAmount: '',
+  maxAmount: '',
+  status: '',
+  type: '',
+}
 
 const renderAdminTransfers = () =>
   render(
@@ -142,7 +154,7 @@ describe('AdminTransfers page', () => {
     await user.click(nextButton)
 
     await waitFor(() => {
-      expect(getTransfers).toHaveBeenCalledWith(2, 12)
+      expect(getTransfers).toHaveBeenCalledWith(2, 12, emptyFilters)
       expect(screen.getByText(/2 de 2/i)).toBeInTheDocument()
     })
 
@@ -177,5 +189,110 @@ describe('AdminTransfers page', () => {
     // Check if correct data is inside drawer
     expect(within(dialog).getByText('Tech Corp')).toBeInTheDocument()
     expect(within(dialog).getByText('t1')).toBeInTheDocument()
+  })
+
+  it('applies filters, resets to page 1 and refetches with the filter params', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(getTransfers).mockResolvedValueOnce({
+      data: mockTransfers.slice(0, 3),
+      totalItems: 6,
+      totalPages: 2,
+      currentPage: 1,
+    })
+
+    renderAdminTransfers()
+
+    await waitFor(() => {
+      expect(screen.getByText('Atlas Imports LLC')).toBeInTheDocument()
+    })
+
+    // Move to page 2 first, so we can confirm filtering resets it back to 1
+    vi.mocked(getTransfers).mockResolvedValueOnce({
+      data: mockTransfers.slice(3, 6),
+      totalItems: 6,
+      totalPages: 2,
+      currentPage: 2,
+    })
+    await user.click(screen.getByRole('button', { name: /próxima/i }))
+    await waitFor(() => {
+      expect(screen.getByText(/2 de 2/i)).toBeInTheDocument()
+    })
+
+    vi.mocked(getTransfers).mockResolvedValueOnce({
+      data: [mockTransfers[0]],
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 1,
+    })
+
+    await user.type(screen.getByPlaceholderText('Buscar por empresa ou CNPJ'), 'Tech Corp')
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+
+    await waitFor(() => {
+      expect(getTransfers).toHaveBeenLastCalledWith(1, 12, {
+        ...emptyFilters,
+        search: 'Tech Corp',
+      })
+    })
+  })
+
+  it('clears filters, resets to page 1 and refetches without filter params', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(getTransfers).mockResolvedValue({
+      data: mockTransfers.slice(0, 3),
+      totalItems: 6,
+      totalPages: 2,
+      currentPage: 1,
+    })
+
+    renderAdminTransfers()
+
+    await waitFor(() => {
+      expect(screen.getByText('Atlas Imports LLC')).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByPlaceholderText('Buscar por empresa ou CNPJ'), 'Tech Corp')
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.click(screen.getByRole('button', { name: 'Limpar' }))
+
+    await waitFor(() => {
+      expect(getTransfers).toHaveBeenLastCalledWith(1, 12, emptyFilters)
+    })
+  })
+
+  it('shows the empty state when no transfer matches the applied filters', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(getTransfers).mockResolvedValueOnce({
+      data: mockTransfers.slice(0, 3),
+      totalItems: 6,
+      totalPages: 2,
+      currentPage: 1,
+    })
+
+    renderAdminTransfers()
+
+    await waitFor(() => {
+      expect(screen.getByText('Atlas Imports LLC')).toBeInTheDocument()
+    })
+
+    vi.mocked(getTransfers).mockResolvedValueOnce({
+      data: [],
+      totalItems: 0,
+      totalPages: 1,
+      currentPage: 1,
+    })
+
+    await user.type(
+      screen.getByPlaceholderText('Buscar por empresa ou CNPJ'),
+      'Empresa Inexistente',
+    )
+    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Nenhuma transferência encontrada.')).toBeInTheDocument()
+    })
   })
 })
