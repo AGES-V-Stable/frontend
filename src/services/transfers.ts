@@ -31,7 +31,7 @@ export const getTransfers = async (
   throw new Error('Formato inválido retornado pela API')
 }
 
-export const getTransferById = async (id: string): Promise<Transfer> => {
+export const getTransfersById = async (id: string): Promise<Transfer> => {
   const response = await fetch(`${API_BASE_URL}/transfers/${id}`, {
     headers: { Accept: 'application/json' },
   })
@@ -47,4 +47,3 @@ export const getTransferById = async (id: string): Promise<Transfer> => {
 
   throw new Error('Formato inválido retornado pela API')
 }
-
