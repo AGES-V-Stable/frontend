@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/BrandLogo'
 import { Link, useNavigate } from 'react-router'
 
 import ComplianceStep from '@/pages/Register/ComplianceStep'
@@ -35,9 +36,7 @@ export function Demo() {
     <main className="min-h-screen bg-slate-100 px-4 py-10 sm:px-6">
       <div className="mx-auto max-w-3xl">
         <header className="mb-8">
-          <p className="text-sm font-semibold uppercase tracking-widest text-emerald-700">
-            V-Stable
-          </p>
+          <BrandLogo className="w-52" />
           <h1 className="mt-2 text-3xl font-bold text-slate-950">Demonstração de telas</h1>
           <p className="mt-2 text-slate-600">
             Selecione uma rota para visualizar o que já foi implementado.

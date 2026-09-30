@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/BrandLogo'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
@@ -13,11 +14,7 @@ function Home() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar
         className="sticky top-0"
-        logo={
-          <span className="sidebar__brand">
-            V-<span className="sidebar__brand-accent">Stable</span>
-          </span>
-        }
+        logo={<BrandLogo className="w-44" />}
         items={sidebarItems.map((item) => ({ ...item, onClick: () => setActiveItemId(item.id) }))}
         activeItemId={activeItemId}
         account={{ name: 'V-Stable Admin', description: 'Operações & Compliance', initials: 'CA' }}

@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/BrandLogo'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
@@ -63,11 +64,7 @@ function AdminTransfers() {
     <div className="flex min-h-screen bg-slate-100">
       <Sidebar
         className="sticky top-0"
-        logo={
-          <span className="sidebar__brand">
-            V-<span className="sidebar__brand-accent">Stable</span>
-          </span>
-        }
+        logo={<BrandLogo className="w-44" />}
         items={sidebarMenuItems.map((item) => ({
           ...item,
           onClick: () => navigate(item.path),
