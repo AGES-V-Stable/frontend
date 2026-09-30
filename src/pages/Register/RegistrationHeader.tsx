@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/BrandLogo'
 const steps = ['Acesso', 'Empresa', 'Representante', 'Compliance', 'Conclusão']
 
 interface RegistrationHeaderProps {
@@ -12,7 +13,7 @@ export function RegistrationHeader({
   return (
     <>
       <header className="flex flex-col items-center text-center">
-        <span className="text-2xl font-bold tracking-widest text-primary">V-STABLE</span>
+        <BrandLogo className="w-44" />
         <h1 className="mt-2 flex min-h-10 items-center text-2xl font-bold text-slate-900">
           Cadastro Institucional
         </h1>

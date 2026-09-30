@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/BrandLogo'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 
@@ -81,7 +82,9 @@ function Login() {
   return (
     <div className="flex items-center min-h-screen">
       <div className="bg-slate-900 min-h-screen w-[760px] flex flex-col items-center justify-center px-18">
-        <img src="/favicon.png" alt="logo" />
+        <div className="mb-10 w-full max-w-sm rounded-xl bg-white p-4">
+          <BrandLogo className="w-full" />
+        </div>
         <div className="flex flex-col gap-y-[18px]">
           <p className="text-white text-[32px] font-bold">
             Infraestrutura financeira para operações globais.

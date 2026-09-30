@@ -213,7 +213,7 @@ describe('ComplianceStep', () => {
 
   it('displays the V-STABLE brand header', () => {
     renderComponent()
-    expect(screen.getByText('V-STABLE')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'V-Stable' })).toBeInTheDocument()
   })
 
   it('displays the file upload area with instructions', () => {
