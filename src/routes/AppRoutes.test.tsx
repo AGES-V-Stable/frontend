@@ -201,7 +201,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('walks the full wizard from access to the liveness step on a happy path', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     submitOnboardingMock.mockResolvedValueOnce({
       userId: 'user-1',
       companyId: 'company-1',
@@ -264,7 +264,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('shows the API message and preserves the form when representative submission fails with a client error', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     submitOnboardingMock.mockRejectedValueOnce(new ApiError(422, 'CPF já usado em outro cadastro'))
 
     render(
@@ -283,7 +283,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('shows a generic message when representative submission fails with a server error', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     submitOnboardingMock.mockRejectedValueOnce(new Error('network down'))
 
     render(
@@ -303,7 +303,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('uploads both sides of a double-sided document before advancing to liveness', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     startDocumentUploadMock.mockResolvedValueOnce({
       id: 'doc-2',
       uploadUrlFront: 'https://s3.example.com/front',
@@ -341,7 +341,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('shows a generic error when the document upload fails', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     startDocumentUploadMock.mockRejectedValueOnce(new Error('upload failed'))
 
     render(
