@@ -1,22 +1,21 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { Register } from './Register'
+import { PATHS } from '@/routes/paths'
 
-const response = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+import { Register } from './Register'
 
 afterEach(() => vi.unstubAllGlobals())
 
 function renderRegister() {
   return render(
-    <MemoryRouter initialEntries={['/register']}>
+    <MemoryRouter initialEntries={[PATHS.REGISTER]}>
       <Routes>
-        <Route path="/register" element={<Register />} />
-        <Route path="/register/:id/empresa" element={<p>Company registration</p>} />
-        <Route path="/login" element={<p>Login page</p>} />
+        <Route path={PATHS.LOGIN} element={<p>Login page</p>} />
+        <Route path={PATHS.REGISTER} element={<Register />} />
+        <Route path={PATHS.REGISTER_COMPANY} element={<p>Company registration</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -41,6 +40,7 @@ describe('Register Page Component', () => {
     expect(screen.getByLabelText('Senha')).toBeInTheDocument()
     expect(screen.getByLabelText('Confirmar senha')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Voltar ao login' })).toHaveAttribute('href', '/login')
+    expect(screen.getByText('Acesso').closest('li')).toHaveAttribute('aria-current', 'step')
   })
 
   it('validates every access field and clears errors as values change', async () => {
@@ -68,80 +68,25 @@ describe('Register Page Component', () => {
     expect(screen.getByText('Senha e confirmação não coincidem')).toBeInTheDocument()
   })
 
-  it('rejects empty domain labels without calling the API', async () => {
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
+  it('rejects an invalid email without navigating', async () => {
     renderRegister()
     const user = await fillValidForm('user@example..com')
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(screen.getByText('Informe um e-mail válido')).toBeInTheDocument()
-    expect(fetchMock).not.toHaveBeenCalled()
+    expect(screen.queryByText('Company registration')).not.toBeInTheDocument()
   })
 
-  it('creates the registration once and navigates for a valid subdomain email', async () => {
-    let finish!: (value: Response) => void
-    const fetchMock = vi.fn(
-      () =>
-        new Promise<Response>((resolve) => {
-          finish = resolve
-        }),
-    )
+  it('given a valid form, when submitted, then it should navigate to the company step without calling the backend', async () => {
+    const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     renderRegister()
     const user = await fillValidForm()
 
-    await user.dblClick(screen.getByRole('button', { name: 'Continuar' }))
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
-    expect(screen.getByRole('button', { name: 'Criando acesso...' })).toBeDisabled()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/v1/cadastros/representante/acesso',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({ 'Idempotency-Key': expect.any(String) }),
-        body: JSON.stringify({
-          nomeCompleto: 'Maria Silva',
-          email: 'user@sub.example.com',
-          senha: 'segura123!',
-          confirmarSenha: 'segura123!',
-        }),
-      }),
-    )
-
-    finish(response({ token: 'registration-id' }, 201))
     expect(await screen.findByText('Company registration')).toBeInTheDocument()
-  })
-
-  it('shows an API message for a client error and clears it on edit', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => response({ message: 'E-mail já cadastrado' }, 409)),
-    )
-    renderRegister()
-    const user = await fillValidForm()
-
-    await user.click(screen.getByRole('button', { name: 'Continuar' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('E-mail já cadastrado')
-
-    await user.type(screen.getByLabelText('Nome completo'), 'a')
-    expect(screen.queryByText('E-mail já cadastrado')).not.toBeInTheDocument()
-  })
-
-  it.each([
-    ['server error', async () => response({ message: 'Falha interna' }, 500)],
-    ['network error', async () => Promise.reject(new TypeError('offline'))],
-  ])('shows the generic message after a %s', async (_name, request) => {
-    vi.stubGlobal('fetch', vi.fn(request))
-    renderRegister()
-    const user = await fillValidForm()
-
-    await user.click(screen.getByRole('button', { name: 'Continuar' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Não foi possível iniciar o cadastro. Tente novamente.',
-    )
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled())
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

@@ -1,21 +1,179 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
 
-import { Home } from '@/pages/Home'
-import AdminClients from '../pages/AdminClients'
-import AdminTransfers from '../pages/AdminTransfers'
+import AdminClients from '@/pages/AdminClients'
+import AdminTransfers from '@/pages/AdminTransfers'
+import LivenessStep from '@/pages/LivenessStep'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
-import { CompanyRegistration } from '@/pages/Register/CompanyRegistration'
+import { CompanyStep } from '@/pages/Register/CompanyStep'
+import ComplianceStep from '@/pages/Register/ComplianceStep'
+import RegistrationComplete from '@/pages/Register/RegistrationComplete'
+import { RepresentativeStep } from '@/pages/Register/RepresentativeStep'
+import { Home } from '@/pages/Home'
 import { Demo, DemoCompany, DemoCompliance, DemoRepresentative } from '@/pages/Demo'
 import { BeneficiaryView } from '@/pages/admin/beneficiaryView'
 import { ClientLayout } from '@/pages/client/ClientLayout'
 import { BeneficiariesLanding } from '@/pages/client/beneficiaries/BeneficiariesLanding'
 import { BeneficiaryCreate } from '@/pages/client/beneficiaryCreate'
-
-import { PATHS } from './paths'
 import { RegisterStatus } from '@/pages/RegisterStatus/RegisterStatus'
+import { startDocumentUpload, submitDocumentResult, uploadFileToS3 } from '@/services/compliance'
+import { ApiError, saveRepresentativePersonalData, submitOnboarding } from '@/services/onboarding'
+import type { ComplianceFormData, TipoDocumento } from '@/types/compliance'
+import type { AccessData, CompanyData, RepresentativeData } from '@/types/registration'
+
+import { compliancePath, livenessPath, PATHS, registrationCompletePath } from './paths'
 
 const ForgotPassWordPlaceHolder = () => <div className="p-8">Recuperação de Senha (Em breve)</div>
+
+interface CompanyRouteState {
+  access?: AccessData
+}
+
+function CompanyRoute() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const state = (location.state as CompanyRouteState | null) ?? null
+
+  if (!state?.access) return <Navigate to={PATHS.REGISTER} replace />
+
+  return (
+    <CompanyStep
+      onCancel={() => navigate(PATHS.REGISTER)}
+      onContinue={(company) =>
+        navigate(PATHS.REGISTER_REPRESENTATIVE, { state: { access: state.access, company } })
+      }
+    />
+  )
+}
+
+interface RepresentativeRouteState {
+  access?: AccessData
+  company?: CompanyData
+}
+
+function RepresentativeRoute() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const state = (location.state as RepresentativeRouteState | null) ?? null
+  const [saving, setSaving] = useState(false)
+  const [serverError, setServerError] = useState('')
+
+  if (!state?.access || !state?.company) return <Navigate to={PATHS.REGISTER} replace />
+
+  const { access, company } = state
+
+  async function handleContinue(representative: RepresentativeData) {
+    setSaving(true)
+    setServerError('')
+    try {
+      const isBrazil = company.pais.trim().toLowerCase() === 'brasil'
+      const result = await submitOnboarding(
+        {
+          fullName: access.nomeCompleto,
+          email: access.email,
+          password: access.senha,
+          confirmPassword: access.confirmarSenha,
+          cargoFuncao: representative.cargo_funcao,
+          participacaoSocietaria: representative.participacao_societaria,
+          cpf: representative.cpf,
+          dateOfBirth: representative.date_of_birth,
+          phone: representative.phone,
+          pais: representative.pais,
+          cep: representative.cep,
+          cidade: representative.cidade,
+          estado: representative.estado,
+          linhaEndereco: representative.linha_endereco,
+        },
+        company,
+      )
+      saveRepresentativePersonalData({
+        fullName: access.nomeCompleto.trim(),
+        email: access.email.trim(),
+        phone: representative.phone.replace(/\D/g, ''),
+        dateOfBirth: representative.date_of_birth,
+        taxIdNumber: representative.cpf.replace(/\D/g, ''),
+        country: representative.pais.trim(),
+        state: representative.estado.trim(),
+        city: representative.cidade.trim(),
+        zipCode: isBrazil ? representative.cep.replace(/\D/g, '') : representative.cep.trim(),
+        streetAddress: representative.linha_endereco.trim(),
+      })
+      void navigate(compliancePath(result.kycVerificationId))
+    } catch (error) {
+      setServerError(
+        error instanceof ApiError && error.status < 500
+          ? error.message
+          : 'Não foi possível concluir a solicitação. Tente novamente.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <RepresentativeStep onContinue={handleContinue} saving={saving} serverError={serverError} />
+  )
+}
+
+function ComplianceRoute() {
+  const { kycVerificationId } = useParams()
+  const navigate = useNavigate()
+  const [saving, setSaving] = useState(false)
+  const [serverError, setServerError] = useState('')
+
+  async function handleContinue(data: ComplianceFormData) {
+    if (!kycVerificationId) {
+      setServerError(
+        'Não foi possível confirmar o cadastro. Recarregue a página e tente novamente.',
+      )
+      return
+    }
+
+    const tipoDocumento = data.tipoDocumento as TipoDocumento
+    const doubleSided = tipoDocumento !== 'PASSPORT'
+    const [frontFile, backFile] = data.documentos
+
+    if (!frontFile || (doubleSided && !backFile)) {
+      setServerError('Selecione os arquivos do documento antes de continuar.')
+      return
+    }
+
+    setSaving(true)
+    setServerError('')
+    try {
+      const { id, uploadUrlFront, uploadUrlBack } = await startDocumentUpload(
+        kycVerificationId,
+        tipoDocumento,
+        doubleSided,
+      )
+      await uploadFileToS3(uploadUrlFront, frontFile.file)
+      if (doubleSided && uploadUrlBack) {
+        await uploadFileToS3(uploadUrlBack, backFile.file)
+      }
+      await submitDocumentResult(kycVerificationId, id)
+      void navigate(livenessPath(kycVerificationId))
+    } catch {
+      setServerError('Não foi possível enviar o documento. Tente novamente.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <ComplianceStep onContinue={handleContinue} saving={saving} serverError={serverError} />
+}
+
+function LivenessRoute() {
+  const { kycVerificationId } = useParams()
+  const navigate = useNavigate()
+
+  return (
+    <LivenessStep
+      progressoCadastroId={kycVerificationId}
+      onContinue={() => navigate(registrationCompletePath(kycVerificationId!), { replace: true })}
+    />
+  )
+}
 
 function AppRoutes() {
   return (
@@ -35,15 +193,12 @@ function AppRoutes() {
       />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
+      <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRoute />} />
+      <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeRoute />} />
+      <Route path={PATHS.REGISTER_COMPLIANCE} element={<ComplianceRoute />} />
+      <Route path={PATHS.COMPLIANCE_LIVENESS} element={<LivenessRoute />} />
+      <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />
       <Route path={PATHS.FORGOT_PASSWORD} element={<ForgotPassWordPlaceHolder />} />
-      <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRegistration />} />
-      <Route path={PATHS.REGISTER_COMPANY_PROGRESS} element={<CompanyRegistration />} />
-      <Route
-        path={PATHS.REGISTER_REPRESENTATIVE}
-        element={<CompanyRegistration representative />}
-      />
-      <Route path={PATHS.REGISTER_COMPLIANCE} element={<CompanyRegistration compliance />} />
-      <Route path={PATHS.REGISTER_COMPLETE} element={<CompanyRegistration completion />} />
       <Route path={PATHS.DEMO} element={<Demo />} />
       <Route path={PATHS.DEMO_HOME} element={<Home />} />
       <Route path={PATHS.DEMO_LOGIN} element={<Login />} />

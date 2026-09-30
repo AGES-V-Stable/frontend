@@ -8,11 +8,15 @@ const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png']
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 
 const TIPO_DOCUMENTO_OPTIONS: { value: TipoDocumento; label: string }[] = [
-  { value: 'CONTRATO_SOCIAL', label: 'Contrato Social' },
-  { value: 'COMPROVANTE_ENDERECO', label: 'Comprovante de Endereço' },
-  { value: 'DOCUMENTO_REPRESENTANTE', label: 'Documento do Representante' },
-  { value: 'OUTROS', label: 'Outros' },
+  { value: 'ID', label: 'RG' },
+  { value: 'DRIVERS-LICENSE', label: 'CNH' },
+  { value: 'PASSPORT', label: 'Passaporte' },
 ]
+
+// Passaporte é um documento único; RG e CNH exigem frente e verso.
+function isDoubleSided(tipo: TipoDocumento | ''): boolean {
+  return tipo !== '' && tipo !== 'PASSPORT'
+}
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -27,8 +31,18 @@ interface ValidationErrors {
 
 function validate(data: ComplianceFormData): ValidationErrors {
   const errors: ValidationErrors = {}
-  if (!data.tipoDocumento) errors.tipoDocumento = 'Selecione o tipo de documento'
-  if (data.documentos.length === 0) errors.documentos = 'Envie pelo menos um documento'
+  if (!data.tipoDocumento) {
+    errors.tipoDocumento = 'Selecione o tipo de documento'
+    return errors
+  }
+
+  const expectedCount = isDoubleSided(data.tipoDocumento) ? 2 : 1
+  if (data.documentos.length !== expectedCount) {
+    errors.documentos =
+      expectedCount === 2
+        ? 'Envie frente e verso do documento (2 arquivos)'
+        : 'Envie o arquivo do documento'
+  }
   return errors
 }
 
@@ -106,7 +120,7 @@ export default function ComplianceStep({
     e.target.value = ''
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitted(true)
     const errs = validate(form)
@@ -194,7 +208,10 @@ export default function ComplianceStep({
                   <span className="text-primary font-medium">clique para selecionar</span>
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  PDF, JPG, JPEG ou PNG — máx. 10 MB por arquivo
+                  {isDoubleSided(form.tipoDocumento)
+                    ? 'Envie frente e verso (2 arquivos) — '
+                    : 'Envie o documento (1 arquivo) — '}
+                  PDF, JPG, JPEG ou PNG, máx. 10 MB por arquivo
                 </p>
               </div>
               <input

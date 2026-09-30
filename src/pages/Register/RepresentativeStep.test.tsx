@@ -8,6 +8,8 @@ const valid: RepresentativeData = {
   cargo_funcao: 'Diretor(a)',
   participacao_societaria: 45,
   cpf: '52998224725',
+  date_of_birth: '1990-05-20',
+  phone: '11987654321',
   cep: '90000000',
   cidade: 'Porto Alegre',
   estado: 'RS',
@@ -18,11 +20,15 @@ const valid: RepresentativeData = {
 async function fillRequiredFields(user: ReturnType<typeof userEvent.setup>) {
   await user.selectOptions(screen.getByLabelText(/cargo \/ função/i), 'Diretor(a)')
   await user.type(screen.getByPlaceholderText('000.000.000-00'), '52998224725')
+  fireEvent.change(screen.getByLabelText(/data de nascimento/i), {
+    target: { value: '1990-05-20' },
+  })
+  await user.type(screen.getByLabelText(/telefone/i), '11987654321')
   await user.type(screen.getByPlaceholderText('00000-000'), '90000000')
   await user.type(screen.getByLabelText(/linha de endereço/i), 'Rua Teste')
   await user.type(screen.getByLabelText(/cidade/i), 'São Paulo')
   await user.selectOptions(screen.getByLabelText(/estado/i), 'SP')
-  await user.type(screen.getByLabelText(/país/i), 'Brasil')
+  // País já vem preenchido com "Brasil" por padrão.
 }
 
 describe('RepresentativeStep', () => {
@@ -49,11 +55,13 @@ describe('RepresentativeStep', () => {
 
     expect(screen.getByText('Cargo é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('CPF é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('Data de nascimento é obrigatória')).toBeInTheDocument()
+    expect(screen.getByText('Telefone é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('CEP é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
     expect(screen.getByText('Estado é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('País é obrigatório')).toBeInTheDocument()
     expect(screen.getByText('Endereço é obrigatório')).toBeInTheDocument()
+    expect(screen.queryByText('País é obrigatório')).not.toBeInTheDocument()
     expect(onContinue).not.toHaveBeenCalled()
   })
 
@@ -63,6 +71,7 @@ describe('RepresentativeStep', () => {
 
     const cpfInput = screen.getByPlaceholderText('000.000.000-00')
     const cepInput = screen.getByPlaceholderText('00000-000')
+    const phoneInput = screen.getByLabelText(/telefone/i)
     const slider = screen.getByRole('slider')
 
     fireEvent.change(slider, { target: { value: '30' } })
@@ -73,6 +82,9 @@ describe('RepresentativeStep', () => {
 
     await user.type(cepInput, '90000000')
     expect(cepInput).toHaveValue('90000-000')
+
+    await user.type(phoneInput, '11987654321')
+    expect(phoneInput).toHaveValue('(11) 98765-4321')
   })
 
   it('validates the CPF on blur and highlights the client-side error', async () => {
@@ -121,6 +133,8 @@ describe('RepresentativeStep', () => {
       cargo_funcao: 'Diretor(a)',
       participacao_societaria: 0,
       cpf: '529.982.247-25',
+      date_of_birth: '1990-05-20',
+      phone: '(11) 98765-4321',
       cep: '90000-000',
       cidade: 'São Paulo',
       estado: 'SP',

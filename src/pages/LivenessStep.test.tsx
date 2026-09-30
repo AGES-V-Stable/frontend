@@ -1,0 +1,329 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import * as livenessService from '@/services/liveness'
+import * as onboardingService from '@/services/onboarding'
+
+import LivenessStep from './LivenessStep'
+
+vi.mock('@/services/liveness', async () => {
+  const actual = await vi.importActual<typeof import('@/services/liveness')>('@/services/liveness')
+  return {
+    ...actual,
+    startLivenessVerification: vi.fn(),
+    checkLivenessStatus: vi.fn(),
+    submitLivenessResult: vi.fn(),
+  }
+})
+
+vi.mock('@/services/onboarding', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/services/onboarding')>('@/services/onboarding')
+  return {
+    ...actual,
+    submitKyc: vi.fn(),
+  }
+})
+
+const personalData = {
+  fullName: 'Maria da Silva',
+  email: 'maria@empresa.com',
+  phone: '11987654321',
+  dateOfBirth: '1990-05-20',
+  taxIdNumber: '52998224725',
+  country: 'Brasil',
+  state: 'SP',
+  city: 'São Paulo',
+  zipCode: '90000000',
+  streetAddress: 'Rua Teste, 100',
+}
+
+function renderLivenessStep(props: React.ComponentProps<typeof LivenessStep> = {}) {
+  return render(
+    <MemoryRouter>
+      <LivenessStep {...props} />
+    </MemoryRouter>,
+  )
+}
+
+describe('LivenessStep Page Component', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('given the liveness step is rendered, when no verification has happened yet, then the Continuar button should be disabled', () => {
+    renderLivenessStep()
+
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
+  })
+
+  it('given the user clicks the start button, when the backend call succeeds, then it should save the liveness id and open the returned livenessUrl in a new tab', async () => {
+    vi.mocked(livenessService.startLivenessVerification).mockResolvedValue({
+      id: 'liveness-1',
+      sessionId: 'session-1',
+      livenessUrl: 'https://avenia.io/liveness/liveness-1',
+      validateLivenessToken: 'token-1',
+    })
+    const openedWindow = { opener: {}, location: { href: '' }, close: vi.fn() } as unknown as Window
+    const openMock = vi.fn().mockReturnValue(openedWindow)
+    vi.stubGlobal('open', openMock)
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+    await userEvent.click(screen.getByRole('button', { name: 'Iniciar verificação facial' }))
+
+    await waitFor(() => {
+      expect(livenessService.getLivenessId('cadastro-1')).toBe('liveness-1')
+    })
+    expect(livenessService.startLivenessVerification).toHaveBeenCalledWith('cadastro-1')
+    // A aba é aberta em branco de forma síncrona no clique (antes do await), e só depois
+    // navegada para a URL de liveness — abrir já com a URL exigiria esperar o backend
+    // primeiro, o que perde a "user activation" do clique e faz o navegador bloquear.
+    expect(openMock).toHaveBeenCalledWith('', '_blank', 'noreferrer')
+    expect(openedWindow.location.href).toBe('https://avenia.io/liveness/liveness-1')
+    // Sem "noopener" nas features, o retorno de window.open é confiável para detectar
+    // bloqueio real — em troca, zeramos .opener manualmente pelo mesmo isolamento de segurança.
+    expect(openedWindow.opener).toBeNull()
+    expect(screen.getByRole('button', { name: 'Verificar conclusão' })).toBeInTheDocument()
+  })
+
+  it('given the browser blocks the pop-up but the backend call still succeeds, when the user clicks the start button, then it should still move to the pending state with a manual link instead of getting the user stuck', async () => {
+    vi.mocked(livenessService.startLivenessVerification).mockResolvedValue({
+      id: 'liveness-1',
+      sessionId: 'session-1',
+      livenessUrl: 'https://avenia.io/liveness/liveness-1',
+      validateLivenessToken: 'token-1',
+    })
+    vi.stubGlobal('open', vi.fn().mockReturnValue(null))
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+    await userEvent.click(screen.getByRole('button', { name: 'Iniciar verificação facial' }))
+
+    // A verificação já foi iniciada no backend mesmo sem a aba ter aberto, então o usuário
+    // não pode ficar preso na tela inicial — ele recebe um link manual e segue com o fluxo
+    // normal de "Verificar conclusão" assim que completar a verificação por conta própria.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Permita pop-ups')
+    expect(livenessService.getLivenessId('cadastro-1')).toBe('liveness-1')
+    expect(
+      screen.getByRole('link', { name: 'Abrir verificação facial manualmente' }),
+    ).toHaveAttribute('href', 'https://avenia.io/liveness/liveness-1')
+    expect(screen.getByRole('button', { name: 'Verificar conclusão' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Recomeçar verificação' })).toBeInTheDocument()
+  })
+
+  it('given the tab opened but the backend call fails, when the user clicks the start button, then it should close the blank tab and show an error', async () => {
+    vi.mocked(livenessService.startLivenessVerification).mockRejectedValue(
+      new Error('network error'),
+    )
+    const openedWindow = { opener: {}, location: { href: '' }, close: vi.fn() } as unknown as Window
+    vi.stubGlobal('open', vi.fn().mockReturnValue(openedWindow))
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+    await userEvent.click(screen.getByRole('button', { name: 'Iniciar verificação facial' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível iniciar a verificação facial',
+    )
+    expect(openedWindow.close).toHaveBeenCalledOnce()
+    expect(livenessService.getLivenessId('cadastro-1')).toBeNull()
+  })
+
+  it('given no progresso de cadastro id, when the user clicks the start button, then it should show an error instead of starting', async () => {
+    renderLivenessStep()
+    await userEvent.click(screen.getByRole('button', { name: 'Iniciar verificação facial' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Reinicie a verificação')
+    expect(livenessService.startLivenessVerification).not.toHaveBeenCalled()
+  })
+
+  it('given a pending verification, when the user clicks Verificar conclusão and it is ready, then it should unlock the Continuar button', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'pending', 'cadastro-1')
+    vi.mocked(livenessService.checkLivenessStatus).mockResolvedValue({
+      ready: true,
+      status: 'UPLOADED',
+    })
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+    await userEvent.click(screen.getByRole('button', { name: 'Verificar conclusão' }))
+
+    expect(livenessService.checkLivenessStatus).toHaveBeenCalledWith('cadastro-1', 'liveness-1')
+    expect(await screen.findByRole('button', { name: 'Continuar' })).toBeEnabled()
+    expect(screen.getByText('Verificação concluída com sucesso.')).toBeInTheDocument()
+  })
+
+  it('given a pending verification, when the user clicks Verificar conclusão and it is not ready yet, then it should show an informational message and keep Continuar disabled', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'pending', 'cadastro-1')
+    vi.mocked(livenessService.checkLivenessStatus).mockResolvedValue({
+      ready: false,
+      status: 'WAITING-UPLOAD',
+    })
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+    await userEvent.click(screen.getByRole('button', { name: 'Verificar conclusão' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('ainda não concluída')
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
+  })
+
+  it('given a pending verification, when the check call fails, then it should show an error', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'pending', 'cadastro-1')
+    vi.mocked(livenessService.checkLivenessStatus).mockRejectedValue(new Error('network error'))
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+    await userEvent.click(screen.getByRole('button', { name: 'Verificar conclusão' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível verificar')
+  })
+
+  it('given a pending verification, when the user clicks Recomeçar verificação, then it should reset back to idle', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'pending', 'cadastro-1')
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+    await userEvent.click(screen.getByRole('button', { name: 'Recomeçar verificação' }))
+
+    expect(screen.getByRole('button', { name: 'Iniciar verificação facial' })).toBeInTheDocument()
+    expect(livenessService.getLivenessId('cadastro-1')).toBeNull()
+  })
+
+  it('given a successful verification survives a reload for the same cadastro, when the liveness step mounts again, then it should read the status from storage', () => {
+    livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
+  })
+
+  it('given a successful verification saved for a different cadastro, when the liveness step mounts for a new one, then it should not reuse the stale liveness and start from idle', () => {
+    // Reproduz o bug real: um liveness concluído com sucesso para um cadastro anterior
+    // (kycVerificationId diferente, ligado a outra subconta na Avenia) não pode ser
+    // reaproveitado num cadastro novo — a Avenia rejeita a finalização do KYC porque
+    // documento e selfie precisam pertencer à mesma sessão/subconta.
+    livenessService.saveLivenessSession('liveness-old', 'success', 'cadastro-antigo')
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-novo' })
+
+    expect(screen.getByRole('button', { name: 'Iniciar verificação facial' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
+    expect(livenessService.getLivenessId('cadastro-novo')).toBeNull()
+  })
+
+  it('given a verified session, a progresso de cadastro id and saved personal data, when the KYC comes back UNDER_REVIEW, then it should submit the liveness result, finalize the KYC and call onContinue', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
+    onboardingService.saveRepresentativePersonalData(personalData)
+    vi.mocked(livenessService.submitLivenessResult).mockResolvedValue(undefined)
+    vi.mocked(onboardingService.submitKyc).mockResolvedValue({
+      aveniaProcessId: 'kyc-process-1',
+      status: 'UNDER_REVIEW',
+    })
+    const onContinue = vi.fn()
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1', onContinue })
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    await waitFor(() => {
+      expect(livenessService.submitLivenessResult).toHaveBeenCalledWith('cadastro-1', 'liveness-1')
+    })
+    expect(onboardingService.submitKyc).toHaveBeenCalledWith('cadastro-1', personalData)
+    expect(onboardingService.getRepresentativePersonalData()).toBeNull()
+    expect(onContinue).toHaveBeenCalled()
+  })
+
+  it('given the KYC comes back APPROVED (already approved on a previous attempt), when the user clicks Continuar, then it should call onContinue', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
+    onboardingService.saveRepresentativePersonalData(personalData)
+    vi.mocked(livenessService.submitLivenessResult).mockResolvedValue(undefined)
+    vi.mocked(onboardingService.submitKyc).mockResolvedValue({
+      aveniaProcessId: 'kyc-process-1',
+      status: 'APPROVED',
+    })
+    const onContinue = vi.fn()
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1', onContinue })
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    await waitFor(() => expect(onContinue).toHaveBeenCalled())
+  })
+
+  it('given the KYC comes back REJECTED, when the user clicks Continuar, then it should show the rejection reason and not call onContinue', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
+    onboardingService.saveRepresentativePersonalData(personalData)
+    vi.mocked(livenessService.submitLivenessResult).mockResolvedValue(undefined)
+    vi.mocked(onboardingService.submitKyc).mockResolvedValue({
+      aveniaProcessId: 'kyc-process-1',
+      status: 'REJECTED',
+      resultMessage: 'Documento ilegível',
+    })
+    const onContinue = vi.fn()
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1', onContinue })
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Documento ilegível')
+    expect(onContinue).not.toHaveBeenCalled()
+    // Dados pessoais preservados para permitir nova tentativa quando aplicável.
+    expect(onboardingService.getRepresentativePersonalData()).not.toBeNull()
+  })
+
+  it('given a verified session saved for a different cadastro, when rendered without a progresso de cadastro id, then Continuar should stay disabled instead of submitting a stale liveness', () => {
+    livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
+    onboardingService.saveRepresentativePersonalData(personalData)
+
+    renderLivenessStep()
+
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
+    expect(livenessService.submitLivenessResult).not.toHaveBeenCalled()
+  })
+
+  it('given a verified session without saved personal data, when the user clicks Continuar, then it should show an error instead of submitting', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1' })
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível recuperar os dados do representante',
+    )
+    expect(livenessService.submitLivenessResult).not.toHaveBeenCalled()
+  })
+
+  it('given the KYC finalization fails, when the user clicks Continuar, then it should show an error and not call onContinue', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
+    onboardingService.saveRepresentativePersonalData(personalData)
+    vi.mocked(livenessService.submitLivenessResult).mockResolvedValue(undefined)
+    vi.mocked(onboardingService.submitKyc).mockRejectedValue(new Error('network error'))
+    const onContinue = vi.fn()
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1', onContinue })
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível confirmar a verificação',
+    )
+    expect(onContinue).not.toHaveBeenCalled()
+  })
+
+  it('given the Avenia rejects the KYC as a business rule violation (422), when the user clicks Continuar, then it should surface the backend message instead of a generic error', async () => {
+    livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
+    onboardingService.saveRepresentativePersonalData(personalData)
+    vi.mocked(livenessService.submitLivenessResult).mockResolvedValue(undefined)
+    vi.mocked(onboardingService.submitKyc).mockRejectedValue(
+      new onboardingService.ApiError(
+        422,
+        'Falha ao finalizar KYC na Avenia: HTTP 400 - cannot repeat taxId across multiple users',
+      ),
+    )
+    const onContinue = vi.fn()
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1', onContinue })
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('cannot repeat taxId')
+    expect(onContinue).not.toHaveBeenCalled()
+  })
+})

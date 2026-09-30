@@ -1,79 +1,76 @@
-import { afterEach, expect, it, vi } from 'vitest'
-import { createRegistration, saveCompany, submitCompliance } from './registration'
-afterEach(() => vi.unstubAllGlobals())
-it('trims text without stripping foreign postal codes', async () => {
-  const mock = vi.fn(async () => new Response('{}', { status: 201 }))
-  vi.stubGlobal('fetch', mock)
-  await saveCompany('id', {
-    razaoSocial: ' Empresa ',
-    pais: ' Canada ',
-    cep: ' K1A 0B1 ',
-    cnpj: '11.222.333/0001-81',
-    cidade: ' Ottawa ',
-    estado: ' ON ',
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { ApiError, request } from './registration'
+
+describe('registration service', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
-  expect(mock).toHaveBeenCalledWith(
-    '/v1/cadastros/id/empresa',
-    expect.objectContaining({
-      body: JSON.stringify({
-        razao_social: 'Empresa',
-        pais: 'Canada',
-        cnpj: '11222333000181',
-        cep: 'K1A 0B1',
-        cidade: 'Ottawa',
-        estado: 'ON',
+
+  it('resolves with the parsed JSON body on success', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ token: 'abc' }) }),
+    )
+
+    await expect(request('/example')).resolves.toEqual({ token: 'abc' })
+  })
+
+  it('throws an ApiError with the backend message when the request fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({ message: 'E-mail já cadastrado' }),
       }),
-    }),
-  )
+    )
+
+    await expect(request('/example')).rejects.toMatchObject({
+      status: 409,
+      message: 'E-mail já cadastrado',
+    })
+  })
+
+  it('falls back to a generic message when the error body has no message', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      }),
+    )
+
+    await expect(request('/example')).rejects.toThrow(
+      'Não foi possível concluir a solicitação. Tente novamente.',
+    )
+  })
+
+  it('falls back to a generic message when the error body is not valid JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        json: async () => {
+          throw new Error('not json')
+        },
+      }),
+    )
+
+    await expect(request('/example')).rejects.toThrow(
+      'Não foi possível concluir a solicitação. Tente novamente.',
+    )
+  })
 })
 
-it('normalizes access data and generates an idempotency key', async () => {
-  const mock = vi.fn(async () => new Response('{"token":"id"}', { status: 201 }))
-  vi.stubGlobal('fetch', mock)
+describe('ApiError', () => {
+  it('carries the http status alongside the message', () => {
+    const error = new ApiError(404, 'Não encontrado')
 
-  await createRegistration({
-    nomeCompleto: ' Maria Silva ',
-    email: ' USER@EXAMPLE.COM ',
-    senha: 'segura123!',
-    confirmarSenha: 'segura123!',
+    expect(error.status).toBe(404)
+    expect(error.message).toBe('Não encontrado')
+    expect(error).toBeInstanceOf(Error)
   })
-
-  expect(mock).toHaveBeenCalledWith(
-    '/v1/cadastros/representante/acesso',
-    expect.objectContaining({
-      method: 'POST',
-      headers: expect.objectContaining({ 'Idempotency-Key': expect.any(String) }),
-      body: JSON.stringify({
-        nomeCompleto: 'Maria Silva',
-        email: 'user@example.com',
-        senha: 'segura123!',
-        confirmarSenha: 'segura123!',
-      }),
-    }),
-  )
-})
-
-it('builds a multipart compliance request with all documents', async () => {
-  const mock = vi.fn(async (url: string, options?: RequestInit) => {
-    expect(url).toBe('/v1/cadastros/id%2Fwith-slash/compliance')
-    expect(options?.method).toBe('POST')
-    expect(options?.body).toBeInstanceOf(FormData)
-    return new Response('{}', { status: 201 })
-  })
-  vi.stubGlobal('fetch', mock)
-  const first = new File(['first'], 'first.pdf', { type: 'application/pdf' })
-  const second = new File(['second'], 'second.png', { type: 'image/png' })
-
-  await submitCompliance('id/with-slash', {
-    tipoDocumento: 'CONTRATO_SOCIAL',
-    documentos: [
-      { id: '1', file: first },
-      { id: '2', file: second },
-    ],
-  })
-
-  expect(mock).toHaveBeenCalledOnce()
-  const body = mock.mock.calls[0][1]?.body as FormData
-  expect(body.get('tipo_documento')).toBe('CONTRATO_SOCIAL')
-  expect(body.getAll('documentos')).toEqual([first, second])
 })

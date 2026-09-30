@@ -3,10 +3,10 @@ export const PATHS = {
   LOGIN: '/login',
   REGISTER: '/register',
   REGISTER_COMPANY: '/register/empresa',
-  REGISTER_COMPANY_PROGRESS: '/register/:progressoCadastroId/empresa',
-  REGISTER_REPRESENTATIVE: '/register/:progressoCadastroId/representante',
-  REGISTER_COMPLIANCE: '/register/:progressoCadastroId/compliance',
-  REGISTER_COMPLETE: '/register/:progressoCadastroId/conclusao',
+  REGISTER_REPRESENTATIVE: '/register/representante',
+  REGISTER_COMPLIANCE: '/register/:kycVerificationId/compliance',
+  COMPLIANCE_LIVENESS: '/register/:kycVerificationId/compliance/liveness',
+  REGISTER_COMPLETE: '/register/:kycVerificationId/concluido',
   ADMIN_CLIENTS: '/admin/clientes-pme',
   DEMO: '/demo',
   DEMO_HOME: '/demo/home',
@@ -26,8 +26,8 @@ export const PATHS = {
 
 export type Path = (typeof PATHS)[keyof typeof PATHS]
 
-export const companyPath = (id: string) => `/register/${encodeURIComponent(id)}/empresa`
-export const representativePath = (id: string) =>
-  `/register/${encodeURIComponent(id)}/representante`
 export const compliancePath = (id: string) => `/register/${encodeURIComponent(id)}/compliance`
-export const completionPath = (id: string) => `/register/${encodeURIComponent(id)}/conclusao`
+export const livenessPath = (id: string) =>
+  `/register/${encodeURIComponent(id)}/compliance/liveness`
+export const registrationCompletePath = (id: string) =>
+  `/register/${encodeURIComponent(id)}/concluido`

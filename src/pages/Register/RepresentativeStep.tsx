@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
-import { maskCEP, maskCPF } from '@/utils/masks'
-import { isValidCPF } from '@/utils/validators'
 import type { RepresentativeData } from '@/types/registration'
+import { maskCEP, maskCPF, maskPhone } from '@/utils/masks'
+import { isValidCPF } from '@/utils/validators'
 import { RegistrationHeader } from './RegistrationHeader'
-
-export type { RepresentativeData } from '@/types/registration'
 
 const CARGOS = [
   'Sócio-administrador',
@@ -58,6 +56,9 @@ function validateForm(data: RepresentativeData) {
   if (!data.cargo_funcao) errors.cargo_funcao = 'Cargo é obrigatório'
   if (!data.cpf) errors.cpf = 'CPF é obrigatório'
   else if (!isValidCPF(data.cpf)) errors.cpf = 'CPF inválido'
+  if (!data.date_of_birth) errors.date_of_birth = 'Data de nascimento é obrigatória'
+  if (!data.phone) errors.phone = 'Telefone é obrigatório'
+  else if (data.phone.replace(/\D/g, '').length < 10) errors.phone = 'Telefone inválido'
 
   if (!data.cep) errors.cep = 'CEP é obrigatório'
   else if (data.cep.replace(/\D/g, '').length !== 8) errors.cep = 'CEP inválido'
@@ -79,9 +80,11 @@ export function RepresentativeStep({
   const [formData, setFormData] = useState<RepresentativeData>(() => ({
     cargo_funcao: '',
     participacao_societaria: 0,
+    date_of_birth: '',
+    phone: '',
     cidade: '',
     estado: '',
-    pais: '',
+    pais: 'Brasil',
     linha_endereco: '',
     ...initialValues,
     cpf: maskCPF(initialValues?.cpf ?? ''),
@@ -90,18 +93,22 @@ export function RepresentativeStep({
 
   const [errors, setErrors] = useState<Partial<Record<keyof RepresentativeData, string>>>({})
 
-  const handleInputChange = (field: keyof RepresentativeData, value: string | number) => {
-    let formattedValue = value
-    if (field === 'cpf') formattedValue = maskCPF(value as string)
-    if (field === 'cep') formattedValue = maskCEP(value as string)
+  function handleInputChange<K extends keyof RepresentativeData>(
+    field: K,
+    value: RepresentativeData[K],
+  ) {
+    let formatted = value
+    if (field === 'cpf') formatted = maskCPF(value as string) as RepresentativeData[K]
+    if (field === 'cep') formatted = maskCEP(value as string) as RepresentativeData[K]
+    if (field === 'phone') formatted = maskPhone(value as string) as RepresentativeData[K]
 
-    setFormData((prev) => ({ ...prev, [field]: formattedValue }))
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
+    setFormData((previous) => ({ ...previous, [field]: formatted }))
+    if (errors[field]) setErrors((previous) => ({ ...previous, [field]: undefined }))
   }
 
-  const handleBlurCPF = () => {
+  function handleBlurCPF() {
     if (formData.cpf && !isValidCPF(formData.cpf)) {
-      setErrors((prev) => ({ ...prev, cpf: 'CPF inválido' }))
+      setErrors((previous) => ({ ...previous, cpf: 'CPF inválido' }))
     }
   }
 
@@ -124,7 +131,7 @@ export function RepresentativeStep({
 
           {serverError && (
             <div
-              className="mb-6 p-4 bg-red-50 text-red-700 rounded-md border border-red-200"
+              className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-red-700"
               role="alert"
             >
               {serverError}
@@ -132,12 +139,12 @@ export function RepresentativeStep({
           )}
 
           <section className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
+            <h3 className="mb-4 border-b pb-2 text-lg font-semibold text-gray-700">
               Vínculo Societário
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label htmlFor="cargo" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="cargo" className="mb-1 block text-sm font-medium text-gray-700">
                   Cargo / Função *
                 </label>
                 <select
@@ -145,7 +152,7 @@ export function RepresentativeStep({
                   value={formData.cargo_funcao}
                   disabled={saving}
                   onChange={(e) => handleInputChange('cargo_funcao', e.target.value)}
-                  className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.cargo_funcao ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.cargo_funcao ? 'border-red-500' : 'border-gray-300'}`}
                   aria-invalid={!!errors.cargo_funcao}
                   aria-describedby={errors.cargo_funcao ? 'cargo-error' : undefined}
                 >
@@ -168,7 +175,7 @@ export function RepresentativeStep({
               <div>
                 <label
                   htmlFor="participacao"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="mb-1 block text-sm font-medium text-gray-700"
                 >
                   Participação Societária: {formData.participacao_societaria}%
                 </label>
@@ -182,19 +189,19 @@ export function RepresentativeStep({
                   onChange={(e) =>
                     handleInputChange('participacao_societaria', Number(e.target.value))
                   }
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2"
+                  className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200"
                 />
               </div>
             </div>
           </section>
 
           <section className="mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-700 border-b pb-2">
+            <h3 className="mb-4 border-b pb-2 text-lg font-semibold text-gray-700">
               Documento e Endereço
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
-                <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="cpf" className="mb-1 block text-sm font-medium text-gray-700">
                   CPF *
                 </label>
                 <Input
@@ -208,7 +215,36 @@ export function RepresentativeStep({
                 />
               </div>
               <div>
-                <label htmlFor="cep" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="dateOfBirth"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Data de nascimento *
+                </label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  disabled={saving}
+                  value={formData.date_of_birth}
+                  onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
+                  error={errors.date_of_birth}
+                />
+              </div>
+              <div>
+                <label htmlFor="phone" className="mb-1 block text-sm font-medium text-gray-700">
+                  Telefone *
+                </label>
+                <Input
+                  id="phone"
+                  placeholder="(00) 00000-0000"
+                  disabled={saving}
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  error={errors.phone}
+                />
+              </div>
+              <div>
+                <label htmlFor="cep" className="mb-1 block text-sm font-medium text-gray-700">
                   CEP *
                 </label>
                 <Input
@@ -223,7 +259,7 @@ export function RepresentativeStep({
               <div className="md:col-span-2">
                 <label
                   htmlFor="linha_endereco"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="mb-1 block text-sm font-medium text-gray-700"
                 >
                   Linha de endereço *
                 </label>
@@ -236,7 +272,7 @@ export function RepresentativeStep({
                 />
               </div>
               <div>
-                <label htmlFor="cidade" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="cidade" className="mb-1 block text-sm font-medium text-gray-700">
                   Cidade *
                 </label>
                 <Input
@@ -248,7 +284,7 @@ export function RepresentativeStep({
                 />
               </div>
               <div>
-                <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="estado" className="mb-1 block text-sm font-medium text-gray-700">
                   Estado *
                 </label>
                 <select
@@ -256,7 +292,7 @@ export function RepresentativeStep({
                   value={formData.estado}
                   disabled={saving}
                   onChange={(e) => handleInputChange('estado', e.target.value)}
-                  className={`w-full p-2 border rounded-md focus:ring-primary focus:border-primary ${errors.estado ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.estado ? 'border-red-500' : 'border-gray-300'}`}
                   aria-invalid={!!errors.estado}
                   aria-describedby={errors.estado ? 'estado-error' : undefined}
                 >
@@ -276,7 +312,7 @@ export function RepresentativeStep({
                 )}
               </div>
               <div>
-                <label htmlFor="pais" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="pais" className="mb-1 block text-sm font-medium text-gray-700">
                   País *
                 </label>
                 <Input
@@ -290,7 +326,7 @@ export function RepresentativeStep({
             </div>
           </section>
 
-          <div className="flex justify-end items-center mt-8 pt-4 border-t">
+          <div className="mt-8 flex items-center justify-end border-t pt-4">
             <Button
               label={saving ? 'Processando...' : 'Continuar'}
               onClick={handleSubmit}
