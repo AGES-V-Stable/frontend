@@ -7,7 +7,7 @@ import { getCurrentUser } from '@/services/user'
 
 interface ClientLayoutProps {
   children: ReactNode
-  activeItemId?: 'home' | 'beneficiaries'
+  activeItemId?: 'home' | 'beneficiaries' | 'transfers'
 }
 
 function initialsOf(name: string) {
@@ -20,6 +20,7 @@ function initialsOf(name: string) {
 const menuItems = [
   { id: 'home' as const, label: 'Início', path: PATHS.HOME },
   { id: 'beneficiaries' as const, label: 'Beneficiários', path: PATHS.BENEFICIARIES },
+  { id: 'transfers' as const, label: 'Transferências', path: PATHS.TRANSFERS },
 ]
 
 export function ClientLayout({ children, activeItemId = 'beneficiaries' }: ClientLayoutProps) {

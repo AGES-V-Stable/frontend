@@ -2,6 +2,8 @@ export interface Beneficiary {
   id: string
   companyId: string
   nickname: string
+  legalName?: string
+  currency?: string
   internalDescription?: string
   receivingMethod: 'BANK_ACCOUNT' | 'PIX_KEY' | 'CRYPTO_WALLET'
   pixKey?: string

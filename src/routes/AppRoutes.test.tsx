@@ -152,6 +152,30 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByRole('heading', { name: 'Cadastro enviado' })).toBeInTheDocument()
   })
 
+  it('given the user navigates to the transfers path, when AppRoutes is rendered, then it should render the transfer page inside the client layout with the transfers item active', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'u1', name: 'Marina Costa', email: 'm@x.com', companyId: 'c1' }),
+      }),
+    )
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.TRANSFERS]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Realizar transferência' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /transferências/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect((await screen.findAllByText('Marina Costa')).length).toBeGreaterThan(0)
+  })
+
   it('renders the placeholder screen for the forgot password path', () => {
     const initialRoute = PATHS.FORGOT_PASSWORD
 
