@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
 import { TransferAmountSchema, TransferFormSchema } from '@/schemas/transfer'
-import { getBeneficiaries } from '@/services/beneficiary'
+import { getCompanyBeneficiaries } from '@/services/beneficiary'
 import { HttpError } from '@/services/httpClient'
 import { createTransfer, getTransferQuote } from '@/services/transfers'
 import { getCurrentUser } from '@/services/user'
@@ -18,8 +18,9 @@ import { formatDecimal, formatMoney, formatPercent, parseDecimalInput } from '@/
 
 const QUOTE_DEBOUNCE_MS = 500
 const SOURCE_CURRENCY = 'BRL'
-// Moeda usada enquanto nenhum beneficiário com moeda cadastrada foi escolhido (BRL → USD no Figma).
-const DEFAULT_DESTINATION_CURRENCY = 'USD'
+// Moeda usada enquanto nenhum beneficiário com moeda cadastrada foi escolhido. A demonstração
+// usa a rota de stablecoin (carteira cripto), cuja saída padrão no backend é USDC na Polygon.
+const DEFAULT_DESTINATION_CURRENCY = 'USDC'
 
 const PAYMENT_METHODS: { value: TransferPaymentMethod; label: string }[] = [
   { value: 'ACCOUNT_BALANCE', label: 'Saldo em Conta' },
@@ -111,7 +112,7 @@ export function TransferCreate() {
   useEffect(() => {
     let active = true
     getCurrentUser()
-      .then((user) => getBeneficiaries({ companyId: user.companyId, size: 100 }))
+      .then((user) => getCompanyBeneficiaries(user.companyId, { size: 100 }))
       .then((page) => {
         if (!active) return
         if (Array.isArray(page.content)) setBeneficiaries({ status: 'ready', items: page.content })

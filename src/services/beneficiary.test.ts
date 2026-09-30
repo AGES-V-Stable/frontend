@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getBeneficiaries, getBeneficiary, createBeneficiary } from './beneficiary'
+import {
+  createBeneficiary,
+  getBeneficiaries,
+  getBeneficiary,
+  getCompanyBeneficiaries,
+} from './beneficiary'
 import { saveAccessToken } from './authToken'
 import { ApiError } from './registration'
 import type { BeneficiaryCreatePayload } from './beneficiary'
@@ -185,5 +190,45 @@ describe('beneficiary service', () => {
       }),
     ).rejects.toBeInstanceOf(ApiError)
     vi.unstubAllGlobals()
+  })
+})
+
+describe('getCompanyBeneficiaries', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+
+  it('lists the company beneficiaries with the session token and a zero-based page', async () => {
+    localStorage.setItem('token', 'login-token')
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => paginatedResponse,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await getCompanyBeneficiaries('company-1', { size: 100 })
+
+    expect(result).toEqual(paginatedResponse)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/v1/companies/company-1/beneficiaries?page=0&size=100',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer login-token' }),
+      }),
+    )
+  })
+
+  it('encodes the company id and rejects when the backend denies access', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      text: async () => '{"message":"Acesso negado"}',
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getCompanyBeneficiaries('c1/2')).rejects.toMatchObject({ status: 403 })
+    expect(fetchMock.mock.calls[0]![0]).toBe('/v1/companies/c1%2F2/beneficiaries?page=0&size=10')
   })
 })

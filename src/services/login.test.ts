@@ -7,7 +7,7 @@ describe('authService.login', () => {
     vi.unstubAllGlobals()
   })
 
-  it('calls POST /login with the correct payload', async () => {
+  it('calls POST /auth/login with the correct payload', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(
@@ -18,7 +18,7 @@ describe('authService.login', () => {
     await authService.login({ email: 'user@empresa.com', password: 'secret' })
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:8080/v1/login',
+      'http://localhost:8080/v1/auth/login',
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

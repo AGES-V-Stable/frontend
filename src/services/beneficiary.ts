@@ -1,5 +1,6 @@
 import type { Beneficiary, PaginatedBeneficiaries } from '@/types/beneficiary'
 import { getAccessToken } from './authToken'
+import { httpRequest } from './httpClient'
 import { request } from './registration'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
@@ -42,6 +43,24 @@ export const getBeneficiaries = async (
   if (!response.ok) throw new Error(`Request failed with status ${response.status}`)
 
   return response.json() as Promise<PaginatedBeneficiaries>
+}
+
+/**
+ * Beneficiários da empresa do usuário autenticado. O backend recusa (403) outra
+ * empresa que não a do token, então este é o endpoint seguro para telas do cliente.
+ */
+export const getCompanyBeneficiaries = (
+  companyId: string,
+  params: Pick<GetBeneficiariesParams, 'page' | 'size'> = {},
+): Promise<PaginatedBeneficiaries> => {
+  const queryParams = new URLSearchParams({
+    // O backend Spring espera page em base 0, o front envia em base 1.
+    page: String((params.page || 1) - 1),
+    size: String(params.size || 10),
+  })
+  return httpRequest<PaginatedBeneficiaries>(
+    `/v1/companies/${encodeURIComponent(companyId)}/beneficiaries?${queryParams.toString()}`,
+  )
 }
 
 export const getBeneficiary = async (id: string): Promise<Beneficiary> => {

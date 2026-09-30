@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { getBeneficiaries } from '@/services/beneficiary'
+import { getCompanyBeneficiaries } from '@/services/beneficiary'
 import { HttpError } from '@/services/httpClient'
 import { createTransfer, getTransferQuote } from '@/services/transfers'
 import { getCurrentUser } from '@/services/user'
@@ -14,7 +14,7 @@ vi.mock('@/services/transfers', () => ({
   getTransferQuote: vi.fn(),
   createTransfer: vi.fn(),
 }))
-vi.mock('@/services/beneficiary', () => ({ getBeneficiaries: vi.fn() }))
+vi.mock('@/services/beneficiary', () => ({ getCompanyBeneficiaries: vi.fn() }))
 vi.mock('@/services/user', () => ({ getCurrentUser: vi.fn() }))
 
 const DEBOUNCE_MS = 500
@@ -79,7 +79,7 @@ describe('TransferCreate', () => {
       email: 'marina@example.com',
       companyId: 'c1',
     })
-    vi.mocked(getBeneficiaries).mockResolvedValue({
+    vi.mocked(getCompanyBeneficiaries).mockResolvedValue({
       content: [atlas, euroSupplier],
       totalElements: 2,
       totalPages: 1,
@@ -100,7 +100,7 @@ describe('TransferCreate', () => {
 
     expect(screen.getByText('Informe um valor para consultar a cotação.')).toBeInTheDocument()
     expect(continueButton()).toBeDisabled()
-    expect(getBeneficiaries).toHaveBeenCalledWith({ companyId: 'c1', size: 100 })
+    expect(getCompanyBeneficiaries).toHaveBeenCalledWith('c1', { size: 100 })
     expect(screen.getByRole('option', { name: 'Atlas Imports LLC · USD' })).toBeInTheDocument()
     expect(getTransferQuote).not.toHaveBeenCalled()
   })
@@ -118,7 +118,7 @@ describe('TransferCreate', () => {
 
     expect(getTransferQuote).toHaveBeenCalledTimes(1)
     expect(getTransferQuote).toHaveBeenCalledWith(
-      { amount: 125000, amountType: 'SOURCE', sourceCurrency: 'BRL', destinationCurrency: 'USD' },
+      { amount: 125000, amountType: 'SOURCE', sourceCurrency: 'BRL', destinationCurrency: 'USDC' },
       expect.any(AbortSignal),
     )
   })
@@ -200,6 +200,33 @@ describe('TransferCreate', () => {
 
     expect(getTransferQuote).not.toHaveBeenCalled()
     expect(screen.getByText('Informe um valor maior que zero')).toBeInTheDocument()
+  })
+
+  it('uses USDC for a crypto wallet beneficiary without a registered currency', async () => {
+    const wallet: Beneficiary = {
+      ...atlas,
+      id: '9b2e4c1a-3f6d-4e8b-a1c2-7d5f0e9b3a41',
+      legalName: 'Carteira Demo',
+      receivingMethod: 'CRYPTO_WALLET',
+      currency: undefined,
+    }
+    vi.mocked(getCompanyBeneficiaries).mockResolvedValue({
+      content: [wallet],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 100,
+    })
+    await renderPage()
+
+    fireEvent.change(beneficiarySelect(), { target: { value: wallet.id } })
+    await typeSourceAmount('1000')
+
+    expect(screen.getByRole('option', { name: 'Carteira Demo' })).toBeInTheDocument()
+    expect(getTransferQuote).toHaveBeenCalledWith(
+      expect.objectContaining({ destinationCurrency: 'USDC' }),
+      expect.any(AbortSignal),
+    )
   })
 
   it('quotes again with the currency of the selected beneficiary', async () => {
@@ -314,7 +341,9 @@ describe('TransferCreate', () => {
   })
 
   it('shows an alert when the beneficiaries cannot be loaded', async () => {
-    vi.mocked(getBeneficiaries).mockRejectedValueOnce(new Error('Request failed with status 403'))
+    vi.mocked(getCompanyBeneficiaries).mockRejectedValueOnce(
+      new Error('Request failed with status 403'),
+    )
 
     await renderPage()
 
