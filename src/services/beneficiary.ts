@@ -1,10 +1,11 @@
 import type { Beneficiary, PaginatedBeneficiaries } from '@/types/beneficiary'
+import { getAccessToken } from './authToken'
 import { request } from './registration'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 
 const authHeaders = () => {
-  const token = localStorage.getItem('token')
+  const token = getAccessToken()
   return {
     Accept: 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getBeneficiaries, getBeneficiary, createBeneficiary } from './beneficiary'
+import { saveAccessToken } from './authToken'
 import { ApiError } from './registration'
 import type { BeneficiaryCreatePayload } from './beneficiary'
 import type { Beneficiary, PaginatedBeneficiaries } from '@/types/beneficiary'
@@ -27,6 +28,21 @@ describe('beneficiary service', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     localStorage.clear()
+    sessionStorage.clear()
+  })
+
+  it('sends the onboarding token when it is the only token available', async () => {
+    saveAccessToken('onboarding-token')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => paginatedResponse }),
+    )
+
+    await getBeneficiaries()
+
+    expect(fetch).toHaveBeenCalledWith(expect.any(String), {
+      headers: { Accept: 'application/json', Authorization: 'Bearer onboarding-token' },
+    })
   })
 
   it('loads a paginated list with the bearer token', async () => {

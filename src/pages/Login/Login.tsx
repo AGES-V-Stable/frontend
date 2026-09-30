@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
 import { PATHS } from '@/routes/paths'
+import { saveLoginToken } from '@/services/authToken'
 import { authService } from '@/services/login'
 import { parseJwt } from '@/utils/jwt'
 
@@ -58,7 +59,7 @@ function Login() {
         password,
       })
 
-      localStorage.setItem('token', token)
+      saveLoginToken(token)
 
       const payload = parseJwt(token)
       const userRoles: string[] = payload?.role || []
