@@ -10,21 +10,22 @@ describe('mockBeneficiary', () => {
       expect(beneficiary).toEqual(
         expect.objectContaining({
           id: expect.any(String),
-          nome: expect.any(String),
-          empresa: expect.any(String),
-          cnpj: expect.any(String),
+          nickname: expect.any(String),
+          companyId: expect.any(String),
+          identificationDocument: expect.any(String),
           country: expect.any(String),
+          address: expect.any(String),
+          legalName: expect.any(String),
           currency: expect.any(String),
-          status: expect.any(String),
+          receivingMethod: expect.any(String),
         }),
       )
-      expect(beneficiary).not.toHaveProperty('cpf')
-      expect(beneficiary.cnpj).toMatch(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/)
+      expect(beneficiary.identificationDocument).toMatch(/^\d{14}$/)
     }
   })
 
   it('provides distinct companies, countries and currencies for filter options', () => {
-    expect(new Set(mockBeneficiary.map((beneficiary) => beneficiary.empresa)).size).toBe(2)
+    expect(new Set(mockBeneficiary.map((beneficiary) => beneficiary.companyId)).size).toBe(1)
     expect(new Set(mockBeneficiary.map((beneficiary) => beneficiary.country))).toEqual(
       new Set(['Brasil', 'Estados Unidos']),
     )

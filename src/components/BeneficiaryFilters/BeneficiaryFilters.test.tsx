@@ -10,7 +10,7 @@ const options = {
 }
 
 describe('BeneficiaryFilters', () => {
-  it('submits all beneficiary filters', () => {
+  it('submits all beneficiary filters when company filter is visible', () => {
     const onApply = vi.fn()
 
     render(<BeneficiaryFilters {...options} onApply={onApply} onClear={vi.fn()} />)
@@ -32,6 +32,27 @@ describe('BeneficiaryFilters', () => {
       country: 'Brasil',
       currency: 'BRL',
       status: 'Ativo',
+    })
+  })
+
+  it('submits filters correctly when company filter is hidden', () => {
+    const onApply = vi.fn()
+
+    render(<BeneficiaryFilters {...options} hideCompanyFilter onApply={onApply} onClear={vi.fn()} />)
+
+    expect(screen.queryByPlaceholderText('Buscar por empresa ou CNPJ')).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('Buscar beneficiário'), {
+      target: { value: 'Maria' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
+
+    expect(onApply).toHaveBeenCalledWith({
+      companyOrCnpj: '',
+      search: 'Maria',
+      country: '',
+      currency: '',
+      status: '',
     })
   })
 
