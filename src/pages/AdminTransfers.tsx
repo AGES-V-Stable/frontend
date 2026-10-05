@@ -1,17 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
 
 import { Drawer } from '@/components/Drawer'
-import { AdminNavIcon, Sidebar, type AdminNavIconId } from '@/components/Sidebar'
+import { Sidebar } from '@/components/Sidebar'
 import { Table } from '@/components/Table'
 import { TransferFilters, type TransferFilterValues } from '@/components/TransferFilters'
 import { type Transfer } from '@/data/mockTransfers'
+import { useAdminSidebar } from '@/config/adminNavigation'
 import { transferTableColumns as columns } from '@/config/transferTableColumns'
-import { PATHS } from '@/routes/paths'
-import { getTransfers, getTransfersById, type GetTransfersResponse } from '@/services/transfers'
+import {
+  getTransfers,
+  getTransfersById,
+  TRANSFER_STATUS_LABELS,
+  type GetTransfersResponse,
+} from '@/services/transfers'
 import { formatCurrency, formatDate } from '@/utils/formatters'
 
-const transferStatuses = ['Concluída', 'Processando', 'Falha']
+const transferStatuses: string[] = Object.values(TRANSFER_STATUS_LABELS)
 const transferTypes = ['Pagamento', 'Recebimento']
 
 const emptyFilters: TransferFilterValues = {
@@ -25,16 +29,8 @@ const emptyFilters: TransferFilterValues = {
   type: '',
 }
 
-const sidebarMenuItems = [
-  { id: 'home', label: 'Início', path: PATHS.HOME },
-  { id: 'beneficiaries', label: 'Beneficiários', path: PATHS.ADMIN_CLIENTS },
-  { id: 'transfers', label: 'Transferências', path: PATHS.ADMIN_TRANSFERS },
-  { id: 'settings', label: 'Configurações', path: '/settings' },
-].map((item) => ({ ...item, icon: <AdminNavIcon id={item.id as AdminNavIconId} /> }))
-
 function AdminTransfers() {
-  const navigate = useNavigate()
-  const location = useLocation()
+  const sidebar = useAdminSidebar()
 
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [currentPage, setCurrentPage] = useState(1)
@@ -50,11 +46,6 @@ function AdminTransfers() {
   const [appliedFilters, setAppliedFilters] = useState<TransferFilterValues>(emptyFilters)
 
   const limit = 12
-
-  const activeItemId = useMemo(() => {
-    const matchedItem = sidebarMenuItems.find((item) => item.path === location.pathname)
-    return matchedItem?.id ?? 'transfers'
-  }, [location.pathname])
 
   const fetchTransfers = async (page: number, filters: TransferFilterValues) => {
     setIsLoading(true)
@@ -121,12 +112,7 @@ function AdminTransfers() {
             V-<span className="sidebar__brand-accent">Stable</span>
           </span>
         }
-        items={sidebarMenuItems.map((item) => ({
-          ...item,
-          onClick: () => navigate(item.path),
-        }))}
-        activeItemId={activeItemId}
-        account={{ name: 'V-Stable Admin', description: 'Operações & Compliance', initials: 'CA' }}
+        {...sidebar}
       />
 
       <main className="min-h-screen w-full px-6 py-8 lg:px-10">

@@ -1,57 +1,33 @@
 import type { CompanyData } from '@/types/registration'
 import type {
+  CurrentOnboarding,
   KycPersonalPayload,
   KycSubmitResult,
   OnboardingResult,
   RepresentativeData,
 } from '@/types/onboarding'
 
-import { getAccessToken, saveAccessToken } from './authToken'
+import { apiJson, jsonBody } from './api'
+import { saveAccessToken } from './authToken'
 
+export { ApiError } from './api'
 export { clearAccessToken } from './authToken'
 
-const API_BASE = '/v1'
 const REPRESENTATIVE_PERSONAL_DATA_KEY = 'vstable:onboarding:representative-personal-data'
-
-export class ApiError extends Error {
-  public status: number
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = getAccessToken()
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
-    },
-  })
-  if (!response.ok) {
-    const body = await response.json().catch(() => null)
-    throw new ApiError(
-      response.status,
-      typeof body?.message === 'string'
-        ? body.message
-        : 'Não foi possível concluir a solicitação. Tente novamente.',
-    )
-  }
-  return response.json() as Promise<T>
-}
 
 /**
  * Registra o representante e a empresa de uma vez (etapa única no backend,
  * chamada só ao final do wizard visual). Cria o usuário, a empresa e a
  * verificação de KYC (pendente) numa mesma transação.
+ *
+ * Rota pública: não envia o token de uma sessão anterior (um JWT inválido não
+ * deve bloquear a criação da conta).
  */
 export async function submitOnboarding(representative: RepresentativeData, company: CompanyData) {
-  const result = await request<OnboardingResult>('/onboarding', {
+  const result = await apiJson<OnboardingResult>('/onboarding', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    authenticated: false,
+    ...jsonBody({
       fullName: representative.fullName.trim(),
       email: representative.email.trim(),
       password: representative.password,
@@ -67,10 +43,18 @@ export async function submitOnboarding(representative: RepresentativeData, compa
       state: company.estado.trim(),
     }),
   })
-  // O onboarding já devolve um JWT (não existe outro passo de login antes das
-  // etapas de compliance/liveness/KYC, que exigem autenticação no backend).
+  // O onboarding já devolve um JWT: ele vira a sessão do usuário (a mesma usada
+  // depois do login) e autentica as etapas de compliance/liveness/KYC.
   saveAccessToken(result.accessToken)
   return result
+}
+
+/**
+ * Verificação de KYC mais recente do representante logado — permite retomar um
+ * cadastro interrompido sem criar outra conta.
+ */
+export function getCurrentOnboarding(signal?: AbortSignal) {
+  return apiJson<CurrentOnboarding>('/onboarding/me', { signal })
 }
 
 /**
@@ -79,13 +63,9 @@ export async function submitOnboarding(representative: RepresentativeData, compa
  * liveness que já estão salvos na verificação de KYC pra completar a chamada.
  */
 export function submitKyc(kycVerificationId: string, personal: KycPersonalPayload) {
-  return request<KycSubmitResult>(
+  return apiJson<KycSubmitResult>(
     `/onboarding/${encodeURIComponent(kycVerificationId)}/compliance/kyc`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(personal),
-    },
+    { method: 'POST', ...jsonBody(personal) },
   )
 }
 

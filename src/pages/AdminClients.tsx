@@ -1,52 +1,63 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useCallback, useEffect, useState } from 'react'
 
 import { ClientFilters } from '@/components/ClientFilters'
 import type { ClientFilterValues } from '@/components/ClientFilters'
 import { Drawer } from '@/components/Drawer'
-import { AdminNavIcon, Sidebar, type AdminNavIconId } from '@/components/Sidebar'
+import { Sidebar } from '@/components/Sidebar'
 import { Table } from '@/components/Table'
-import { mockClients, type Cliente } from '@/data/mockClients'
+import { type Cliente } from '@/data/mockClients'
+import { useAdminSidebar } from '@/config/adminNavigation'
 import { clientTableColumns as columns } from '@/config/clientTableColumns'
 import { PATHS } from '@/routes/paths'
 import { getClients } from '@/services/clients'
 
-const sidebarMenuItems = [
-  { id: 'home', label: 'Início', path: PATHS.HOME },
-  { id: 'beneficiaries', label: 'Beneficiários', path: PATHS.ADMIN_CLIENTS },
-  { id: 'transfers', label: 'Transferências', path: PATHS.ADMIN_TRANSFERS },
-  { id: 'settings', label: 'Configurações', path: '/settings' },
-].map((item) => ({ ...item, icon: <AdminNavIcon id={item.id as AdminNavIconId} /> }))
-
 const emptyFilters: ClientFilterValues = { search: '', status: '', city: '', period: '' }
 const normalize = (value: string) => value.toLocaleLowerCase('pt-BR')
 const getPeriod = (date: string) => date.slice(3)
+const ITEMS_PER_PAGE = 4
 
-function AdminClients() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [clients, setClients] = useState<Cliente[]>(mockClients)
+interface AdminClientsProps {
+  /** Fonte dos dados. A rota de demonstração injeta dados fictícios explicitamente. */
+  loadClients?: (signal?: AbortSignal) => Promise<Cliente[]>
+}
+
+function AdminClients({ loadClients = getClients }: AdminClientsProps) {
+  const sidebar = useAdminSidebar()
+  const [clients, setClients] = useState<Cliente[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null)
   const [appliedFilters, setAppliedFilters] = useState<ClientFilterValues>(emptyFilters)
 
-  const activeItemId = useMemo(() => {
-    const matchedItem = sidebarMenuItems.find((item) => item.path === location.pathname)
-    return matchedItem?.id ?? 'beneficiaries'
-  }, [location.pathname])
-
   useEffect(() => {
-    const loadClients = async () => {
-      const data = await getClients()
-      setClients(data)
+    const controller = new AbortController()
+    const load = async () => {
+      setIsLoading(true)
+      setLoadError(null)
+      try {
+        const data = await loadClients(controller.signal)
+        if (!controller.signal.aborted) setClients(data)
+      } catch {
+        if (!controller.signal.aborted)
+          setLoadError('Não foi possível carregar os clientes. Tente novamente.')
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false)
+      }
     }
 
-    loadClients()
-  }, [])
+    void load()
+    return () => controller.abort()
+  }, [loadClients, reloadKey])
+
+  const retry = useCallback(() => setReloadKey((key) => key + 1), [])
 
   const statuses = [...new Set(clients.map((client) => client.status))]
   const cities = [...new Set(clients.map((client) => client.cidade))]
-  const periods = [...new Set(clients.map((client) => getPeriod(client.atualizacao)))]
+  const periods = [
+    ...new Set(clients.map((client) => getPeriod(client.atualizacao)).filter(Boolean)),
+  ]
 
   const filteredClients = clients.filter((client) => {
     const search = normalize(appliedFilters.search.trim())
@@ -59,6 +70,10 @@ function AdminClients() {
       (!appliedFilters.period || getPeriod(client.atualizacao) === appliedFilters.period)
     )
   })
+
+  const totalPages = Math.max(1, Math.ceil(filteredClients.length / ITEMS_PER_PAGE))
+  const pageStart = (Math.min(currentPage, totalPages) - 1) * ITEMS_PER_PAGE
+  const pageClients = filteredClients.slice(pageStart, pageStart + ITEMS_PER_PAGE)
 
   const applyFilters = (filters: ClientFilterValues) => {
     setAppliedFilters(filters)
@@ -81,12 +96,7 @@ function AdminClients() {
             V-<span className="sidebar__brand-accent">Stable</span>
           </span>
         }
-        items={sidebarMenuItems.map((item) => ({
-          ...item,
-          onClick: () => navigate(item.path),
-        }))}
-        activeItemId={activeItemId}
-        account={{ name: 'V-Stable Admin', description: 'Operações & Compliance', initials: 'CA' }}
+        {...sidebar}
       />
 
       <main className="min-h-screen w-full px-6 py-8 lg:px-10">
@@ -115,7 +125,37 @@ function AdminClients() {
             onClear={clearFilters}
           />
 
-          {filteredClients.length === 0 && (
+          {isLoading && (
+            <p
+              role="status"
+              className="rounded-lg border border-sage-300 bg-white px-6 py-5 text-sm text-slate-600"
+            >
+              Carregando clientes...
+            </p>
+          )}
+
+          {!isLoading && loadError && (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-4 rounded-lg border border-red-200 bg-red-50 px-6 py-5 text-sm text-red-700"
+            >
+              <span>{loadError}</span>
+              <button type="button" onClick={retry} className="font-medium underline">
+                Tentar novamente
+              </button>
+            </div>
+          )}
+
+          {!isLoading && !loadError && clients.length === 0 && (
+            <p
+              role="status"
+              className="rounded-lg border border-sage-300 bg-white px-6 py-5 text-sm text-slate-600"
+            >
+              Nenhum cliente cadastrado até o momento.
+            </p>
+          )}
+
+          {!isLoading && !loadError && clients.length > 0 && filteredClients.length === 0 && (
             <p
               role="status"
               className="rounded-lg border border-sage-300 bg-white px-6 py-5 text-sm text-slate-600"
@@ -129,7 +169,7 @@ function AdminClients() {
             entityLabel="clientes"
             totalRecords={filteredClients.length}
             columns={columns}
-            data={filteredClients}
+            data={pageClients}
             actions={[
               {
                 label: 'Ver detalhes',
@@ -138,9 +178,9 @@ function AdminClients() {
             ]}
             pagination={{
               currentPage,
-              totalPages: Math.max(1, Math.ceil(filteredClients.length / 4)),
-              displayedRecords: filteredClients.length,
-              itemsPerPage: 4,
+              totalPages,
+              displayedRecords: pageClients.length,
+              itemsPerPage: ITEMS_PER_PAGE,
               totalRecords: filteredClients.length,
               onPageChange: setCurrentPage,
               entityLabel: 'clientes',

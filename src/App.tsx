@@ -1,7 +1,13 @@
 import AppRoutes from '@/routes/AppRoutes'
+import { UnauthorizedRedirect } from '@/routes/guards'
 
 function App() {
-  return <AppRoutes />
+  return (
+    <>
+      <UnauthorizedRedirect />
+      <AppRoutes />
+    </>
+  )
 }
 
 export default App

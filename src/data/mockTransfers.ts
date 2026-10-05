@@ -1,3 +1,14 @@
+/** Rótulos de exibição dos status de transação do backend (transaction_status_enum). */
+export type TransferStatusLabel =
+  | 'Aguardando pagamento'
+  | 'Processando'
+  | 'Retida'
+  | 'Concluída'
+  | 'Falha'
+  | 'Falha parcial'
+  | 'Cancelada'
+  | 'Expirada'
+
 export interface Transfer {
   id: string
   empresa: string
@@ -5,8 +16,8 @@ export interface Transfer {
   data: string
   tipo: 'Pagamento' | 'Recebimento'
   valor: number
-  moeda: 'USD' | 'EUR' | 'BRL'
-  status: 'Concluída' | 'Processando' | 'Falha'
+  moeda: string
+  status: TransferStatusLabel
   cotacao?: number
   custos?: number
   economia?: number

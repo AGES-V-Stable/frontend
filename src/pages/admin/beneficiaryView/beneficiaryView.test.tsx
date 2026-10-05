@@ -15,6 +15,8 @@ vi.mock('@/services/beneficiary', () => ({
 const beneficiary: Beneficiary = {
   id: '1',
   companyId: 'company-1',
+  beneficiaryType: 'LEGAL_ENTITY',
+  legalName: 'Maria Oliveira Ltda',
   nickname: 'Maria Oliveira',
   identificationDocument: '45123456000190',
   country: 'Brasil',
@@ -26,6 +28,8 @@ const beneficiary: Beneficiary = {
 const otherBeneficiary: Beneficiary = {
   id: '2',
   companyId: 'company-1',
+  beneficiaryType: 'LEGAL_ENTITY',
+  legalName: 'João Souza Ltda',
   nickname: 'João Souza',
   identificationDocument: '77888999000111',
   country: 'Brasil',

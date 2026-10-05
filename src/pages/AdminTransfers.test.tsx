@@ -8,7 +8,8 @@ import { getTransfers, getTransfersById } from '@/services/transfers'
 import { mockTransfers } from '@/data/mockTransfers'
 import type { TransferFilterValues } from '@/components/TransferFilters'
 
-vi.mock('@/services/transfers', () => ({
+vi.mock('@/services/transfers', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/transfers')>()),
   getTransfers: vi.fn(),
   getTransfersById: vi.fn(),
 }))

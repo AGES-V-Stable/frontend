@@ -1,25 +1,56 @@
-import { mockClients, type Cliente } from '@/data/mockClients'
-import { normalizeListResponse } from './apiEnvelope'
+import type { Cliente } from '@/data/mockClients'
+import { complianceStatusLabel, type BackendComplianceStatus } from '@/utils/complianceStatus'
+import { maskCNPJ } from '@/utils/masks'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
+import { apiJson } from './api'
 
-export const getClients = async (): Promise<Cliente[]> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/clients`, {
-      headers: {
-        Accept: 'application/json',
-      },
-    })
+/** GET /v1/companies/summaries (somente administradores). */
+export interface CompanySummary {
+  id: string
+  legalName: string
+  tradeName: string | null
+  cnpj: string
+  city: string | null
+  state: string | null
+  statusKyb: BackendComplianceStatus | null
+  statusAml: BackendComplianceStatus | null
+  overallStatus: BackendComplianceStatus
+  representativeId: string | null
+  representativeName: string | null
+  representativeEmail: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
 
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`)
-    }
+const NOT_INFORMED = '—'
 
-    const payload = await response.json()
-    const clients = normalizeListResponse<Cliente>(payload)
+function formatShortDate(iso: string | null): string {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${day}/${month}/${date.getFullYear()}`
+}
 
-    return clients.length > 0 ? clients : mockClients
-  } catch {
-    return mockClients
+/** Converte o resumo do backend para a linha da tabela de clientes PME. */
+export function toCliente(summary: CompanySummary): Cliente {
+  return {
+    id: summary.id,
+    empresa: summary.tradeName || summary.legalName,
+    cnpj: maskCNPJ(summary.cnpj),
+    cidade: [summary.city, summary.state].filter(Boolean).join(' / ') || NOT_INFORMED,
+    atualizacao: formatShortDate(summary.updatedAt ?? summary.createdAt),
+    responsavel: summary.representativeName || NOT_INFORMED,
+    status: complianceStatusLabel(summary.overallStatus),
   }
+}
+
+/**
+ * Lista real de empresas cadastradas. Uma lista vazia é um resultado válido —
+ * erros são propagados para a tela mostrar o estado de erro (sem dados fictícios).
+ */
+export const getClients = async (signal?: AbortSignal): Promise<Cliente[]> => {
+  const summaries = await apiJson<CompanySummary[]>('/companies/summaries', { signal })
+  return summaries.map(toCliente)
 }
