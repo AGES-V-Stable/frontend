@@ -12,7 +12,7 @@ import { env } from '@/schemas/env'
 const API_URL = `${env.VITE_API_URL.replace(/\/$/, '')}/v1`
 
 async function login(data: LoginData): Promise<LoginResponse> {
-  const response = await fetch(`${API_URL}/login`, {
+  const response = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
