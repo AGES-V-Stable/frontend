@@ -9,7 +9,7 @@
  * Nomes iguais aos da paleta nativa do Tailwind (emerald-50, slate-900...)
  * sobrescrevem a cor nativa. Todos esses tem o mesmo valor do Tailwind, entao
  * nada muda visualmente. As cores que divergem da paleta nativa ganharam nome
- * proprio (surface, gray-666, placeholder) para nao alterar bg-gray-50 etc.
+ * proprio (surface, gray-666) para nao alterar bg-gray-50 etc.
  */
 
 @theme {
@@ -39,7 +39,7 @@
   --color-slate-900: #0f172a; /* titulos e texto forte */
 
   /* ---------- Cinzas neutros ---------- */
-  --color-gray-500: #6b7280; /* placeholder do Input */
+  --color-gray-500: #6b7280; /* placeholder do Input e dos filtros */
 
   /* ---------- Azuis ---------- */
   --color-blue-50: #eff6ff; /* fundo do badge info / card em analise */
@@ -61,7 +61,6 @@
   /* ---------- Cores proprias (divergem da paleta nativa) ---------- */
   --color-surface: #f8f9fb; /* fundo de input e cabecalho de tabela */
   --color-gray-666: #666666; /* item inativo da sidebar */
-  --color-placeholder: #718096; /* placeholder dos filtros */
 
   /* ---------- Apelidos de marca ---------- */
   --color-primary: var(--color-emerald-600);
