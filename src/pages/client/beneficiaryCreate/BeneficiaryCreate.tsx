@@ -243,7 +243,7 @@ export function BeneficiaryCreate() {
           <section className="flex flex-col gap-3">
             <h2 className="text-base font-bold text-slate-900">Identificação</h2>
             <div className="flex min-h-[102px] flex-col justify-center gap-1">
-              <label htmlFor="tipoBeneficiario" className="text-[14px] text-sage-800">
+              <label htmlFor="tipoBeneficiario" className="text-sm text-sage-800">
                 Tipo de beneficiário *
               </label>
               <select
@@ -253,7 +253,7 @@ export function BeneficiaryCreate() {
                 disabled={saving}
                 onChange={(event) => change('tipoBeneficiario', event.target.value)}
                 aria-invalid={!!errors.tipoBeneficiario}
-                className={`w-full rounded-lg border bg-surface px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                className={`w-full rounded-lg border bg-surface px-3 py-3.5 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                   errors.tipoBeneficiario ? 'border-red-700' : 'border-sage-300'
                 }`}
               >
@@ -352,7 +352,7 @@ export function BeneficiaryCreate() {
                   />
                 </div>
                 <div className="flex min-h-[102px] flex-col justify-center gap-1">
-                  <label htmlFor="redeBlockchain" className="text-[14px] text-sage-800">
+                  <label htmlFor="redeBlockchain" className="text-sm text-sage-800">
                     Rede blockchain *
                   </label>
                   <select
@@ -362,7 +362,7 @@ export function BeneficiaryCreate() {
                     disabled={saving}
                     onChange={(event) => change('redeBlockchain', event.target.value)}
                     aria-invalid={!!errors.redeBlockchain}
-                    className={`w-full rounded-lg border bg-surface px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                    className={`w-full rounded-lg border bg-surface px-3 py-3.5 text-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                       errors.redeBlockchain ? 'border-red-700' : 'border-sage-300'
                     }`}
                   >

@@ -8,7 +8,7 @@ interface StatusBadgeProps {
 export function StatusBadge({ label, variant }: StatusBadgeProps) {
   const baseClasses =
     'inline-flex items-center justify-center min-w-[140px] h-[32px] rounded-2xl px-[12px] whitespace-nowrap'
-  const textClasses = "font-['IBM_Plex_Sans'] font-bold text-[14px] leading-none"
+  const textClasses = "font-['IBM_Plex_Sans'] font-bold text-sm leading-none"
 
   const variants = {
     success: 'bg-emerald-50 text-primary',

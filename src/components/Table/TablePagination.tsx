@@ -31,7 +31,7 @@ export function TablePagination({
 
   return (
     <div className="w-full flex items-center justify-between py-6">
-      <div className="font-['IBM_Plex_Sans'] text-[14px] text-slate-500">
+      <div className="font-['IBM_Plex_Sans'] text-sm text-slate-500">
         Mostrando {startRecord}-{endRecord} de {totalRecords} {entityLabel}
       </div>
 
@@ -43,7 +43,7 @@ export function TablePagination({
           onClick={handlePrev}
           className="!w-[112px] !h-[40px] !px-[24px] !rounded-[8px] !border-primary !text-primary hover:!text-white !border"
         />
-        <div className="w-[72px] h-[40px] flex items-center justify-center rounded-[8px] bg-surface font-['IBM_Plex_Sans'] text-[14px] font-medium text-slate-900">
+        <div className="w-[72px] h-[40px] flex items-center justify-center rounded-[8px] bg-surface font-['IBM_Plex_Sans'] text-sm font-medium text-slate-900">
           {currentPage} de {totalPages}
         </div>
         <Button

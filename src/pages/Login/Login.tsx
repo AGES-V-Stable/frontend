@@ -86,7 +86,7 @@ function Login() {
           <p className="text-white text-[32px] font-bold">
             Infraestrutura financeira para operações globais.
           </p>
-          <p className="text-slate-300 text-[18px] font-semibold">
+          <p className="text-slate-300 text-lg font-semibold">
             Acesse sua conta V-Stable para acompanhar movimentações, usuários e operações em um só
             lugar.
           </p>
@@ -95,7 +95,7 @@ function Login() {
       <div className="bg-white flex flex-col items-center justify-center min-h-screen w-full gap-y-[20px]">
         <div className="flex flex-col gap-y-[10px]">
           <h1 className="text-slate-900 text-[32px] font-bold">Bem-vindo à V-Stable!</h1>
-          <p className="text-slate-500 text-[18px] font-semibold">
+          <p className="text-slate-500 text-lg font-semibold">
             Acesse sua conta com suas credenciais
           </p>
         </div>
@@ -132,7 +132,7 @@ function Login() {
           <div className="flex justify-center -mt-7">
             <Link
               to={PATHS.FORGOT_PASSWORD}
-              className="text-[16px] font-medium text-primary hover:text-primary-hover hover:underline transition-colors"
+              className="text-base font-medium text-primary hover:text-primary-hover hover:underline transition-colors"
             >
               Esqueci minha senha
             </Link>

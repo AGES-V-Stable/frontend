@@ -10,7 +10,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ label, variant = 'primary', disabled, className = '', ...props }, ref) => {
     const baseStyles =
-      'inline-flex items-center justify-center text-[16px] font-normal rounded-[8px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
+      'inline-flex items-center justify-center text-base font-normal rounded-[8px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
 
     const paddingStyles = 'px-[24px] py-[12px]'
 

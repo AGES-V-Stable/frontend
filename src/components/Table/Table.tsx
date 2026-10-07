@@ -54,10 +54,10 @@ export function Table<T>({
   return (
     <div className="bg-white w-full flex flex-col pt-6 pb-6 rounded-lg overflow-x-auto">
       {(title || totalRecords !== undefined) && (
-        <div className="px-6 mb-6 font-['IBM_Plex_Sans'] text-slate-900 font-medium text-[18px]">
+        <div className="px-6 mb-6 font-['IBM_Plex_Sans'] text-slate-900 font-medium text-lg">
           {title}{' '}
           {totalRecords !== undefined && (
-            <span className="text-slate-900 text-[14px] font-medium ml-2">
+            <span className="text-slate-900 text-sm font-medium ml-2">
               · {totalRecords} {entityLabel}
             </span>
           )}
@@ -74,7 +74,7 @@ export function Table<T>({
                   scope="col"
                   style={{ width: col.width }}
                   className={`
-                    font-['IBM_Plex_Sans'] font-medium text-[14px] leading-none text-slate-500 align-middle
+                    font-['IBM_Plex_Sans'] font-medium text-sm leading-none text-slate-500 align-middle
                     ${index === 0 ? '' : 'pl-2'}
                     ${index === columns.length - 1 ? '' : 'pr-4'}
                     ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
@@ -93,7 +93,7 @@ export function Table<T>({
                     <td
                       key={`${rowIndex}-${col.key as string}`}
                       className={`
-                        font-['IBM_Plex_Sans'] font-normal text-[12px] leading-none text-slate-900 align-middle bg-white
+                        font-['IBM_Plex_Sans'] font-normal text-xs leading-none text-slate-900 align-middle bg-white
                         ${colIndex === 0 ? '' : 'pl-2'}
                         ${colIndex === columns.length - 1 ? '' : 'pr-4'}
                         ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
@@ -108,7 +108,7 @@ export function Table<T>({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="h-[120px] text-center font-['IBM_Plex_Sans'] text-slate-500 text-[14px]"
+                  className="h-[120px] text-center font-['IBM_Plex_Sans'] text-slate-500 text-sm"
                 >
                   {emptyMessage || 'Nenhum registro encontrado.'}
                 </td>
