@@ -152,7 +152,7 @@ export function RepresentativeStep({
                   value={formData.cargo_funcao}
                   disabled={saving}
                   onChange={(e) => handleInputChange('cargo_funcao', e.target.value)}
-                  className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.cargo_funcao ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.cargo_funcao ? 'border-red-700' : 'border-gray-300'}`}
                   aria-invalid={!!errors.cargo_funcao}
                   aria-describedby={errors.cargo_funcao ? 'cargo-error' : undefined}
                 >
@@ -166,7 +166,7 @@ export function RepresentativeStep({
                   ))}
                 </select>
                 {errors.cargo_funcao && (
-                  <p id="cargo-error" role="alert" className="mt-1 text-sm text-red-500">
+                  <p id="cargo-error" role="alert" className="mt-1 text-sm text-red-700">
                     {errors.cargo_funcao}
                   </p>
                 )}
@@ -292,7 +292,7 @@ export function RepresentativeStep({
                   value={formData.estado}
                   disabled={saving}
                   onChange={(e) => handleInputChange('estado', e.target.value)}
-                  className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.estado ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.estado ? 'border-red-700' : 'border-gray-300'}`}
                   aria-invalid={!!errors.estado}
                   aria-describedby={errors.estado ? 'estado-error' : undefined}
                 >
@@ -306,7 +306,7 @@ export function RepresentativeStep({
                   ))}
                 </select>
                 {errors.estado && (
-                  <p id="estado-error" role="alert" className="mt-1 text-sm text-red-500">
+                  <p id="estado-error" role="alert" className="mt-1 text-sm text-red-700">
                     {errors.estado}
                   </p>
                 )}
