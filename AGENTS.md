@@ -5,7 +5,7 @@ Instruções para agentes que alteram o frontend V-Stable. Use este arquivo como
 ## Projeto e arquitetura
 
 - Stack: React, TypeScript, Vite, React Router, Tailwind CSS e Zod. Node.js 24 é a versão usada no CI.
-- `src/pages/` compõe telas; `src/components/` contém componentes reutilizáveis; `src/services/` concentra chamadas à API; `src/routes/` define rotas; `src/schemas/` e `src/types/` descrevem validações e contratos; `src/utils/` contém funções compartilhadas.
+- `src/app/` compõe a aplicação, define rotas e concentra providers. `src/features/login/` contém autenticação e cadastro, com o fluxo de compliance em `compliance/`. `src/features/home/Home.tsx` compõe a navegação de `components/NavBar/` e o conteúdo de `content/admin/` ou `content/pme/`. Cada feature mantém suas páginas, componentes, serviços e schemas locais; `src/shared/` contém UI, serviços, tipos, schemas, utilitários e recursos usados entre features.
 - Preserve essas responsabilidades e siga o padrão mais próximo já usado. Não mova regras de negócio para componentes de apresentação nem crie uma camada nova para uso único.
 - Antes de alterar contratos ou fluxos, localize seus consumidores e testes. Mantenha compatibilidade com a API existente, salvo quando a tarefa pedir uma mudança de contrato.
 

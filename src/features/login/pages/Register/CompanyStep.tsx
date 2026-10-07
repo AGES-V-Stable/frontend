@@ -1,0 +1,174 @@
+import { useRef, useState } from 'react'
+import { Button } from '@/shared/components/Button'
+import { Input } from '@/shared/components/Input'
+import { maskCEP, maskCNPJ } from '@/shared/utils/masks'
+import { isValidCNPJ } from '@/shared/utils/validators'
+import type { CompanyData } from '@/shared/types/registration'
+import { RegistrationHeader } from '@/features/login/components/RegistrationHeader'
+
+export type { CompanyData } from '@/shared/types/registration'
+
+interface CompanyStepProps {
+  initialValues?: Partial<CompanyData>
+  onCancel: () => void
+  onContinue: (data: CompanyData) => void
+  saving?: boolean
+  serverError?: string
+}
+
+type Field = keyof CompanyData
+const fields: { name: Field; label: string; placeholder: string; required: boolean }[] = [
+  {
+    name: 'razaoSocial',
+    label: 'Razão Social',
+    placeholder: 'Ex.: V-Stable Tecnologia Ltda.',
+    required: true,
+  },
+  { name: 'pais', label: 'País', placeholder: 'Brasil', required: true },
+  { name: 'cnpj', label: 'CNPJ', placeholder: '00.000.000/0000-00', required: true },
+  { name: 'cep', label: 'CEP', placeholder: '00000-000', required: true },
+  { name: 'cidade', label: 'Cidade', placeholder: 'Ex: São Paulo', required: false },
+  { name: 'estado', label: 'Estado', placeholder: 'Ex: SP, RJ', required: true },
+]
+const brazil = (pais: string) => pais.trim().toLowerCase() === 'brasil'
+function validate(name: Field, value: string, pais: string) {
+  if (name !== 'cidade' && !value.trim()) return 'Campo obrigatório.'
+  const maxLength = { razaoSocial: 255, pais: 100, estado: 100, cidade: 255, cep: 20, cnpj: 18 }[
+    name
+  ]
+  if (value.trim().length > maxLength) return `Use no máximo ${maxLength} caracteres.`
+  if (name === 'razaoSocial' && value.trim().length < 3) return 'Use pelo menos 3 caracteres.'
+  if (name === 'cnpj' && value.replace(/\D/g, '').length !== 14)
+    return 'Informe um CNPJ com 14 dígitos.'
+  if (name === 'cnpj' && !isValidCNPJ(value)) return 'CNPJ inválido.'
+  if (name === 'cep' && brazil(pais) && !/^(\d{8}|\d{5}-\d{3})$/.test(value.trim()))
+    return 'Informe um CEP com 8 dígitos.'
+  return undefined
+}
+
+export function CompanyStep({
+  initialValues,
+  onCancel,
+  onContinue,
+  saving = false,
+  serverError,
+}: CompanyStepProps) {
+  const [data, setData] = useState<CompanyData>(() => ({
+    razaoSocial: '',
+    pais: 'Brasil',
+    cidade: '',
+    estado: '',
+    ...initialValues,
+    cnpj: maskCNPJ(initialValues?.cnpj ?? ''),
+    cep: brazil(initialValues?.pais ?? 'Brasil')
+      ? maskCEP(initialValues?.cep ?? '')
+      : (initialValues?.cep ?? ''),
+  }))
+  const [errors, setErrors] = useState<Partial<Record<Field, string>>>({})
+  const formRef = useRef<HTMLFormElement>(null)
+
+  function change(name: Field, value: string) {
+    const formatted =
+      name === 'cnpj'
+        ? maskCNPJ(value)
+        : name === 'cep' && brazil(data.pais)
+          ? maskCEP(value)
+          : value
+    setData((previous) => ({ ...previous, [name]: formatted }))
+    if (errors[name] || name === 'pais')
+      setErrors((previous) => ({
+        ...previous,
+        [name]: validate(name, formatted, data.pais),
+        ...(name === 'pais' ? { cep: validate('cep', data.cep, value) } : {}),
+      }))
+  }
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-8 md:px-8">
+      <form
+        ref={formRef}
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (saving) return
+          const nextErrors: Partial<Record<Field, string>> = {}
+          fields.forEach(({ name }) => {
+            const error = validate(name, data[name], data.pais)
+            if (error) nextErrors[name] = error
+          })
+          setErrors(nextErrors)
+          const firstInvalid = fields.find(({ name }) => nextErrors[name])
+          if (firstInvalid) {
+            formRef.current
+              ?.querySelector<HTMLInputElement>(`[name="${firstInvalid.name}"]`)
+              ?.focus()
+            return
+          }
+          onContinue({ ...data })
+        }}
+        className="flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-sage-300 bg-white px-4 py-[30px] md:px-10"
+      >
+        <RegistrationHeader
+          activeStep={1}
+          description="Preencha os dados da empresa para iniciar o processo de cadastro."
+        />
+        {serverError && (
+          <p role="alert" className="text-red-700">
+            {serverError}
+          </p>
+        )}
+        <div className="flex min-h-8 items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-slate-900">Dados da empresa</h2>
+          <span className="shrink-0 text-sm font-medium text-primary">Etapa 2 de 5</span>
+        </div>
+        <div className="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+          {fields.map(({ name, label, placeholder, required }) => (
+            <div
+              key={name}
+              className="flex min-h-[102px] items-center [&_label]:mb-1 [&_label]:font-medium"
+            >
+              <Input
+                id={`company-${name}`}
+                name={name}
+                label={`${label}${required ? ' *' : ''}`}
+                placeholder={placeholder}
+                required={required}
+                disabled={saving}
+                value={data[name]}
+                onChange={(event) => change(name, event.target.value)}
+                error={errors[name]}
+                inputMode={
+                  name === 'cnpj' || (name === 'cep' && brazil(data.pais)) ? 'numeric' : 'text'
+                }
+                className="h-[50px] text-sm! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              />
+            </div>
+          ))}
+        </div>
+        <p className="flex min-h-7 items-center text-xs text-slate-500">
+          * Campos obrigatórios. Os dados poderão ser revisados antes do envio para análise.
+        </p>
+        <div className="flex flex-col gap-3 md:flex-row md:justify-end md:gap-[70px]">
+          <div className="md:w-[170px]">
+            <Button
+              type="button"
+              variant="neutral"
+              label="Cancelar"
+              onClick={onCancel}
+              disabled={saving}
+              className="h-12 font-medium"
+            />
+          </div>
+          <div className="md:w-[170px]">
+            <Button
+              type="submit"
+              disabled={saving}
+              label={saving ? 'Salvando...' : 'Continuar'}
+              className="h-12 font-medium"
+            />
+          </div>
+        </div>
+      </form>
+    </main>
+  )
+}
