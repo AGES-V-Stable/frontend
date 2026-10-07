@@ -81,15 +81,15 @@ function Login() {
 
   return (
     <div className="flex items-center min-h-screen">
-      <div className="bg-slate-900 min-h-screen w-[760px] flex flex-col items-center justify-center px-18">
-        <div className="mb-10 w-full max-w-sm rounded-xl bg-white p-4">
+      <div className="bg-slate-100 min-h-screen w-[760px] flex flex-col items-center justify-center px-18">
+        <div className="mb-10 w-full max-w-sm">
           <BrandLogo className="w-full" />
         </div>
         <div className="flex flex-col gap-y-[18px]">
-          <p className="text-white text-[32px] font-bold">
+          <h1 className="text-slate-900 text-[32px] font-bold">
             Infraestrutura financeira para operações globais.
-          </p>
-          <p className="text-slate-300 text-[18px] font-semibold">
+          </h1>
+          <p className="text-slate-600 text-[18px] font-semibold">
             Acesse sua conta V-Stable para acompanhar movimentações, usuários e operações em um só
             lugar.
           </p>

@@ -1,4 +1,4 @@
-import logo from '@/assets/v-stable-logo.svg'
+import logo from '@/assets/v-stable-logo.png'
 
 interface BrandLogoProps {
   className?: string
@@ -9,8 +9,8 @@ export function BrandLogo({ className = '' }: BrandLogoProps) {
     <img
       src={logo}
       alt="V-Stable"
-      width={1370}
-      height={430}
+      width={2045}
+      height={769}
       className={'block h-auto max-w-full object-contain ' + className}
     />
   )
