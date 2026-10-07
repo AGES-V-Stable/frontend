@@ -280,7 +280,6 @@ export function BeneficiaryCreate() {
                   value={data[name]}
                   onChange={(event) => change(name, event.target.value)}
                   error={errors[name]}
-                  className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
                 />
               </div>
             ))}
@@ -335,7 +334,6 @@ export function BeneficiaryCreate() {
                     value={data[name]}
                     onChange={(event) => change(name, event.target.value)}
                     error={errors[name]}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
                   />
                 </div>
               ))
@@ -351,7 +349,6 @@ export function BeneficiaryCreate() {
                     value={data.enderecoWallet}
                     onChange={(event) => change('enderecoWallet', event.target.value)}
                     error={errors.enderecoWallet}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
                   />
                 </div>
                 <div className="flex min-h-[102px] flex-col justify-center gap-1">
@@ -394,7 +391,6 @@ export function BeneficiaryCreate() {
                     value={data.apelidoWallet}
                     onChange={(event) => change('apelidoWallet', event.target.value)}
                     error={errors.apelidoWallet}
-                    className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669]"
                   />
                 </div>
               </>
