@@ -21,7 +21,7 @@ describe('ComplianceStatusCard Component', () => {
     expect(screen.getByText('Seu cadastro está em análise')).toBeInTheDocument()
     expect(screen.getByText('Análise de compliance em andamento')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Atualizar status' })).toBeInTheDocument()
-    expect(screen.getByAltText('svg em análise')).toBeInTheDocument()
+    expect(screen.getByAltText('Em análise')).toBeInTheDocument()
   })
 
   it('given status APPROVED, when rendered, then it should display the approved content', () => {
@@ -31,6 +31,7 @@ describe('ComplianceStatusCard Component', () => {
     expect(screen.getByText('Cadastro aprovado')).toBeInTheDocument()
     expect(screen.getByText('Conta liberada')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Acessar plataforma' })).toBeInTheDocument()
+    expect(screen.getByAltText('Aprovado')).toBeInTheDocument()
   })
 
   it('given status NOT_APPROVED, when rendered, then it should display the not approved content', () => {
@@ -40,5 +41,6 @@ describe('ComplianceStatusCard Component', () => {
     expect(screen.getByText('Cadastro não aprovado')).toBeInTheDocument()
     expect(screen.getByText('Ação necessária')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Revisar dados' })).toBeInTheDocument()
+    expect(screen.getByAltText('Não aprovado')).toBeInTheDocument()
   })
 })

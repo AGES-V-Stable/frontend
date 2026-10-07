@@ -13,7 +13,7 @@ export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
     case ComplianceStatus.IN_REVIEW:
       return (
         <div className="flex flex-col gap-y-5 items-center justify-center py-[61px] px-[70px] bg-white rounded-[16px] border border-sage-300">
-          <img className="p-[22px] bg-blue-50 rounded-full" src={clockIcon} alt="svg em análise" />
+          <img className="p-[22px] bg-blue-50 rounded-full" src={clockIcon} alt="Em análise" />
           <p className="text-[14px] font-medium py-[7px] px-[14px] text-sky-600 bg-blue-50 rounded-[16px]">
             Em análise
           </p>
@@ -38,11 +38,7 @@ export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
     case ComplianceStatus.APPROVED:
       return (
         <div className="flex flex-col gap-y-5 items-center justify-center py-[61px] px-[70px] bg-white rounded-[16px] border border-sage-300">
-          <img
-            className="p-[22px] bg-emerald-50 rounded-full"
-            src={checkIcon}
-            alt="svg em análise"
-          />
+          <img className="p-[22px] bg-emerald-50 rounded-full" src={checkIcon} alt="Aprovado" />
           <p className="text-[14px] font-medium py-[7px] px-[14px] text-primary bg-emerald-50 rounded-[16px]">
             Aprovado
           </p>
@@ -65,7 +61,7 @@ export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
     case ComplianceStatus.NOT_APPROVED:
       return (
         <div className="flex flex-col gap-y-5 items-center justify-center py-[61px] px-[70px] bg-white rounded-[16px] border border-sage-300">
-          <img className="p-[22px] bg-red-50 rounded-full" src={closeIcon} alt="svg em análise" />
+          <img className="p-[22px] bg-red-50 rounded-full" src={closeIcon} alt="Não aprovado" />
           <p className="text-[14px] font-medium py-[7px] px-[14px] text-red-600 bg-red-50 rounded-[16px]">
             Não aprovado
           </p>

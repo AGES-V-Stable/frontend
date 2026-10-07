@@ -145,7 +145,7 @@ export default function ComplianceStep({
         />
 
         <div className="mx-auto w-full max-w-lg py-2">
-          <h1 className="text-xl font-semibold text-gray-800 mb-6">Compliance e documentos</h1>
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">Compliance e documentos</h2>
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="mb-4">
@@ -207,7 +207,7 @@ export default function ComplianceStep({
                   Arraste e solte arquivos aqui ou{' '}
                   <span className="text-primary font-medium">clique para selecionar</span>
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   {isDoubleSided(form.tipoDocumento)
                     ? 'Envie frente e verso (2 arquivos) — '
                     : 'Envie o documento (1 arquivo) — '}
@@ -248,13 +248,13 @@ export default function ComplianceStep({
                   >
                     <div className="flex-1 min-w-0">
                       <p className="truncate text-gray-800">{doc.file.name}</p>
-                      <p className="text-gray-400 text-xs">{formatFileSize(doc.file.size)}</p>
+                      <p className="text-slate-500 text-xs">{formatFileSize(doc.file.size)}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => removeFile(doc.id)}
                       disabled={saving}
-                      className="ml-3 text-gray-400 hover:text-red-500 transition-colors"
+                      className="ml-3 text-slate-500 hover:text-red-700 transition-colors"
                       aria-label={`Remover ${doc.file.name}`}
                     >
                       ✕

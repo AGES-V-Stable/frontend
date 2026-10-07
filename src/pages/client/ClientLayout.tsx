@@ -47,12 +47,12 @@ export function ClientLayout({ children, activeItemId = 'beneficiaries' }: Clien
   }, [])
 
   return (
-    <div className="flex min-h-screen bg-[#F1F5F9]">
+    <div className="flex min-h-screen bg-slate-100">
       <Sidebar
         className="sticky top-0"
         logo={
-          <span className="text-lg font-bold text-[#059669]">
-            V-<span className="text-[#0F172A]">Stable</span>
+          <span className="text-lg font-bold text-primary">
+            V-<span className="text-slate-900">Stable</span>
           </span>
         }
         items={menuItems.map((item) => ({
@@ -68,10 +68,10 @@ export function ClientLayout({ children, activeItemId = 'beneficiaries' }: Clien
         }}
       />
       <div className="flex min-h-screen w-full flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#ccd8d2] bg-white px-6">
-          <span className="text-sm font-medium text-[#0F172A]">V-Stable • Conta empresarial</span>
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-sage-200 bg-white px-6">
+          <span className="text-sm font-medium text-slate-900">V-Stable • Conta empresarial</span>
           {loading && (
-            <span role="status" className="text-sm text-[#64748B]">
+            <span role="status" className="text-sm text-slate-500">
               Carregando...
             </span>
           )}
@@ -81,7 +81,7 @@ export function ClientLayout({ children, activeItemId = 'beneficiaries' }: Clien
             </span>
           )}
           {!loading && !error && userName && (
-            <span className="text-sm font-medium text-[#0F172A]">{userName}</span>
+            <span className="text-sm font-medium text-slate-900">{userName}</span>
           )}
         </header>
         <main className="flex-1">{children}</main>

@@ -16,7 +16,16 @@ describe('Input', () => {
     const input = screen.getByLabelText('E-mail')
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByRole('alert')).toHaveTextContent('E-mail inválido')
-    expect(input.className).toContain('border-red-500')
+    expect(input.className).toContain('border-red-700')
+  })
+
+  it('keeps a visible focus indicator so keyboard users can see the active field', () => {
+    render(<Input label="CEP" value="" onChange={vi.fn()} />)
+
+    const input = screen.getByLabelText('CEP')
+    expect(input.className).toContain('focus-visible:outline-2')
+    expect(input.className).toContain('focus-visible:outline-offset-2')
+    expect(input.className).toContain('focus-visible:outline-primary')
   })
 
   it('does not mark the field as invalid when there is no error', () => {
