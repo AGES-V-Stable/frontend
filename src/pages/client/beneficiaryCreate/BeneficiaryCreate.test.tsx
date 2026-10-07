@@ -93,6 +93,18 @@ describe('BeneficiaryCreate', () => {
     expect(createBeneficiary).not.toHaveBeenCalled()
   })
 
+  it('flags the blockchain network field when the wallet form is submitted empty', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+
+    await user.click(screen.getByRole('tab', { name: 'Wallet cripto' }))
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    expect(await screen.findAllByText('Campo obrigatório.')).not.toHaveLength(0)
+    expect(screen.getByLabelText('Rede blockchain *')).toHaveAttribute('aria-invalid', 'true')
+    expect(createBeneficiary).not.toHaveBeenCalled()
+  })
+
   it('blocks submit when the confirmation checkbox is not checked', async () => {
     const user = userEvent.setup()
     render(<BeneficiaryCreate />)
