@@ -1,0 +1,180 @@
+import { useEffect, useState } from 'react'
+
+import { Home } from '@/features/home/Home'
+import { ClientFilters } from '@/features/home/content/admin/components/ClientFilters'
+import type { ClientFilterValues } from '@/features/home/content/admin/components/ClientFilters'
+import { Drawer } from '@/shared/components/Drawer'
+import { Table } from '@/shared/components/Table'
+import {
+  mockClients,
+  type Cliente,
+} from '@/features/home/content/admin/services/fixtures/mockClients'
+import { clientTableColumns as columns } from '@/features/home/content/admin/components/tables/clientTableColumns'
+import { PATHS } from '@/app/routes/paths'
+import { getClients } from '@/features/home/content/admin/services/clients'
+
+const emptyFilters: ClientFilterValues = { search: '', status: '', city: '', period: '' }
+const normalize = (value: string) => value.toLocaleLowerCase('pt-BR')
+const getPeriod = (date: string) => date.slice(3)
+
+function AdminClients() {
+  const [clients, setClients] = useState<Cliente[]>(mockClients)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [selectedClient, setSelectedClient] = useState<Cliente | null>(null)
+  const [appliedFilters, setAppliedFilters] = useState<ClientFilterValues>(emptyFilters)
+
+  useEffect(() => {
+    const loadClients = async () => {
+      const data = await getClients()
+      setClients(data)
+    }
+
+    loadClients()
+  }, [])
+
+  const statuses = [...new Set(clients.map((client) => client.status))]
+  const cities = [...new Set(clients.map((client) => client.cidade))]
+  const periods = [...new Set(clients.map((client) => getPeriod(client.atualizacao)))]
+
+  const filteredClients = clients.filter((client) => {
+    const search = normalize(appliedFilters.search.trim())
+    return (
+      (!search ||
+        normalize(client.empresa).includes(search) ||
+        normalize(client.cnpj).includes(search)) &&
+      (!appliedFilters.status || client.status === appliedFilters.status) &&
+      (!appliedFilters.city || client.cidade === appliedFilters.city) &&
+      (!appliedFilters.period || getPeriod(client.atualizacao) === appliedFilters.period)
+    )
+  })
+
+  const applyFilters = (filters: ClientFilterValues) => {
+    setAppliedFilters(filters)
+    setCurrentPage(1)
+  }
+
+  const clearFilters = () => {
+    setAppliedFilters(emptyFilters)
+    setCurrentPage(1)
+  }
+
+  const closeClientDetails = () => setSelectedClient(null)
+
+  return (
+    <Home>
+      <main className="min-h-screen w-full px-6 py-8 lg:px-10">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
+          <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Clientes PME</h1>
+              <p className="mt-1 text-xs text-slate-500">
+                Visualize e audite todas as contas cadastradas na plataforma.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.open(PATHS.REGISTER, '_blank', 'noopener,noreferrer')}
+              className="h-11 rounded-md bg-primary px-5 text-sm font-medium text-white"
+            >
+              Cadastrar representante
+            </button>
+          </header>
+
+          <ClientFilters
+            statuses={statuses}
+            cities={cities}
+            periods={periods}
+            onApply={applyFilters}
+            onClear={clearFilters}
+          />
+
+          {filteredClients.length === 0 && (
+            <p
+              role="status"
+              className="rounded-lg border border-sage-300 bg-white px-6 py-5 text-sm text-slate-600"
+            >
+              Nenhum cliente encontrado para os filtros informados.
+            </p>
+          )}
+
+          <Table
+            title="Todos os clientes"
+            entityLabel="clientes"
+            totalRecords={filteredClients.length}
+            columns={columns}
+            data={filteredClients}
+            actions={[
+              {
+                label: 'Ver detalhes',
+                onClick: (client) => setSelectedClient(client as Cliente),
+              },
+            ]}
+            pagination={{
+              currentPage,
+              totalPages: Math.max(1, Math.ceil(filteredClients.length / 4)),
+              displayedRecords: filteredClients.length,
+              itemsPerPage: 4,
+              totalRecords: filteredClients.length,
+              onPageChange: setCurrentPage,
+              entityLabel: 'clientes',
+            }}
+          />
+        </div>
+
+        <Drawer
+          open={Boolean(selectedClient)}
+          title="Detalhes do cliente"
+          onClose={closeClientDetails}
+        >
+          {selectedClient && (
+            <div className="space-y-5 text-sm text-slate-900">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                  Empresa
+                </p>
+                <p className="mt-1 text-base font-semibold">{selectedClient.empresa}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                  CNPJ
+                </p>
+                <p className="mt-1">{selectedClient.cnpj}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                  Cidade / UF
+                </p>
+                <p className="mt-1">{selectedClient.cidade}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                  Responsável
+                </p>
+                <p className="mt-1">{selectedClient.responsavel}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                  Status
+                </p>
+                <p className="mt-1">{selectedClient.status}</p>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                  Última atualização
+                </p>
+                <p className="mt-1">{selectedClient.atualizacao}</p>
+              </div>
+            </div>
+          )}
+        </Drawer>
+      </main>
+    </Home>
+  )
+}
+
+export default AdminClients

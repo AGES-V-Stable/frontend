@@ -1,0 +1,136 @@
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router'
+
+import { Button } from '@/shared/components/Button'
+import { Input } from '@/shared/components/Input'
+import { PATHS } from '@/app/routes/paths'
+import { authService } from '@/features/login/services/login'
+
+import { LoginSchema, type LoginFormData } from '@/features/login/schemas/auth'
+
+type LoginErrors = Partial<Record<keyof LoginFormData, string>>
+
+function validate(data: LoginFormData): LoginErrors {
+  const result = LoginSchema.safeParse(data)
+  if (result.success) return {}
+
+  const errors: LoginErrors = {}
+  for (const issue of result.error.issues) {
+    const field = issue.path[0] as keyof LoginFormData
+    if (!errors[field]) {
+      errors[field] = issue.message
+    }
+  }
+  return errors
+}
+
+function Login() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [errors, setErrors] = useState<LoginErrors>({})
+
+  const navigate = useNavigate()
+
+  function handleEmailChange(value: string) {
+    setEmail(value)
+    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
+  }
+
+  function handlePasswordChange(value: string) {
+    setPassword(value)
+    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+
+    const nextErrors = validate({ email, password })
+    setErrors(nextErrors)
+
+    if (Object.keys(nextErrors).length > 0) {
+      return
+    }
+
+    try {
+      const { token } = await authService.login({
+        email,
+        password,
+      })
+
+      localStorage.setItem('token', token)
+
+      navigate(PATHS.HOME)
+    } catch {
+      setErrors({
+        email: 'E-mail ou senha inválidos',
+        password: 'E-mail ou senha inválidos',
+      })
+    }
+  }
+
+  return (
+    <div className="flex items-center min-h-screen">
+      <div className="bg-slate-900 min-h-screen w-[760px] flex flex-col items-center justify-center px-18">
+        <img src="/favicon.png" alt="logo" />
+        <div className="flex flex-col gap-y-[18px]">
+          <h1 className="text-white text-[32px] font-bold">
+            Infraestrutura financeira para operações globais.
+          </h1>
+          <p className="text-slate-300 text-[18px] font-semibold">
+            Acesse sua conta V-Stable para acompanhar movimentações, usuários e operações em um só
+            lugar.
+          </p>
+        </div>
+      </div>
+      <div className="bg-white flex flex-col items-center justify-center min-h-screen w-full gap-y-[20px]">
+        <div className="flex flex-col gap-y-[10px]">
+          <h1 className="text-slate-900 text-[32px] font-bold">Bem-vindo à V-Stable!</h1>
+          <p className="text-slate-500 text-[18px] font-semibold">
+            Acesse sua conta com suas credenciais
+          </p>
+        </div>
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-y-[50px]">
+          <div className="flex flex-col w-[560px] gap-y-[10px]">
+            <Input
+              id="email"
+              type="email"
+              label="E-mail"
+              placeholder="nome@empresa.com.br"
+              value={email}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              error={errors.email}
+            />
+            <Input
+              id="password"
+              type="password"
+              label="Senha"
+              placeholder="Digite sua senha"
+              value={password}
+              onChange={(e) => handlePasswordChange(e.target.value)}
+              error={errors.password}
+            />
+          </div>
+          <div className="flex flex-col w-[560px] gap-y-[10px]">
+            <Button type="submit" label="Entrar" variant="primary" />
+            <Button
+              type="button"
+              label="Cadastrar PME"
+              variant="secondary"
+              onClick={() => navigate(PATHS.REGISTER)}
+            />
+          </div>
+          <div className="flex justify-center -mt-7">
+            <Link
+              to={PATHS.FORGOT_PASSWORD}
+              className="text-[16px] font-medium text-primary hover:text-primary-hover hover:underline transition-colors"
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export { Login }

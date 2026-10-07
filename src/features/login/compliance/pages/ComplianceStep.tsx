@@ -1,0 +1,284 @@
+import { useState, useRef, useCallback } from 'react'
+import { Button } from '@/shared/components/Button/Button'
+import type { ComplianceFormData, SelectedFile, TipoDocumento } from '@/shared/types/compliance'
+import { RegistrationHeader } from '@/features/login/components/RegistrationHeader'
+
+const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
+const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png']
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
+
+const TIPO_DOCUMENTO_OPTIONS: { value: TipoDocumento; label: string }[] = [
+  { value: 'ID', label: 'RG' },
+  { value: 'DRIVERS-LICENSE', label: 'CNH' },
+  { value: 'PASSPORT', label: 'Passaporte' },
+]
+
+// Passaporte é um documento único; RG e CNH exigem frente e verso.
+function isDoubleSided(tipo: TipoDocumento | ''): boolean {
+  return tipo !== '' && tipo !== 'PASSPORT'
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+interface ValidationErrors {
+  tipoDocumento?: string
+  documentos?: string
+}
+
+function validate(data: ComplianceFormData): ValidationErrors {
+  const errors: ValidationErrors = {}
+  if (!data.tipoDocumento) {
+    errors.tipoDocumento = 'Selecione o tipo de documento'
+    return errors
+  }
+
+  const expectedCount = isDoubleSided(data.tipoDocumento) ? 2 : 1
+  if (data.documentos.length !== expectedCount) {
+    errors.documentos =
+      expectedCount === 2
+        ? 'Envie frente e verso do documento (2 arquivos)'
+        : 'Envie o arquivo do documento'
+  }
+  return errors
+}
+
+interface ComplianceStepProps {
+  onContinue: (data: ComplianceFormData) => Promise<void>
+  saving?: boolean
+  serverError?: string
+}
+
+export default function ComplianceStep({
+  onContinue,
+  saving = false,
+  serverError = '',
+}: ComplianceStepProps) {
+  const [form, setForm] = useState<ComplianceFormData>({
+    tipoDocumento: '',
+    documentos: [],
+  })
+  const [errors, setErrors] = useState<ValidationErrors>({})
+  const [submitted, setSubmitted] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [fileErrors, setFileErrors] = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const addFiles = useCallback(
+    (files: FileList | File[]) => {
+      const newErrors: string[] = []
+      const toAdd: SelectedFile[] = []
+
+      Array.from(files).forEach((file) => {
+        const ext =
+          '@/features/login/pages/Register' +
+          (file.name.split('@/features/login/pages/Register').pop()?.toLowerCase() ?? '')
+        const validType = ALLOWED_MIME_TYPES.includes(file.type) || ALLOWED_EXTENSIONS.includes(ext)
+        if (!validType) {
+          newErrors.push(`"${file.name}": tipo não permitido. Use PDF, JPG ou PNG.`)
+          return
+        }
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          newErrors.push(`"${file.name}": tamanho excede 10 MB.`)
+          return
+        }
+        const isDuplicate = form.documentos.some(
+          (d) => d.file.name === file.name && d.file.size === file.size,
+        )
+        if (isDuplicate) return
+        toAdd.push({ id: crypto.randomUUID(), file })
+      })
+
+      setFileErrors(newErrors)
+      if (toAdd.length > 0) {
+        setForm((prev) => ({ ...prev, documentos: [...prev.documentos, ...toAdd] }))
+      }
+    },
+    [form.documentos],
+  )
+
+  const removeFile = (id: string) => {
+    setForm((prev) => ({ ...prev, documentos: prev.documentos.filter((d) => d.id !== id) }))
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => setIsDragging(false)
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    addFiles(e.dataTransfer.files)
+  }
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) addFiles(e.target.files)
+    e.target.value = ''
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitted(true)
+    const errs = validate(form)
+    setErrors(errs)
+    if (Object.keys(errs).length === 0) void onContinue(form)
+  }
+
+  const handleChange = <K extends keyof ComplianceFormData>(
+    key: K,
+    value: ComplianceFormData[K],
+  ) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
+    if (submitted) setErrors((prev) => ({ ...prev, [key]: undefined }))
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-100 px-4 py-8 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-sage-300 bg-white px-4 py-[30px] md:px-10">
+        <RegistrationHeader
+          activeStep={3}
+          description="Envie os documentos necessários para a análise de compliance."
+        />
+
+        <div className="mx-auto w-full max-w-lg py-2">
+          <h1 className="text-xl font-semibold text-gray-800 mb-6">Compliance e documentos</h1>
+
+          <form onSubmit={handleSubmit} noValidate>
+            <div className="mb-4">
+              <label
+                htmlFor="tipoDocumento"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Tipo de Documento <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="tipoDocumento"
+                value={form.tipoDocumento}
+                disabled={saving}
+                onChange={(e) =>
+                  handleChange('tipoDocumento', e.target.value as TipoDocumento | '')
+                }
+                className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ${errors.tipoDocumento ? 'border-red-500' : 'border-gray-300'}`}
+                aria-describedby={errors.tipoDocumento ? 'tipoDocumento-error' : undefined}
+              >
+                <option value="">Selecione...</option>
+                {TIPO_DOCUMENTO_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              {errors.tipoDocumento && (
+                <p id="tipoDocumento-error" className="text-red-500 text-xs mt-1">
+                  {errors.tipoDocumento}
+                </p>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <p className="block text-sm font-medium text-gray-700 mb-1">
+                Documentos <span className="text-red-500">*</span>
+              </p>
+              <div
+                role="button"
+                tabIndex={0}
+                aria-disabled={saving}
+                aria-label="Área de upload de documentos"
+                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                  isDragging
+                    ? 'border-primary bg-green-50'
+                    : errors.documentos
+                      ? 'border-red-400'
+                      : 'border-gray-300 hover:border-primary'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => !saving && fileInputRef.current?.click()}
+                onKeyDown={(e) =>
+                  !saving && (e.key === 'Enter' || e.key === ' ') && fileInputRef.current?.click()
+                }
+              >
+                <p className="text-sm text-gray-600">
+                  Arraste e solte arquivos aqui ou{' '}
+                  <span className="text-primary font-medium">clique para selecionar</span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {isDoubleSided(form.tipoDocumento)
+                    ? 'Envie frente e verso (2 arquivos) — '
+                    : 'Envie o documento (1 arquivo) — '}
+                  PDF, JPG, JPEG ou PNG, máx. 10 MB por arquivo
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="hidden"
+                onChange={handleFileInput}
+                aria-label="Selecionar arquivos"
+                data-testid="file-input"
+                disabled={saving}
+              />
+              {errors.documentos && (
+                <p className="text-red-500 text-xs mt-1">{errors.documentos}</p>
+              )}
+              {fileErrors.length > 0 && (
+                <ul className="mt-2" aria-label="Erros de arquivo">
+                  {fileErrors.map((err, i) => (
+                    <li key={i} className="text-red-500 text-xs">
+                      {err}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {form.documentos.length > 0 && (
+              <ul className="mb-6 space-y-2" aria-label="Documentos selecionados">
+                {form.documentos.map((doc) => (
+                  <li
+                    key={doc.id}
+                    className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-gray-800">{doc.file.name}</p>
+                      <p className="text-gray-400 text-xs">{formatFileSize(doc.file.size)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(doc.id)}
+                      disabled={saving}
+                      className="ml-3 text-gray-400 hover:text-red-500 transition-colors"
+                      aria-label={`Remover ${doc.file.name}`}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {serverError && (
+              <p role="alert" className="mb-4 text-sm text-red-600">
+                {serverError}
+              </p>
+            )}
+            <Button
+              type="submit"
+              label={saving ? 'Enviando documentos...' : 'Continuar'}
+              disabled={saving}
+            />
+          </form>
+        </div>
+      </div>
+    </main>
+  )
+}
