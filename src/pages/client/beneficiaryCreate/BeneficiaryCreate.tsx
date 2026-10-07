@@ -213,8 +213,8 @@ export function BeneficiaryCreate() {
   return (
     <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 px-4 py-8 md:px-8">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-[#0F172A]">Cadastrar beneficiário</h1>
-        <p className="text-xs text-[#64748B]">
+        <h1 className="text-2xl font-bold text-slate-900">Cadastrar beneficiário</h1>
+        <p className="text-xs text-slate-500">
           Adicione os dados de quem poderá receber dinheiro pela V-Stable.
         </p>
       </header>
@@ -222,7 +222,7 @@ export function BeneficiaryCreate() {
       {success && (
         <p
           role="status"
-          className="rounded-lg bg-[#ECFDF5] px-4 py-3 text-sm font-medium text-[#059669]"
+          className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-primary"
         >
           Beneficiário cadastrado com sucesso. Já está disponível em Beneficiários.
         </p>
@@ -237,13 +237,13 @@ export function BeneficiaryCreate() {
         ref={formRef}
         noValidate
         onSubmit={handleSubmit}
-        className="flex flex-col gap-6 rounded-xl border border-[#BBCABF] bg-white px-4 py-[30px] md:px-10"
+        className="flex flex-col gap-6 rounded-xl border border-sage-300 bg-white px-4 py-[30px] md:px-10"
       >
         <div className="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2">
           <section className="flex flex-col gap-3">
-            <h2 className="text-base font-bold text-[#0F172A]">Identificação</h2>
+            <h2 className="text-base font-bold text-slate-900">Identificação</h2>
             <div className="flex min-h-[102px] flex-col justify-center gap-1">
-              <label htmlFor="tipoBeneficiario" className="text-[14px] text-[#3C4A42]">
+              <label htmlFor="tipoBeneficiario" className="text-[14px] text-sage-800">
                 Tipo de beneficiário *
               </label>
               <select
@@ -253,8 +253,8 @@ export function BeneficiaryCreate() {
                 disabled={saving}
                 onChange={(event) => change('tipoBeneficiario', event.target.value)}
                 aria-invalid={!!errors.tipoBeneficiario}
-                className={`w-full rounded-lg border bg-[#F8F9FB] px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669] ${
-                  errors.tipoBeneficiario ? 'border-red-500' : 'border-[#BBCABF]'
+                className={`w-full rounded-lg border bg-surface px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                  errors.tipoBeneficiario ? 'border-red-500' : 'border-sage-300'
                 }`}
               >
                 {TIPOS_BENEFICIARIO.map((tipo) => (
@@ -286,11 +286,11 @@ export function BeneficiaryCreate() {
           </section>
 
           <section className="flex flex-col gap-3">
-            <h2 className="text-base font-bold text-[#0F172A]">Dados bancários</h2>
+            <h2 className="text-base font-bold text-slate-900">Dados bancários</h2>
             <div
               role="tablist"
               aria-label="Tipo de recebimento"
-              className="inline-flex w-fit rounded-full border border-[#BBCABF] bg-white p-1"
+              className="inline-flex w-fit rounded-full border border-sage-300 bg-white p-1"
             >
               <button
                 type="button"
@@ -300,8 +300,8 @@ export function BeneficiaryCreate() {
                 onClick={() => setMethod('conta_bancaria')}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                   method === 'conta_bancaria'
-                    ? 'bg-[#059669] text-white'
-                    : 'text-[#334155] hover:bg-slate-50'
+                    ? 'bg-primary text-white'
+                    : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 Conta bancária
@@ -314,8 +314,8 @@ export function BeneficiaryCreate() {
                 onClick={() => setMethod('wallet_cripto')}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                   method === 'wallet_cripto'
-                    ? 'bg-[#059669] text-white'
-                    : 'text-[#334155] hover:bg-slate-50'
+                    ? 'bg-primary text-white'
+                    : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 Wallet cripto
@@ -352,7 +352,7 @@ export function BeneficiaryCreate() {
                   />
                 </div>
                 <div className="flex min-h-[102px] flex-col justify-center gap-1">
-                  <label htmlFor="redeBlockchain" className="text-[14px] text-[#3C4A42]">
+                  <label htmlFor="redeBlockchain" className="text-[14px] text-sage-800">
                     Rede blockchain *
                   </label>
                   <select
@@ -362,8 +362,8 @@ export function BeneficiaryCreate() {
                     disabled={saving}
                     onChange={(event) => change('redeBlockchain', event.target.value)}
                     aria-invalid={!!errors.redeBlockchain}
-                    className={`w-full rounded-lg border bg-[#F8F9FB] px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#059669] ${
-                      errors.redeBlockchain ? 'border-red-500' : 'border-[#BBCABF]'
+                    className={`w-full rounded-lg border bg-surface px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                      errors.redeBlockchain ? 'border-red-500' : 'border-sage-300'
                     }`}
                   >
                     <option value="" disabled>
@@ -399,7 +399,7 @@ export function BeneficiaryCreate() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="confirmacao" className="flex items-center gap-2 text-sm text-[#0F172A]">
+          <label htmlFor="confirmacao" className="flex items-center gap-2 text-sm text-slate-900">
             <input
               type="checkbox"
               id="confirmacao"
