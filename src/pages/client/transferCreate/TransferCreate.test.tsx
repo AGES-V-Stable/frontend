@@ -55,9 +55,9 @@ const advance = (ms = 0) =>
     await vi.advanceTimersByTimeAsync(ms)
   })
 
-const sourceInput = () => screen.getByLabelText('Valor de origem (BRL) *')
-const destinationInput = () => screen.getByLabelText(/Valor de destino/)
-const beneficiarySelect = () => screen.getByLabelText('Beneficiário *')
+const sourceInput = () => screen.getByLabelText('Valor de origem*')
+const destinationInput = () => screen.getByLabelText('Valor de Destino*')
+const beneficiarySelect = () => screen.getByLabelText('Beneficiário*')
 const continueButton = () => screen.getByRole('button', { name: 'Continuar' })
 
 const renderPage = async () => {
@@ -101,8 +101,34 @@ describe('TransferCreate', () => {
     expect(screen.getByText('Informe um valor para consultar a cotação.')).toBeInTheDocument()
     expect(continueButton()).toBeDisabled()
     expect(getBeneficiaries).toHaveBeenCalledWith({ companyId: 'c1', size: 100 })
-    expect(screen.getByRole('option', { name: 'Atlas Imports LLC · USD' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Atlas Imports LLC' })).toBeInTheDocument()
     expect(getTransferQuote).not.toHaveBeenCalled()
+  })
+
+  it('shows the transfer steps with Dados as the current one', async () => {
+    await renderPage()
+
+    expect(screen.getByLabelText('Passo 1 de 3')).toBeInTheDocument()
+    expect(screen.getByText('Dados').closest('li')).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByText('Revisão')).toBeInTheDocument()
+    expect(screen.getByText('Autenticação')).toBeInTheDocument()
+  })
+
+  it('shows the currency symbol of each side inside the amount fields', async () => {
+    await renderPage()
+
+    expect(screen.getByText('R$')).toBeInTheDocument()
+    expect(screen.getByText('US$')).toBeInTheDocument()
+  })
+
+  it('keeps Cancelar and Continuar together in the form card', async () => {
+    await renderPage()
+
+    const formCard = screen
+      .getByRole('heading', { name: 'Dados da transferência' })
+      .closest('section')
+    expect(formCard).toContainElement(continueButton())
+    expect(formCard).toContainElement(screen.getByRole('button', { name: 'Cancelar' }))
   })
 
   it('requests a single SOURCE quote after the debounce while the user is still typing', async () => {
@@ -213,7 +239,19 @@ describe('TransferCreate', () => {
       expect.objectContaining({ destinationCurrency: 'EUR' }),
       expect.any(AbortSignal),
     )
-    expect(screen.getByLabelText('Valor de destino (EUR) *')).toBeInTheDocument()
+    expect(screen.getByText('€')).toBeInTheDocument()
+  })
+
+  it('clears the value derived from the previous quote when the beneficiary currency changes', async () => {
+    await renderPage()
+    await typeSourceAmount('125000')
+    expect(destinationInput()).not.toHaveValue('')
+
+    fireEvent.change(beneficiarySelect(), { target: { value: euroSupplier.id } })
+
+    expect(destinationInput()).toHaveValue('')
+    expect(screen.getByText('Atualizando cotação...')).toBeInTheDocument()
+    expect(continueButton()).toBeDisabled()
   })
 
   it('creates the transfer without any quote data and keeps Continuar disabled during the request', async () => {
