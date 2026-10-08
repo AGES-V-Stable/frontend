@@ -37,15 +37,15 @@ export function Sidebar({ logo, items, activeItemId, account, className = '' }: 
       <div className="flex min-h-[61px] shrink-0 items-center gap-3 border-t border-sage-200 px-4 py-2.5">
         <span
           aria-hidden="true"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-[10px] font-medium text-green-700"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-xs font-medium text-green-700"
         >
           {account.initials}
         </span>
         <div className="min-w-0">
-          <p className="truncate text-[9px] font-medium text-gray-900" title={account.name}>
+          <p className="truncate text-xs font-medium text-gray-900" title={account.name}>
             {account.name}
           </p>
-          <p className="truncate text-[8px] text-sage-600" title={account.description}>
+          <p className="truncate text-[11px] text-sage-600" title={account.description}>
             {account.description}
           </p>
         </div>
