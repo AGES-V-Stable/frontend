@@ -22,6 +22,18 @@ export const formatMoney = (value: number, currencyCode: string) => {
   }
 }
 
+/** Símbolo da moeda no padrão pt-BR (BRL → R$, USD → US$, EUR → €); moeda desconhecida devolve o código. */
+export const currencySymbol = (currencyCode: string) => {
+  try {
+    const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currencyCode })
+    return (
+      formatter.formatToParts(0).find((part) => part.type === 'currency')?.value ?? currencyCode
+    )
+  } catch {
+    return currencyCode
+  }
+}
+
 /** Formata um número com duas casas no padrão pt-BR, sem moeda (24235.14 → 24.235,14). */
 export const formatDecimal = (value: number) =>
   new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(

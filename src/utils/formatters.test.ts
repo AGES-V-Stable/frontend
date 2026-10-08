@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatDecimal, formatMoney, formatPercent, parseDecimalInput } from './formatters'
+import {
+  currencySymbol,
+  formatDecimal,
+  formatMoney,
+  formatPercent,
+  parseDecimalInput,
+} from './formatters'
 
 // O Intl separa símbolo e valor com espaço não separável (U+00A0).
 const normalizeSpaces = (text: string) => text.replace(/\s/g, ' ')
@@ -17,6 +23,20 @@ describe('formatMoney', () => {
 
   it('usa o código da moeda quando o Intl não reconhece o código', () => {
     expect(formatMoney(10, 'INVALID')).toBe('INVALID 10,00')
+  })
+})
+
+describe('currencySymbol', () => {
+  it.each([
+    ['BRL', 'R$'],
+    ['USD', 'US$'],
+    ['EUR', '€'],
+  ])('devolve o símbolo de %s', (code, symbol) => {
+    expect(currencySymbol(code)).toBe(symbol)
+  })
+
+  it('devolve o próprio código quando o Intl não reconhece a moeda', () => {
+    expect(currencySymbol('??')).toBe('??')
   })
 })
 
