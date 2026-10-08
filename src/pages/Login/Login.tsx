@@ -84,9 +84,9 @@ function Login() {
       <div className="bg-slate-900 min-h-screen w-[760px] flex flex-col items-center justify-center px-18">
         <img src="/favicon.png" alt="logo" />
         <div className="flex flex-col gap-y-[18px]">
-          <h1 className="text-white text-[32px] font-bold">
+          <p className="text-white text-[32px] font-bold">
             Infraestrutura financeira para operações globais.
-          </h1>
+          </p>
           <p className="text-slate-300 text-[18px] font-semibold">
             Acesse sua conta V-Stable para acompanhar movimentações, usuários e operações em um só
             lugar.

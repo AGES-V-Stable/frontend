@@ -9,7 +9,7 @@ export default function RegistrationComplete() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-10 px-4">
       <div className="mb-8">
-        <span className="text-2xl font-bold tracking-widest text-[#059669]">V-STABLE</span>
+        <span className="text-2xl font-bold tracking-widest text-primary">V-STABLE</span>
       </div>
 
       <div className="bg-white rounded-2xl shadow-md w-full max-w-lg p-8 text-center">

@@ -140,7 +140,7 @@ export function CompanyStep({
                 inputMode={
                   name === 'cnpj' || (name === 'cep' && brazil(data.pais)) ? 'numeric' : 'text'
                 }
-                className="h-[50px] text-sm! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                className="h-[50px] text-sm!"
               />
             </div>
           ))}
