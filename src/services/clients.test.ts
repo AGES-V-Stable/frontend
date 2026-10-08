@@ -1,117 +1,94 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { mockClients } from '@/data/mockClients'
-import { getClients } from './clients'
+import { saveAccessToken } from './authToken'
+import { getClients, toCliente, type CompanySummary } from './clients'
+
+const summary: CompanySummary = {
+  id: 'c1',
+  legalName: 'Empresa Legal Ltda',
+  tradeName: null,
+  cnpj: '11222333000181',
+  city: 'Porto Alegre',
+  state: 'RS',
+  statusKyb: 'APPROVED',
+  statusAml: 'UNDER_REVIEW',
+  overallStatus: 'UNDER_REVIEW',
+  representativeId: 'u1',
+  representativeName: 'Maria Souza',
+  representativeEmail: 'maria@empresa.com',
+  createdAt: '2026-09-01T10:00:00Z',
+  updatedAt: '2026-09-15T12:00:00Z',
+}
 
 describe('getClients', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+  beforeEach(() => sessionStorage.clear())
+  afterEach(() => vi.unstubAllGlobals())
 
-  it('returns the list from the API when the response contains an array', async () => {
-    const apiClients = [
+  it('loads company summaries with the admin bearer token and adapts them', async () => {
+    saveAccessToken('admin-token')
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [summary] })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getClients()).resolves.toEqual([
       {
-        id: '9',
-        empresa: 'Empresa API',
-        cnpj: '11.222.333/0001-44',
-        cidade: 'São Paulo / SP',
-        atualizacao: '05/09/2024',
-        responsavel: 'Ana Lima',
-        status: 'Ativa',
-      },
-    ]
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => apiClients,
-      }),
-    )
-
-    await expect(getClients()).resolves.toEqual(apiClients)
-    expect(fetch).toHaveBeenCalledWith('/api/clients', {
-      headers: {
-        Accept: 'application/json',
-      },
-    })
-  })
-
-  it('returns the list from data when the API wraps clients in a data property', async () => {
-    const apiClients = [
-      {
-        id: '10',
-        empresa: 'Empresa Data',
-        cnpj: '77.888.999/0001-66',
-        cidade: 'Curitiba / PR',
-        atualizacao: '06/09/2024',
-        responsavel: 'Bruno Costa',
+        id: 'c1',
+        empresa: 'Empresa Legal Ltda',
+        cnpj: '11.222.333/0001-81',
+        cidade: 'Porto Alegre / RS',
+        atualizacao: '15/09/2026',
+        responsavel: 'Maria Souza',
         status: 'Em análise',
       },
-    ]
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ data: apiClients }),
+    ])
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/v1/companies/summaries',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer admin-token' }),
       }),
     )
-
-    await expect(getClients()).resolves.toEqual(apiClients)
   })
 
-  it('returns the list from results when the API wraps clients in a results property', async () => {
-    const apiClients = [
-      {
-        id: '11',
-        empresa: 'Empresa Results',
-        cnpj: '55.666.777/0001-88',
-        cidade: 'Porto Alegre / RS',
-        atualizacao: '07/09/2024',
-        responsavel: 'Cátia Rocha',
-        status: 'Ativa',
-      },
-    ]
+  it('keeps an empty list empty (no mock fallback)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }))
 
+    await expect(getClients()).resolves.toEqual([])
+  })
+
+  it('propagates request failures instead of returning mock data', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ results: apiClients }),
-      }),
+      vi.fn().mockResolvedValue({ ok: false, status: 403, json: async () => ({}) }),
     )
 
-    await expect(getClients()).resolves.toEqual(apiClients)
+    await expect(getClients()).rejects.toMatchObject({ status: 403 })
   })
 
-  it('falls back to mockClients when the request fails', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
+  it('propagates network failures', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network down')))
+
+    await expect(getClients()).rejects.toThrow('Network down')
+  })
+})
+
+describe('toCliente', () => {
+  it('handles missing city, representative and dates safely', () => {
+    expect(
+      toCliente({
+        ...summary,
+        tradeName: 'Nome Fantasia',
+        city: null,
+        state: null,
+        representativeName: null,
+        updatedAt: null,
+        createdAt: null,
+        overallStatus: 'REJECTED',
       }),
-    )
-
-    await expect(getClients()).resolves.toEqual(mockClients)
-  })
-
-  it('falls back to mockClients when the API returns an empty payload', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ data: [] }),
-      }),
-    )
-
-    await expect(getClients()).resolves.toEqual(mockClients)
-  })
-
-  it('falls back to mockClients when fetch throws', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
-
-    await expect(getClients()).resolves.toEqual(mockClients)
+    ).toMatchObject({
+      empresa: 'Nome Fantasia',
+      cidade: '—',
+      responsavel: '—',
+      atualizacao: '',
+      status: 'Rejeitado',
+    })
   })
 })

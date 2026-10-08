@@ -21,8 +21,13 @@ import { startDocumentUpload, submitDocumentResult, uploadFileToS3 } from '@/ser
 import { ApiError, saveRepresentativePersonalData, submitOnboarding } from '@/services/onboarding'
 import type { ComplianceFormData, TipoDocumento } from '@/types/compliance'
 import type { AccessData, CompanyData, RepresentativeData } from '@/types/registration'
+import { mockClients } from '@/data/mockClients'
 
+import { RequireAdmin, RequireAuth } from './guards'
 import { compliancePath, livenessPath, PATHS, registrationCompletePath } from './paths'
+
+/** A demonstração usa dados fictícios de forma explícita; a tela real nunca cai neles. */
+const loadDemoClients = () => Promise.resolve(mockClients)
 
 const ForgotPassWordPlaceHolder = () => <div className="p-8">Recuperação de Senha (Em breve)</div>
 
@@ -67,7 +72,8 @@ function RepresentativeRoute() {
     setSaving(true)
     setServerError('')
     try {
-      const isBrazil = company.pais.trim().toLowerCase() === 'brasil'
+      // O CEP do representante segue o país do representante (não o da empresa).
+      const isBrazil = representative.pais.trim().toLowerCase() === 'brasil'
       const result = await submitOnboarding(
         {
           fullName: access.nomeCompleto,
@@ -147,8 +153,12 @@ function ComplianceRoute() {
         tipoDocumento,
         doubleSided,
       )
+      if (doubleSided && !uploadUrlBack) {
+        // Sem a URL do verso o documento ficaria incompleto: não registra nem avança.
+        throw new Error('Upload URL for the back side is missing')
+      }
       await uploadFileToS3(uploadUrlFront, frontFile.file)
-      if (doubleSided && uploadUrlBack) {
+      if (doubleSided && uploadUrlBack && backFile) {
         await uploadFileToS3(uploadUrlBack, backFile.file)
       }
       await submitDocumentResult(kycVerificationId, id)
@@ -179,24 +189,68 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path={PATHS.HOME} element={<Home />} />
-      <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
-      <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
-      <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
-      <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
+      <Route
+        path={PATHS.ADMIN_CLIENTS}
+        element={
+          <RequireAdmin>
+            <AdminClients />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path={PATHS.ADMIN_TRANSFERS}
+        element={
+          <RequireAdmin>
+            <AdminTransfers />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path={PATHS.ADMIN_BENEFICIARIES}
+        element={
+          <RequireAdmin>
+            <BeneficiaryView />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path={PATHS.BENEFICIARIES}
+        element={
+          <RequireAuth>
+            <BeneficiariesLanding />
+          </RequireAuth>
+        }
+      />
       <Route
         path={PATHS.BENEFICIARIES_NEW}
         element={
-          <ClientLayout activeItemId="beneficiaries">
-            <BeneficiaryCreate />
-          </ClientLayout>
+          <RequireAuth>
+            <ClientLayout activeItemId="beneficiaries">
+              <BeneficiaryCreate />
+            </ClientLayout>
+          </RequireAuth>
         }
       />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRoute />} />
       <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeRoute />} />
-      <Route path={PATHS.REGISTER_COMPLIANCE} element={<ComplianceRoute />} />
-      <Route path={PATHS.COMPLIANCE_LIVENESS} element={<LivenessRoute />} />
+      <Route
+        path={PATHS.REGISTER_COMPLIANCE}
+        element={
+          <RequireAuth>
+            <ComplianceRoute />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path={PATHS.COMPLIANCE_LIVENESS}
+        element={
+          <RequireAuth>
+            <LivenessRoute />
+          </RequireAuth>
+        }
+      />
       <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />
       <Route path={PATHS.FORGOT_PASSWORD} element={<ForgotPassWordPlaceHolder />} />
       <Route path={PATHS.DEMO} element={<Demo />} />
@@ -209,8 +263,18 @@ function AppRoutes() {
       <Route path={PATHS.DEMO_REGISTER_COMPANY} element={<DemoCompany />} />
       <Route path={PATHS.DEMO_REGISTER_REPRESENTATIVE} element={<DemoRepresentative />} />
       <Route path={PATHS.DEMO_REGISTER_COMPLIANCE} element={<DemoCompliance />} />
-      <Route path={PATHS.DEMO_ADMIN_CLIENTS} element={<AdminClients />} />
-      <Route path={PATHS.REGISTER_STATUS} element={<RegisterStatus />} />
+      <Route
+        path={PATHS.DEMO_ADMIN_CLIENTS}
+        element={<AdminClients loadClients={loadDemoClients} />}
+      />
+      <Route
+        path={PATHS.REGISTER_STATUS}
+        element={
+          <RequireAuth>
+            <RegisterStatus />
+          </RequireAuth>
+        }
+      />
 
       <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
     </Routes>

@@ -11,7 +11,7 @@ function renderComponent() {
   return render(
     <MemoryRouter initialEntries={['/register/some-id/concluido']}>
       <Routes>
-        <Route path={PATHS.HOME} element={<p>Home</p>} />
+        <Route path={PATHS.REGISTER_STATUS} element={<p>Status</p>} />
         <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />
       </Routes>
     </MemoryRouter>,
@@ -26,12 +26,12 @@ describe('RegistrationComplete Page Component', () => {
     expect(screen.getByText(/nossa equipe de compliance vai analisar/i)).toBeInTheDocument()
   })
 
-  it('given the confirmation page, when the user clicks the button, then it should navigate back to the home route', async () => {
+  it('given the confirmation page, when the user clicks the button, then it should navigate to the registration status', async () => {
     const user = userEvent.setup()
     renderComponent()
 
-    await user.click(screen.getByRole('button', { name: 'Voltar para o início' }))
+    await user.click(screen.getByRole('button', { name: 'Acompanhar situação cadastral' }))
 
-    expect(screen.getByText('Home')).toBeInTheDocument()
+    expect(screen.getByText('Status')).toBeInTheDocument()
   })
 })

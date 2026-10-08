@@ -15,7 +15,6 @@ import {
 } from '@/services/liveness'
 import {
   ApiError,
-  clearAccessToken,
   clearRepresentativePersonalData,
   getRepresentativePersonalData,
   submitKyc,
@@ -163,9 +162,10 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
       }
 
       // APPROVED ou UNDER_REVIEW: o cadastro segue — a análise de UNDER_REVIEW
-      // continua em segundo plano do lado da Avenia/compliance.
+      // continua em segundo plano do lado da Avenia/compliance. A sessão (token)
+      // continua válida para o usuário acompanhar a situação cadastral; só os
+      // dados temporários de identidade são descartados.
       clearRepresentativePersonalData()
-      clearAccessToken()
       clearLivenessSession()
       if (onContinue) {
         onContinue()

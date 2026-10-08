@@ -39,6 +39,8 @@ describe('ClientLayout', () => {
       name: 'Marina Costa',
       email: 'marina@example.com',
       companyId: 'c1',
+      accountType: 'USER',
+      roles: ['ROLE_USER'],
     })
 
     renderLayout()
@@ -63,11 +65,14 @@ describe('ClientLayout', () => {
       name: 'Marina Costa',
       email: 'marina@example.com',
       companyId: 'c1',
+      accountType: 'USER',
+      roles: ['ROLE_USER'],
     })
 
     renderLayout()
 
-    expect(await screen.findByText('Início')).toBeInTheDocument()
+    expect(await screen.findByText('Situação cadastral')).toBeInTheDocument()
     expect(screen.getByText('Beneficiários')).toBeInTheDocument()
+    expect(screen.getByText('Sair')).toBeInTheDocument()
   })
 })

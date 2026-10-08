@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useEffect, useRef, useState } from 'react'
 
 import { BeneficiaryFilters } from '@/components/BeneficiaryFilters'
 import type { BeneficiaryFilterValues } from '@/components/BeneficiaryFilters'
 import { Drawer } from '@/components/Drawer'
-import { AdminNavIcon, Sidebar, type AdminNavIconId } from '@/components/Sidebar'
+import { Sidebar } from '@/components/Sidebar'
 import { Table } from '@/components/Table'
+import { useAdminSidebar } from '@/config/adminNavigation'
 import { beneficiaryTableColumns } from '@/config/beneficiaryTableColumns'
 import type { Beneficiary } from '@/types/beneficiary'
-import { PATHS } from '@/routes/paths'
 import { getBeneficiaries, getBeneficiary } from '@/services/beneficiary'
 import { maskCNPJ } from '@/utils/masks'
 
@@ -20,16 +19,9 @@ const emptyFilters: BeneficiaryFilterValues = {
   currency: '', // O backend atual ainda não tem filtro por moeda.
   status: '', // O schema de beneficiaries ainda não mapeou "status", não enviamos.
 }
-const sidebarMenuItems = [
-  { id: 'home', label: 'Início', path: PATHS.HOME },
-  { id: 'beneficiaries', label: 'Beneficiários', path: PATHS.ADMIN_BENEFICIARIES },
-  { id: 'transfers', label: 'Transferências', path: '/transfers' },
-  { id: 'settings', label: 'Configurações', path: '/settings' },
-].map((item) => ({ ...item, icon: <AdminNavIcon id={item.id as AdminNavIconId} /> }))
 
 function BeneficiaryView() {
-  const navigate = useNavigate()
-  const location = useLocation()
+  const sidebar = useAdminSidebar()
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([])
   const [totalRecords, setTotalRecords] = useState(0)
@@ -80,10 +72,6 @@ function BeneficiaryView() {
     }
   }, [currentPage, appliedFilters])
 
-  const activeItemId = useMemo(
-    () => sidebarMenuItems.find((item) => item.path === location.pathname)?.id ?? 'beneficiaries',
-    [location.pathname],
-  )
   // const statuses = [...new Set(beneficiaries.map((item) => item.status))]
   // const currencies = [...new Set(beneficiaries.map((item) => item.currency))]
   const countries = [
@@ -122,9 +110,7 @@ function BeneficiaryView() {
             V-<span className="sidebar__brand-accent">Stable</span>
           </span>
         }
-        items={sidebarMenuItems.map((item) => ({ ...item, onClick: () => navigate(item.path) }))}
-        activeItemId={activeItemId}
-        account={{ name: 'V-Stable Admin', description: 'Operações & Compliance', initials: 'CA' }}
+        {...sidebar}
       />
       <main className="min-h-screen w-full px-6 py-8 lg:px-10">
         <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
@@ -232,12 +218,24 @@ function BeneficiaryView() {
                 <>
                   <div>
                     <dt className="text-xs font-medium uppercase text-slate-500">Titular</dt>
-                    <dd className="mt-1">{selectedDetails.accountHolderName}</dd>
+                    <dd className="mt-1">
+                      {selectedDetails.accountHolderName ?? selectedDetails.legalName ?? 'N/A'}
+                    </dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-medium uppercase text-slate-500">Conta / Tipo</dt>
+                    <dt className="text-xs font-medium uppercase text-slate-500">Banco / SWIFT</dt>
                     <dd className="mt-1">
-                      {selectedDetails.accountNumber} ({selectedDetails.accountType})
+                      {[selectedDetails.bankName, selectedDetails.swiftBic]
+                        .filter(Boolean)
+                        .join(' / ') || 'N/A'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium uppercase text-slate-500">Conta</dt>
+                    <dd className="mt-1">
+                      {selectedDetails.accountNumber ?? 'N/A'}
+                      {selectedDetails.accountType ? ` (${selectedDetails.accountType})` : ''}
+                      {selectedDetails.currency ? ` · ${selectedDetails.currency}` : ''}
                     </dd>
                   </div>
                 </>

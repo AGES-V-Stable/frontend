@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Button } from '@/components/Button'
 import { Input } from '@/components/Input'
-import { ApiError } from '@/services/registration'
+import { ApiError } from '@/services/api'
 import { getCurrentUser } from '@/services/user'
 import { createBeneficiary } from '@/services/beneficiary'
 import type { BeneficiaryCreatePayload } from '@/services/beneficiary'
@@ -28,6 +28,8 @@ interface FormData {
 type Field = keyof FormData
 
 const TIPOS_BENEFICIARIO = ['Pessoa jurídica']
+/** Rótulo exibido → código aceito pelo backend (BeneficiaryEntity.beneficiaryType). */
+const BENEFICIARY_TYPE_CODES: Record<string, string> = { 'Pessoa jurídica': 'LEGAL_ENTITY' }
 const REDES_BLOCKCHAIN = ['Polygon', 'Celo', 'Ethereum', 'Gnosis', 'Moonbeam', 'Tron']
 
 const identificationFields: { name: Field; label: string; placeholder: string }[] = [
@@ -172,7 +174,7 @@ export function BeneficiaryCreate() {
     }
 
     const base = {
-      beneficiaryType: data.tipoBeneficiario,
+      beneficiaryType: BENEFICIARY_TYPE_CODES[data.tipoBeneficiario] ?? data.tipoBeneficiario,
       legalName: data.razaoSocial,
       identificationDocument: data.documentoFiscal,
       country: data.pais,

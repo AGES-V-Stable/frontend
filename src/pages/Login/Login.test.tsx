@@ -4,21 +4,32 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PATHS } from '@/routes/paths'
+import { ApiError } from '@/services/api'
+import { getAccessToken, saveAccessToken } from '@/services/authToken'
 import { authService } from '@/services/login'
+import { getCurrentOnboarding } from '@/services/onboarding'
+import { adminToken, userToken } from '@/test/jwt'
 import { Login } from './Login'
 
-vi.mock('@/services/login', () => ({
+vi.mock('@/services/login', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/login')>()),
   authService: {
     login: vi.fn(),
   },
 }))
 
-function renderLogin() {
+vi.mock('@/services/onboarding', () => ({
+  getCurrentOnboarding: vi.fn(),
+}))
+
+function renderLogin(state?: unknown) {
   return render(
-    <MemoryRouter initialEntries={[PATHS.LOGIN]}>
+    <MemoryRouter initialEntries={[{ pathname: PATHS.LOGIN, state }]}>
       <Routes>
         <Route path={PATHS.HOME} element={<p>Home page</p>} />
         <Route path={PATHS.ADMIN_CLIENTS} element={<p>Admin page</p>} />
+        <Route path={PATHS.BENEFICIARIES} element={<p>Client area</p>} />
+        <Route path={PATHS.REGISTER_COMPLIANCE} element={<p>Compliance step</p>} />
         <Route path={PATHS.REGISTER} element={<p>Register page</p>} />
         <Route path={PATHS.FORGOT_PASSWORD} element={<p>Forgot Password page</p>} />
         <Route path={PATHS.LOGIN} element={<Login />} />
@@ -31,6 +42,14 @@ describe('Login Page Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    sessionStorage.clear()
+    vi.mocked(getCurrentOnboarding).mockResolvedValue({
+      kycVerificationId: 'kyc-1',
+      companyId: 'c1',
+      status: 'UNDER_REVIEW',
+      documentSubmitted: true,
+      livenessSubmitted: true,
+    })
   })
 
   afterEach(() => vi.unstubAllGlobals())
@@ -95,37 +114,73 @@ describe('Login Page Component', () => {
     expect(await screen.findByText('Forgot Password page')).toBeInTheDocument()
   })
 
-  it('stores the token and navigates admins to the clients page', async () => {
-    const user = userEvent.setup()
-    const mockAdminToken = 'header.eyJyb2xlIjpbIkFETUlOIl19.signature'
-    vi.mocked(authService.login).mockResolvedValueOnce({ token: mockAdminToken })
-    renderLogin()
-
-    await user.type(screen.getByLabelText('E-mail'), 'admin@empresa.com')
+  async function submit(user: ReturnType<typeof userEvent.setup>, email = 'cliente@empresa.com') {
+    await user.type(screen.getByLabelText('E-mail'), email)
     await user.type(screen.getByLabelText('Senha'), 'senha-valida')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
+  }
+
+  it('stores the token in the shared session and navigates admins to the clients page', async () => {
+    const user = userEvent.setup()
+    const token = adminToken()
+    vi.mocked(authService.login).mockResolvedValueOnce({ token })
+    renderLogin()
+
+    await submit(user, 'admin@vstable.com')
 
     expect(await screen.findByText('Admin page')).toBeInTheDocument()
-    expect(localStorage.getItem('token')).toBe(mockAdminToken)
+    expect(getAccessToken()).toBe(token)
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(getCurrentOnboarding).not.toHaveBeenCalled()
   })
 
-  it('stores the token and navigates users to the home page', async () => {
+  it('navigates company users with a finished registration to the client area', async () => {
     const user = userEvent.setup()
-    const mockUserToken = 'header.eyJyb2xlIjpbIlVTRVIiXX0=.signature'
-    vi.mocked(authService.login).mockResolvedValueOnce({ token: mockUserToken })
+    const token = userToken()
+    vi.mocked(authService.login).mockResolvedValueOnce({ token })
     renderLogin()
 
-    await user.type(screen.getByLabelText('E-mail'), 'cliente@empresa.com')
-    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
-    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    await submit(user)
 
-    expect(await screen.findByText('Home page')).toBeInTheDocument()
-    expect(localStorage.getItem('token')).toBe(mockUserToken)
+    expect(await screen.findByText('Client area')).toBeInTheDocument()
+    expect(getAccessToken()).toBe(token)
+  })
+
+  it('resumes an interrupted registration at the missing step', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: userToken() })
+    vi.mocked(getCurrentOnboarding).mockResolvedValueOnce({
+      kycVerificationId: 'kyc-1',
+      companyId: 'c1',
+      status: 'PENDING',
+      documentSubmitted: false,
+      livenessSubmitted: false,
+    })
+    renderLogin()
+
+    await submit(user)
+
+    expect(await screen.findByText('Compliance step')).toBeInTheDocument()
+  })
+
+  it('discards data from a previous account on login', async () => {
+    const user = userEvent.setup()
+    saveAccessToken('previous-account-token')
+    sessionStorage.setItem('vstable:onboarding:representative-personal-data', '{"cpf":"1"}')
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: userToken() })
+    renderLogin()
+
+    await submit(user)
+
+    expect(await screen.findByText('Client area')).toBeInTheDocument()
+    expect(sessionStorage.getItem('vstable:onboarding:representative-personal-data')).toBeNull()
   })
 
   it('shows and clears credential errors after a failed login', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login).mockRejectedValueOnce(new Error('Unauthorized'))
+    vi.mocked(authService.login).mockRejectedValueOnce(
+      new ApiError(401, 'E-mail ou senha inválidos'),
+    )
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
@@ -137,6 +192,27 @@ describe('Login Page Component', () => {
     expect(screen.getAllByText('E-mail ou senha inválidos')).toHaveLength(1)
     await user.type(screen.getByLabelText('Senha'), 'x')
     expect(screen.queryByText('E-mail ou senha inválidos')).not.toBeInTheDocument()
+  })
+
+  it('shows blocked-account and server errors without blaming the credentials', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockRejectedValueOnce(
+      new ApiError(423, 'Usuário bloqueado. Entre em contato com o suporte.'),
+    )
+    renderLogin()
+
+    await submit(user)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Usuário bloqueado')
+    expect(screen.queryByText('E-mail ou senha inválidos')).not.toBeInTheDocument()
+  })
+
+  it('explains that the session expired when redirected after a 401', () => {
+    renderLogin({ from: PATHS.BENEFICIARIES, reason: 'expired' })
+
+    expect(
+      screen.getByText('Sua sessão expirou. Entre novamente para continuar.'),
+    ).toBeInTheDocument()
   })
 
   it('navigates to the register page when "Cadastrar PME" is clicked', async () => {

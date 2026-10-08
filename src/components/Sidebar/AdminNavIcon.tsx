@@ -1,4 +1,4 @@
-export type AdminNavIconId = 'home' | 'beneficiaries' | 'transfers' | 'settings'
+export type AdminNavIconId = 'home' | 'beneficiaries' | 'transfers' | 'settings' | 'logout'
 
 interface AdminNavIconProps {
   id: AdminNavIconId
@@ -22,6 +22,9 @@ export function AdminNavIcon({ id }: AdminNavIconProps) {
         </>
       )}
       {id === 'transfers' && <path d="M3 7h18m-5-5 5 5-5 5M21 17H3m5-5-5 5 5 5" />}
+      {id === 'logout' && (
+        <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11" />
+      )}
       {id === 'settings' && (
         <>
           <path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3Z" />

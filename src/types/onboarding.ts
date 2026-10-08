@@ -52,3 +52,12 @@ export interface KycSubmitResult {
   status: KycStatus
   resultMessage?: string | null
 }
+
+/** GET /v1/onboarding/me — progresso da verificação mais recente do representante logado. */
+export interface CurrentOnboarding {
+  kycVerificationId: string
+  companyId: string | null
+  status: KycStatus
+  documentSubmitted: boolean
+  livenessSubmitted: boolean
+}

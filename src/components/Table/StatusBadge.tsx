@@ -19,10 +19,23 @@ export function StatusBadge({ label, variant }: StatusBadgeProps) {
 
   const inferVariant = (labelText: string): StatusVariant => {
     const text = labelText.toLowerCase()
-    if (text.includes('processando') || text.includes('auditoria') || text.includes('pendente'))
+    if (
+      text.includes('processando') ||
+      text.includes('auditoria') ||
+      text.includes('pendente') ||
+      text.includes('aguardando') ||
+      text.includes('retida')
+    )
       return 'warning'
-    if (text.includes('falha') || text.includes('erro') || text.includes('cancelad')) return 'error'
-    if (text.includes('info')) return 'info'
+    if (
+      text.includes('falha') ||
+      text.includes('erro') ||
+      text.includes('cancelad') ||
+      text.includes('rejeitad') ||
+      text.includes('expirad')
+    )
+      return 'error'
+    if (text.includes('info') || text.includes('análise')) return 'info'
     return 'success'
   }
 

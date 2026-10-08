@@ -18,7 +18,10 @@ export default function RegistrationComplete() {
           Recebemos seus dados e documentos. Nossa equipe de compliance vai analisar o seu cadastro
           e avisaremos assim que a análise for concluída.
         </p>
-        <Button label="Voltar para o início" onClick={() => navigate(PATHS.HOME)} />
+        <Button
+          label="Acompanhar situação cadastral"
+          onClick={() => navigate(PATHS.REGISTER_STATUS)}
+        />
       </div>
     </div>
   )

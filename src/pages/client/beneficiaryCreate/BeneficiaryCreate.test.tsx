@@ -17,6 +17,8 @@ const currentUser = {
   name: 'Marina Costa',
   email: 'marina@vstable.com',
   companyId: 'company-1',
+  accountType: 'USER' as const,
+  roles: ['ROLE_USER'],
 }
 
 async function fillIdentification(user: ReturnType<typeof userEvent.setup>) {
@@ -131,7 +133,7 @@ describe('BeneficiaryCreate', () => {
 
     await waitFor(() =>
       expect(createBeneficiary).toHaveBeenCalledWith('company-1', {
-        beneficiaryType: 'Pessoa jurídica',
+        beneficiaryType: 'LEGAL_ENTITY',
         legalName: 'Fornecedor Global Ltda.',
         identificationDocument: '12345678900',
         country: 'Brasil',
@@ -170,7 +172,7 @@ describe('BeneficiaryCreate', () => {
 
     await waitFor(() =>
       expect(createBeneficiary).toHaveBeenCalledWith('company-1', {
-        beneficiaryType: 'Pessoa jurídica',
+        beneficiaryType: 'LEGAL_ENTITY',
         legalName: 'Fornecedor Global Ltda.',
         identificationDocument: '12345678900',
         country: 'Brasil',

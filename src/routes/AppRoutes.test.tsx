@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AppRoutes from './AppRoutes'
 import { compliancePath, livenessPath, PATHS, registrationCompletePath } from './paths'
+import { clearSession, saveAccessToken } from '@/services/authToken'
 import { ApiError } from '@/services/onboarding'
+import { adminToken, userToken } from '@/test/jwt'
 
 const { submitOnboardingMock } = vi.hoisted(() => ({ submitOnboardingMock: vi.fn() }))
 const { startDocumentUploadMock, uploadFileToS3Mock, submitDocumentResultMock } = vi.hoisted(
@@ -62,6 +64,9 @@ async function fillRepresentativeForm(user: ReturnType<typeof userEvent.setup>) 
 
 describe('AppRoutes Navigation & Routing', () => {
   beforeEach(() => {
+    clearSession()
+    // Etapas de compliance exigem a sessão criada pelo onboarding (ou pelo login).
+    saveAccessToken(userToken())
     submitOnboardingMock.mockReset()
     startDocumentUploadMock.mockReset()
     uploadFileToS3Mock.mockReset()
@@ -339,5 +344,101 @@ describe('AppRoutes Navigation & Routing', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /continuar/i })).not.toBeDisabled(),
     )
+  })
+
+  it('does not record the document when a two-sided upload has no back-side URL', async () => {
+    const user = userEvent.setup()
+    startDocumentUploadMock.mockResolvedValueOnce({
+      id: 'doc-3',
+      uploadUrlFront: 'https://s3.example.com/front',
+      uploadUrlBack: null,
+    })
+
+    render(
+      <MemoryRouter initialEntries={[compliancePath(id)]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'ID')
+    await user.upload(screen.getByTestId('file-input'), [
+      new File(['front'], 'rg-frente.pdf', { type: 'application/pdf' }),
+      new File(['back'], 'rg-verso.pdf', { type: 'application/pdf' }),
+    ])
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível enviar o documento',
+    )
+    expect(uploadFileToS3Mock).not.toHaveBeenCalled()
+    expect(submitDocumentResultMock).not.toHaveBeenCalled()
+  })
+
+  it('redirects protected client routes to login when there is no session', async () => {
+    clearSession()
+
+    render(
+      <MemoryRouter initialEntries={[compliancePath(id)]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' }),
+    ).toBeInTheDocument()
+  })
+
+  it('redirects admin routes to login when there is no session', async () => {
+    clearSession()
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.ADMIN_TRANSFERS]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' }),
+    ).toBeInTheDocument()
+  })
+
+  it('keeps company users out of admin pages', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.ADMIN_CLIENTS]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Beneficiários' })).toBeInTheDocument()
+    expect(screen.queryByText('Clientes PME')).not.toBeInTheDocument()
+  })
+
+  it('lets administrators open admin pages', async () => {
+    saveAccessToken(adminToken())
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.ADMIN_CLIENTS]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Clientes PME' })).toBeInTheDocument()
+  })
+
+  it('serves the demo client list from explicit fixtures without calling the API', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.DEMO_ADMIN_CLIENTS]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Cooperativa AgroSul')).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

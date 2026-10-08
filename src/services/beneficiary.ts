@@ -1,17 +1,9 @@
 import type { Beneficiary, PaginatedBeneficiaries } from '@/types/beneficiary'
-import { request } from './registration'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
-
-const authHeaders = () => {
-  const token = localStorage.getItem('token')
-  return {
-    Accept: 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-}
+import { apiJson, jsonBody } from './api'
 
 export interface GetBeneficiariesParams {
+  /** Página base 1 (como na UI); convertida para base 0 do Spring aqui. */
   page?: number
   size?: number
   companyId?: string
@@ -20,44 +12,41 @@ export interface GetBeneficiariesParams {
   country?: string
 }
 
-export const getBeneficiaries = async (
-  params: GetBeneficiariesParams = {},
-): Promise<PaginatedBeneficiaries> => {
+function buildQuery(params: GetBeneficiariesParams, includeCompany: boolean) {
   const queryParams = new URLSearchParams()
 
   // O backend Spring espera page em base 0, o front envia em base 1.
-  queryParams.append('page', String((params.page || 1) - 1))
+  queryParams.append('page', String(Math.max((params.page || 1) - 1, 0)))
   queryParams.append('size', String(params.size || 10))
 
-  if (params.companyId) queryParams.append('companyId', params.companyId)
+  if (includeCompany && params.companyId) queryParams.append('companyId', params.companyId)
   if (params.search) queryParams.append('search', params.search)
   if (params.document) queryParams.append('document', params.document)
   if (params.country) queryParams.append('country', params.country)
 
-  const response = await fetch(`${API_BASE_URL}/v1/beneficiaries?${queryParams.toString()}`, {
-    headers: authHeaders(),
-  })
-
-  if (!response.ok) throw new Error(`Request failed with status ${response.status}`)
-
-  return response.json() as Promise<PaginatedBeneficiaries>
+  return queryParams.toString()
 }
 
-export const getBeneficiary = async (id: string): Promise<Beneficiary> => {
-  const response = await fetch(`${API_BASE_URL}/v1/beneficiaries/${encodeURIComponent(id)}`, {
-    headers: authHeaders(),
-  })
-  if (!response.ok) throw new Error(`Request failed with status ${response.status}`)
+/** Listagem global (somente administradores). */
+export const getBeneficiaries = (
+  params: GetBeneficiariesParams = {},
+): Promise<PaginatedBeneficiaries> =>
+  apiJson<PaginatedBeneficiaries>(`/beneficiaries?${buildQuery(params, true)}`)
 
-  const payload: unknown = await response.json()
-  // Trata possível wrapper se a API envelopar, caso contrário pega direto
-  if (typeof payload === 'object' && payload !== null && 'data' in payload) {
-    const data = (payload as { data?: unknown }).data
-    if (data && typeof data === 'object') return data as Beneficiary
-  }
+/** Detalhe global (somente administradores). */
+export const getBeneficiary = (id: string): Promise<Beneficiary> =>
+  apiJson<Beneficiary>(`/beneficiaries/${encodeURIComponent(id)}`)
 
-  return payload as Beneficiary
-}
+/** Beneficiários da empresa do usuário logado (área do cliente). */
+export const getCompanyBeneficiaries = (
+  companyId: string,
+  params: Omit<GetBeneficiariesParams, 'companyId'> = {},
+  signal?: AbortSignal,
+): Promise<PaginatedBeneficiaries> =>
+  apiJson<PaginatedBeneficiaries>(
+    `/companies/${encodeURIComponent(companyId)}/beneficiaries?${buildQuery(params, false)}`,
+    { signal },
+  )
 
 export interface BeneficiaryCreatePayload {
   beneficiaryType: string
@@ -76,17 +65,14 @@ export interface BeneficiaryCreatePayload {
   confirmed: boolean
 }
 
+/** O backend devolve o BeneficiaryResponse completo; a tela de criação só precisa do id. */
 export interface BeneficiaryCreateResult {
   id: string
 }
 
 export function createBeneficiary(companyId: string, payload: BeneficiaryCreatePayload) {
-  return request<BeneficiaryCreateResult>(
+  return apiJson<BeneficiaryCreateResult>(
     `/companies/${encodeURIComponent(companyId)}/beneficiaries`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    },
+    { method: 'POST', ...jsonBody(payload) },
   )
 }

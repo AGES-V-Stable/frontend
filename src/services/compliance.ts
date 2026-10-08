@@ -1,6 +1,6 @@
 import type { DocumentUploadStartResponse, TipoDocumento } from '@/types/compliance'
 
-import { httpRequest } from './httpClient'
+import { apiJson, jsonBody } from './api'
 
 /**
  * Inicia o upload do documento de identidade do representante. O backend assina
@@ -13,12 +13,9 @@ export async function startDocumentUpload(
   documentType: TipoDocumento,
   doubleSided: boolean,
 ): Promise<DocumentUploadStartResponse> {
-  return httpRequest<DocumentUploadStartResponse>(
-    `/v1/onboarding/${progressoCadastroId}/compliance/documento`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ documentType, doubleSided }),
-    },
+  return apiJson<DocumentUploadStartResponse>(
+    `/onboarding/${encodeURIComponent(progressoCadastroId)}/compliance/documento`,
+    { method: 'POST', ...jsonBody({ documentType, doubleSided }) },
   )
 }
 
@@ -49,8 +46,11 @@ export async function submitDocumentResult(
   progressoCadastroId: string,
   documentoId: string,
 ): Promise<void> {
-  await httpRequest<void>(`/v1/onboarding/${progressoCadastroId}/compliance/documento`, {
-    method: 'PUT',
-    body: JSON.stringify({ documentoId }),
-  })
+  await apiJson<void>(
+    `/onboarding/${encodeURIComponent(progressoCadastroId)}/compliance/documento`,
+    {
+      method: 'PUT',
+      ...jsonBody({ documentoId }),
+    },
+  )
 }

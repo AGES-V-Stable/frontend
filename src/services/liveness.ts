@@ -4,7 +4,7 @@ import type {
   StartLivenessResponse,
 } from '@/types/liveness'
 
-import { httpRequest } from './httpClient'
+import { apiJson, jsonBody } from './api'
 
 export const LIVENESS_ID_STORAGE_KEY = 'vstable:liveness:id'
 export const LIVENESS_STATUS_STORAGE_KEY = 'vstable:liveness:status'
@@ -21,8 +21,8 @@ const KNOWN_STATUSES: LivenessStatus[] = ['idle', 'pending', 'success', 'failure
 export async function startLivenessVerification(
   progressoCadastroId: string,
 ): Promise<StartLivenessResponse> {
-  return httpRequest<StartLivenessResponse>(
-    `/v1/onboarding/${progressoCadastroId}/compliance/liveness`,
+  return apiJson<StartLivenessResponse>(
+    `/onboarding/${encodeURIComponent(progressoCadastroId)}/compliance/liveness`,
     { method: 'POST' },
   )
 }
@@ -37,8 +37,8 @@ export async function checkLivenessStatus(
   progressoCadastroId: string,
   livenessId: string,
 ): Promise<LivenessStatusResponse> {
-  return httpRequest<LivenessStatusResponse>(
-    `/v1/onboarding/${progressoCadastroId}/compliance/liveness/status?livenessId=${encodeURIComponent(livenessId)}`,
+  return apiJson<LivenessStatusResponse>(
+    `/onboarding/${encodeURIComponent(progressoCadastroId)}/compliance/liveness/status?livenessId=${encodeURIComponent(livenessId)}`,
     { method: 'GET' },
   )
 }
@@ -51,10 +51,13 @@ export async function submitLivenessResult(
   progressoCadastroId: string,
   livenessId: string,
 ): Promise<void> {
-  await httpRequest<void>(`/v1/onboarding/${progressoCadastroId}/compliance/liveness`, {
-    method: 'PUT',
-    body: JSON.stringify({ livenessId }),
-  })
+  await apiJson<void>(
+    `/onboarding/${encodeURIComponent(progressoCadastroId)}/compliance/liveness`,
+    {
+      method: 'PUT',
+      ...jsonBody({ livenessId }),
+    },
+  )
 }
 
 export function saveLivenessSession(
