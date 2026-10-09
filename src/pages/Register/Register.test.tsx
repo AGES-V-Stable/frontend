@@ -5,20 +5,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { PATHS } from '@/routes/paths'
 
-import { Register } from './Register'
+import { PATHS } from '@/routes/paths'
 
-const response = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+import { Register } from './Register'
 
 afterEach(() => vi.unstubAllGlobals())
 
 function renderRegister() {
   return render(
-    <MemoryRouter initialEntries={['/register']}>
+    <MemoryRouter initialEntries={[PATHS.REGISTER]}>
       <Routes>
-        <Route path="/register" element={<Register />} />
-        <Route path="/register/:id/empresa" element={<p>Company registration</p>} />
-        <Route path="/login" element={<p>Login page</p>} />
+        <Route path={PATHS.LOGIN} element={<p>Login page</p>} />
+        <Route path={PATHS.REGISTER} element={<Register />} />
+        <Route path={PATHS.REGISTER_COMPANY} element={<p>Company registration</p>} />
       </Routes>
     </MemoryRouter>,
   )

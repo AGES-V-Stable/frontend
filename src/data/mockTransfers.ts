@@ -35,7 +35,7 @@ export const mockTransfers: Transfer[] = [
     valor: 12480.0,
     moeda: 'EUR',
     status: 'Processando',
-    cotacao: 5.60,
+    cotacao: 5.6,
     custos: 30.0,
     economia: 80.0,
   },

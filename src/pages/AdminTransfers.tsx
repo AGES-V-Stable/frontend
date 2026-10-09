@@ -5,11 +5,27 @@ import { Drawer } from '@/components/Drawer'
 import { AdminNavIcon, Sidebar, type AdminNavIconId } from '@/components/Sidebar'
 import { Table } from '@/components/Table'
 import { TransferFilters, type TransferFilterValues } from '@/components/TransferFilters'
+import { TransferFilters, type TransferFilterValues } from '@/components/TransferFilters'
 import { type Transfer } from '@/data/mockTransfers'
 import { transferTableColumns as columns } from '@/config/transferTableColumns'
 import { PATHS } from '@/routes/paths'
 import { getTransfers, getTransfersById, type GetTransfersResponse } from '@/services/transfers'
+import { getTransfers, getTransfersById, type GetTransfersResponse } from '@/services/transfers'
 import { formatCurrency, formatDate } from '@/utils/formatters'
+
+const transferStatuses = ['Concluída', 'Processando', 'Falha']
+const transferTypes = ['Pagamento', 'Recebimento']
+
+const emptyFilters: TransferFilterValues = {
+  search: '',
+  beneficiary: '',
+  startDate: '',
+  endDate: '',
+  minAmount: '',
+  maxAmount: '',
+  status: '',
+  type: '',
+}
 
 const transferStatuses = ['Concluída', 'Processando', 'Falha']
 const transferTypes = ['Pagamento', 'Recebimento']
@@ -57,9 +73,11 @@ function AdminTransfers() {
   }, [location.pathname])
 
   const fetchTransfers = async (page: number, filters: TransferFilterValues) => {
+  const fetchTransfers = async (page: number, filters: TransferFilterValues) => {
     setIsLoading(true)
     setError(null)
     try {
+      const data: GetTransfersResponse = await getTransfers(page, limit, filters)
       const data: GetTransfersResponse = await getTransfers(page, limit, filters)
       setTransfers(data.data)
       setTotalPages(data.totalPages)
@@ -146,6 +164,13 @@ function AdminTransfers() {
             onClear={clearFilters}
           />
 
+          <TransferFilters
+            statuses={transferStatuses}
+            types={transferTypes}
+            onApply={applyFilters}
+            onClear={clearFilters}
+          />
+
           {error && (
             <div
               role="alert"
@@ -153,6 +178,7 @@ function AdminTransfers() {
             >
               <p>{error}</p>
               <button
+                onClick={() => void fetchTransfers(currentPage, appliedFilters)}
                 onClick={() => void fetchTransfers(currentPage, appliedFilters)}
                 className="rounded-md bg-red-100 px-4 py-2 font-medium text-red-800 hover:bg-red-200 transition-colors"
               >
@@ -175,6 +201,7 @@ function AdminTransfers() {
                   {
                     label: 'Ver detalhes',
                     onClick: (item) => setSelectedTransferId((item as Transfer).id),
+                    onClick: (item) => setSelectedTransferId((item as Transfer).id),
                   },
                 ]}
                 pagination={{
@@ -191,6 +218,7 @@ function AdminTransfers() {
         </div>
 
         <Drawer
+          open={Boolean(selectedTransferId)}
           open={Boolean(selectedTransferId)}
           title="Detalhes da transferência"
           onClose={closeTransferDetails}
@@ -210,6 +238,7 @@ function AdminTransfers() {
                   ID da Transação
                 </p>
                 <p className="mt-1 text-base font-semibold">{drawerData.id}</p>
+                <p className="mt-1 text-base font-semibold">{drawerData.id}</p>
               </div>
 
               <div>
@@ -217,12 +246,15 @@ function AdminTransfers() {
                   Empresa
                 </p>
                 <p className="mt-1">{drawerData.empresa}</p>
+                <p className="mt-1">{drawerData.empresa}</p>
               </div>
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   {drawerData.tipo === 'Recebimento' ? 'Contraparte' : 'Beneficiário'}
+                  {drawerData.tipo === 'Recebimento' ? 'Contraparte' : 'Beneficiário'}
                 </p>
+                <p className="mt-1">{drawerData.beneficiario}</p>
                 <p className="mt-1">{drawerData.beneficiario}</p>
               </div>
 
@@ -231,12 +263,14 @@ function AdminTransfers() {
                   Data
                 </p>
                 <p className="mt-1">{formatDate(drawerData.data)}</p>
+                <p className="mt-1">{formatDate(drawerData.data)}</p>
               </div>
 
               <div>
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Tipo
                 </p>
+                <p className="mt-1">{drawerData.tipo}</p>
                 <p className="mt-1">{drawerData.tipo}</p>
               </div>
 
@@ -253,6 +287,7 @@ function AdminTransfers() {
                 <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                   Status
                 </p>
+                <p className="mt-1">{drawerData.status}</p>
                 <p className="mt-1">{drawerData.status}</p>
               </div>
 
@@ -284,7 +319,37 @@ function AdminTransfers() {
                   </p>
                 </div>
               )}
+
+              {drawerData.cotacao !== undefined && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                    Cotação Comercial
+                  </p>
+                  <p className="mt-1">{formatCurrency(drawerData.cotacao, 'BRL')}</p>
+                </div>
+              )}
+
+              {drawerData.custos !== undefined && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                    Custos (Taxas)
+                  </p>
+                  <p className="mt-1">{formatCurrency(drawerData.custos, 'BRL')}</p>
+                </div>
+              )}
+
+              {drawerData.economia !== undefined && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
+                    Economia Estimada
+                  </p>
+                  <p className="mt-1 text-emerald-600 font-medium">
+                    {formatCurrency(drawerData.economia, 'BRL')}
+                  </p>
+                </div>
+              )}
             </div>
+          ) : null}
           ) : null}
         </Drawer>
       </main>

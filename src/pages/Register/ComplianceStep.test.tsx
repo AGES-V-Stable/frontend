@@ -4,8 +4,9 @@ import { describe, expect, it, vi } from 'vitest'
 
 import ComplianceStep from './ComplianceStep'
 
-function renderComponent(onContinue = vi.fn(async () => undefined)) {
-  return render(<ComplianceStep onContinue={onContinue} />)
+function renderComponent(props: Partial<React.ComponentProps<typeof ComplianceStep>> = {}) {
+  const onContinue = props.onContinue ?? vi.fn(async () => undefined)
+  return render(<ComplianceStep onContinue={onContinue} {...props} />)
 }
 
 function makeFile(name: string, size: number, type: string): File {
@@ -24,9 +25,13 @@ describe('ComplianceStep', () => {
     expect(document.querySelector('[aria-current="step"]')).toBeInTheDocument()
   })
 
-  it('renders the document type field', () => {
+  it('renders the document type field with identity document options', () => {
     renderComponent()
-    expect(screen.getByLabelText(/tipo de documento/i)).toBeInTheDocument()
+    const select = screen.getByLabelText(/tipo de documento/i)
+    expect(select).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'RG' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'CNH' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Passaporte' })).toBeInTheDocument()
   })
 
   it('renders the Continuar button', () => {
@@ -41,7 +46,38 @@ describe('ComplianceStep', () => {
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
     expect(screen.getByText('Selecione o tipo de documento')).toBeInTheDocument()
-    expect(screen.getByText('Envie pelo menos um documento')).toBeInTheDocument()
+  })
+
+  it('requires exactly two files for a double-sided document (RG)', async () => {
+    const user = userEvent.setup()
+    const onContinue = vi.fn(async () => undefined)
+    renderComponent({ onContinue })
+
+    await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'ID')
+    await user.upload(
+      screen.getByTestId('file-input'),
+      makeFile('frente.pdf', 1024, 'application/pdf'),
+    )
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(screen.getByText('Envie frente e verso do documento (2 arquivos)')).toBeInTheDocument()
+    expect(onContinue).not.toHaveBeenCalled()
+  })
+
+  it('requires exactly one file for a single-sided document (Passaporte)', async () => {
+    const user = userEvent.setup()
+    const onContinue = vi.fn(async () => undefined)
+    renderComponent({ onContinue })
+
+    await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'PASSPORT')
+    await user.upload(screen.getByTestId('file-input'), [
+      makeFile('a.pdf', 1024, 'application/pdf'),
+      makeFile('b.pdf', 1024, 'application/pdf'),
+    ])
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(screen.getByText('Envie o arquivo do documento')).toBeInTheDocument()
+    expect(onContinue).not.toHaveBeenCalled()
   })
 
   it('accepts a valid PDF file via the file input', async () => {
@@ -49,9 +85,9 @@ describe('ComplianceStep', () => {
     renderComponent()
 
     const input = screen.getByTestId('file-input')
-    await user.upload(input, makeFile('contrato.pdf', 1024, 'application/pdf'))
+    await user.upload(input, makeFile('documento.pdf', 1024, 'application/pdf'))
 
-    expect(screen.getByText('contrato.pdf')).toBeInTheDocument()
+    expect(screen.getByText('documento.pdf')).toBeInTheDocument()
   })
 
   it('accepts a valid PNG file via the file input', async () => {
@@ -143,18 +179,16 @@ describe('ComplianceStep', () => {
     expect(dropZone).toBeInTheDocument()
   })
 
-  it('submits the selected documents when the form is valid', async () => {
+  it('delegates the submission to onContinue with the selected document data', async () => {
     const user = userEvent.setup()
     const onContinue = vi.fn(async () => undefined)
-    renderComponent(onContinue)
+    renderComponent({ onContinue })
 
-    await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'CONTRATO_SOCIAL')
-
+    await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'PASSPORT')
     await user.upload(
       screen.getByTestId('file-input'),
-      makeFile('contrato.pdf', 1024, 'application/pdf'),
+      makeFile('passaporte.pdf', 1024, 'application/pdf'),
     )
-
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
     expect(onContinue).toHaveBeenCalledWith(
@@ -167,13 +201,14 @@ describe('ComplianceStep', () => {
     )
   })
 
-  it('does not show success message when form has validation errors', async () => {
+  it('does not call onContinue when the form has validation errors', async () => {
     const user = userEvent.setup()
-    renderComponent()
+    const onContinue = vi.fn(async () => undefined)
+    renderComponent({ onContinue })
 
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
-    expect(screen.queryByText('Formulário enviado com sucesso!')).not.toBeInTheDocument()
+    expect(onContinue).not.toHaveBeenCalled()
   })
 
   it('displays the V-STABLE brand header', () => {
@@ -192,7 +227,7 @@ describe('ComplianceStep', () => {
   it('disables interactions and displays the server error while saving', async () => {
     const user = userEvent.setup()
     const onContinue = vi.fn(async () => undefined)
-    const { rerender } = renderComponent(onContinue)
+    const { rerender } = renderComponent({ onContinue })
     await user.upload(
       screen.getByTestId('file-input'),
       makeFile('contrato.pdf', 2 * 1024 * 1024, 'application/pdf'),

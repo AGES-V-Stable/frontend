@@ -1,4 +1,5 @@
 import { type Transfer } from '@/data/mockTransfers'
+import { type Transfer } from '@/data/mockTransfers'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -60,13 +61,14 @@ export const getTransfers = async (
   page: number = 1,
   limit: number = 6,
   filters?: TransferFilterParams,
+  filters?: TransferFilterParams,
 ): Promise<GetTransfersResponse> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/transfers?page=${page}&limit=${limit}`, {
-      headers: {
-        Accept: 'application/json',
-      },
-    })
+  const params = buildQueryParams(page, limit, filters)
+  const response = await fetch(`${API_BASE_URL}/transfers?${params.toString()}`, {
+    headers: {
+      Accept: 'application/json',
+    },
+  })
 
   if (!response.ok) {
     throw new Error('Falha ao buscar transferências da API')

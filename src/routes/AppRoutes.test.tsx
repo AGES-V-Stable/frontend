@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -71,7 +72,10 @@ describe('AppRoutes Navigation & Routing', () => {
     vi.unstubAllGlobals()
   })
 
+<<<<<<< HEAD
   it('given the user navigates to the root path, when AppRoutes is rendered, then it should render the Home page', () => {
+=======
+>>>>>>> 5c6c15d77a2d74c252b0024900efbfde10130eb6
   it('renders the Home page for the root path', () => {
     const initialRoute = PATHS.HOME
 
@@ -96,7 +100,11 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByRole('heading', { name: 'Bem-vindo à V-Stable!' })).toBeInTheDocument()
   })
 
+<<<<<<< HEAD
   it('given the user navigates to the register path, when AppRoutes is rendered, then it should render the Register wizard', () => {
+=======
+  it('given the user navigates to the register path, when AppRoutes is rendered, then it should render the access step of the register wizard', () => {
+>>>>>>> 5c6c15d77a2d74c252b0024900efbfde10130eb6
     const initialRoute = PATHS.REGISTER
 
     render(
@@ -109,6 +117,30 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByText('Representante').closest('li')).toHaveAttribute('aria-current', 'step')
   })
 
+<<<<<<< HEAD
+  it('given the user navigates to the compliance path with a kyc verification id, when AppRoutes is rendered, then it should render the ComplianceStep page with that id wired in', () => {
+    render(
+      <MemoryRouter initialEntries={[compliancePath(id)]}>
+=======
+  it('given the company or representative steps are opened without navigation state, when AppRoutes is rendered, then it should redirect back to the access step', () => {
+    render(
+      <MemoryRouter initialEntries={[PATHS.REGISTER_REPRESENTATIVE]}>
+>>>>>>> 5c6c15d77a2d74c252b0024900efbfde10130eb6
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+<<<<<<< HEAD
+    expect(screen.getByRole('heading', { name: 'Compliance e documentos' })).toBeInTheDocument()
+  })
+
+  it('given the user navigates to the compliance liveness path with a kyc verification id, when AppRoutes is rendered, then it should render the LivenessStep page with that id wired in', () => {
+    render(
+      <MemoryRouter initialEntries={[initialRoute]}>
+=======
+    expect(screen.getByRole('heading', { name: 'Dados de acesso' })).toBeInTheDocument()
+  })
+
   it('given the user navigates to the compliance path with a kyc verification id, when AppRoutes is rendered, then it should render the ComplianceStep page with that id wired in', () => {
     render(
       <MemoryRouter initialEntries={[compliancePath(id)]}>
@@ -116,21 +148,43 @@ describe('AppRoutes Navigation & Routing', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('heading', { name: 'Compliance e documentos' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Cadastro Institucional' })).toBeInTheDocument()
+    expect(screen.getByText('Compliance e documentos')).toBeInTheDocument()
   })
 
   it('given the user navigates to the compliance liveness path with a kyc verification id, when AppRoutes is rendered, then it should render the LivenessStep page with that id wired in', () => {
     render(
-      <MemoryRouter initialEntries={[initialRoute]}>
+      <MemoryRouter initialEntries={[livenessPath(id)]}>
+>>>>>>> 5c6c15d77a2d74c252b0024900efbfde10130eb6
         <AppRoutes />
       </MemoryRouter>,
     )
 
     expect(screen.getByText('Verificação facial')).toBeInTheDocument()
+<<<<<<< HEAD
   })
 
   it('given the user navigates to the compliance liveness path, when AppRoutes is rendered, then it should render the LivenessStep page', () => {
     const initialRoute = PATHS.COMPLIANCE_LIVENESS
+=======
+    // Sem progressoCadastroId a tela cai no branch de erro ao iniciar; com o id vindo da
+    // URL, o botão de iniciar não deve estar desabilitado por falta de contexto.
+    expect(screen.getByRole('button', { name: 'Iniciar verificação facial' })).toBeEnabled()
+  })
+
+  it('given the user navigates to the registration-complete path, when AppRoutes is rendered, then it should render the RegistrationComplete page', () => {
+    render(
+      <MemoryRouter initialEntries={[registrationCompletePath(id)]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Cadastro enviado' })).toBeInTheDocument()
+  })
+
+  it('renders the placeholder screen for the forgot password path', () => {
+    const initialRoute = PATHS.FORGOT_PASSWORD
+>>>>>>> 5c6c15d77a2d74c252b0024900efbfde10130eb6
 
     render(
       <MemoryRouter initialEntries={[initialRoute]}>

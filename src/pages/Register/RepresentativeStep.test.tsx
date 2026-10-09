@@ -52,6 +52,7 @@ describe('RepresentativeStep (Etapa 1 - Acesso e Representante)', () => {
 
     const cpfInput = screen.getByPlaceholderText('000.000.000-00')
     const cepInput = screen.getByPlaceholderText('00000-000')
+    const phoneInput = screen.getByLabelText(/telefone/i)
     const slider = screen.getByRole('slider')
 
     fireEvent.change(slider, { target: { value: '30' } })
@@ -62,6 +63,9 @@ describe('RepresentativeStep (Etapa 1 - Acesso e Representante)', () => {
 
     await user.type(cepInput, '90000000')
     expect(cepInput).toHaveValue('90000-000')
+
+    await user.type(phoneInput, '11987654321')
+    expect(phoneInput).toHaveValue('(11) 98765-4321')
   })
 
   it('validates CPF on blur', async () => {

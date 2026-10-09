@@ -1,11 +1,20 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
 
 import AdminClients from '@/pages/AdminClients'
+<<<<<<< HEAD
 import { Home } from '@/pages/Home'
 import AdminClients from '../pages/AdminClients'
 import AdminTransfers from '../pages/AdminTransfers'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
+=======
+import AdminTransfers from '@/pages/AdminTransfers'
+import LivenessStep from '@/pages/LivenessStep'
+import { Login } from '@/pages/Login'
+import { Register } from '@/pages/Register'
+import { CompanyStep } from '@/pages/Register/CompanyStep'
+>>>>>>> 5c6c15d77a2d74c252b0024900efbfde10130eb6
 import ComplianceStep from '@/pages/Register/ComplianceStep'
 import RegistrationComplete from '@/pages/Register/RegistrationComplete'
 import { RepresentativeStep } from '@/pages/Register/RepresentativeStep'
@@ -192,9 +201,30 @@ function AppRoutes() {
       />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
+<<<<<<< HEAD
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<ComplianceRoute />} />
       <Route path={PATHS.COMPLIANCE_LIVENESS} element={<LivenessRoute />} />
       <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />
+=======
+      <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRoute />} />
+      <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeRoute />} />
+      <Route path={PATHS.REGISTER_COMPLIANCE} element={<ComplianceRoute />} />
+      <Route path={PATHS.COMPLIANCE_LIVENESS} element={<LivenessRoute />} />
+      <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />
+      <Route path={PATHS.FORGOT_PASSWORD} element={<ForgotPassWordPlaceHolder />} />
+      <Route path={PATHS.DEMO} element={<Demo />} />
+      <Route path={PATHS.DEMO_HOME} element={<Home />} />
+      <Route path={PATHS.DEMO_LOGIN} element={<Login />} />
+      <Route
+        path={PATHS.DEMO_REGISTER}
+        element={<Navigate to={PATHS.DEMO_REGISTER_COMPANY} replace />}
+      />
+      <Route path={PATHS.DEMO_REGISTER_COMPANY} element={<DemoCompany />} />
+      <Route path={PATHS.DEMO_REGISTER_REPRESENTATIVE} element={<DemoRepresentative />} />
+      <Route path={PATHS.DEMO_REGISTER_COMPLIANCE} element={<DemoCompliance />} />
+      <Route path={PATHS.DEMO_ADMIN_CLIENTS} element={<AdminClients />} />
+      <Route path={PATHS.REGISTER_STATUS} element={<RegisterStatus />} />
+>>>>>>> 5c6c15d77a2d74c252b0024900efbfde10130eb6
 
       <Route path="*" element={<Navigate to={PATHS.HOME} replace />} />
     </Routes>

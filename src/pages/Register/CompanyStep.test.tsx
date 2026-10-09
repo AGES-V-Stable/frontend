@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
+import AppRoutes from '@/routes/AppRoutes'
+import { PATHS } from '@/routes/paths'
 import { CompanyStep, type CompanyData } from './CompanyStep'
 
 const valid: CompanyData = {
@@ -131,15 +134,12 @@ describe('CompanyStep', () => {
 })
 
 describe('Company registration route', () => {
-  it('requires a progress link and provides a return to register', async () => {
-    const user = userEvent.setup()
+  it('redirects back to the access step when opened without access data in navigation state', () => {
     render(
       <MemoryRouter initialEntries={[PATHS.REGISTER_COMPANY]}>
         <AppRoutes />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('alert')).toHaveTextContent('Link de cadastro ausente ou inválido')
-    await user.click(screen.getByRole('link', { name: 'Voltar ao cadastro' }))
     expect(screen.getByRole('heading', { name: 'Dados de acesso' })).toBeInTheDocument()
   })
 })

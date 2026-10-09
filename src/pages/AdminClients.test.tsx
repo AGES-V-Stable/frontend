@@ -20,7 +20,8 @@ describe('AdminClients page', () => {
     expect(screen.getByText(/de \d+ clientes$/)).toBeInTheDocument()
   })
 
-  it('shows only clients that match the company filter', () => {
+  it('shows only clients that match the company filter', async () => {
+    const user = userEvent.setup()
     renderAdminClients()
 
     await user.type(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), 'BioNorte')
