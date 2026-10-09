@@ -5,7 +5,7 @@ import { Input } from '@/components/Input'
 import { AdminNavIcon } from '@/components/Sidebar'
 import { Stepper } from '@/components/Stepper'
 import { TransferAmountSchema, TransferFormSchema } from '@/schemas/transfer'
-import { getBeneficiaries } from '@/services/beneficiary'
+import { getCompanyBeneficiaries } from '@/services/beneficiary'
 import { HttpError } from '@/services/httpClient'
 import { createTransfer, getTransferQuote } from '@/services/transfers'
 import { getCurrentUser } from '@/services/user'
@@ -125,7 +125,7 @@ export function TransferCreate() {
   useEffect(() => {
     let active = true
     getCurrentUser()
-      .then((user) => getBeneficiaries({ companyId: user.companyId, size: 100 }))
+      .then((user) => getCompanyBeneficiaries(user.companyId, { size: 100 }))
       .then((page) => {
         if (!active) return
         if (Array.isArray(page.content)) setBeneficiaries({ status: 'ready', items: page.content })

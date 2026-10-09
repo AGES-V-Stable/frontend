@@ -44,6 +44,36 @@ export const getBeneficiaries = async (
   return response.json() as Promise<PaginatedBeneficiaries>
 }
 
+export type GetCompanyBeneficiariesParams = Omit<GetBeneficiariesParams, 'companyId'>
+
+/**
+ * Lista os beneficiários de uma empresa pelo endpoint liberado para quem pertence a ela;
+ * o GET /v1/beneficiaries continua restrito a administradores.
+ */
+export const getCompanyBeneficiaries = async (
+  companyId: string,
+  params: GetCompanyBeneficiariesParams = {},
+): Promise<PaginatedBeneficiaries> => {
+  const queryParams = new URLSearchParams()
+
+  // O backend Spring espera page em base 0, o front envia em base 1.
+  queryParams.append('page', String((params.page || 1) - 1))
+  queryParams.append('size', String(params.size || 10))
+
+  if (params.search) queryParams.append('search', params.search)
+  if (params.document) queryParams.append('document', params.document)
+  if (params.country) queryParams.append('country', params.country)
+
+  const response = await fetch(
+    `${API_BASE_URL}/v1/companies/${encodeURIComponent(companyId)}/beneficiaries?${queryParams.toString()}`,
+    { headers: authHeaders() },
+  )
+
+  if (!response.ok) throw new Error(`Request failed with status ${response.status}`)
+
+  return response.json() as Promise<PaginatedBeneficiaries>
+}
+
 export const getBeneficiary = async (id: string): Promise<Beneficiary> => {
   const response = await fetch(`${API_BASE_URL}/v1/beneficiaries/${encodeURIComponent(id)}`, {
     headers: authHeaders(),

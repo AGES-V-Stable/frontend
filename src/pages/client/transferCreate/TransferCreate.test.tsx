@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { getBeneficiaries } from '@/services/beneficiary'
+import { getCompanyBeneficiaries } from '@/services/beneficiary'
 import { HttpError } from '@/services/httpClient'
 import { createTransfer, getTransferQuote } from '@/services/transfers'
 import { getCurrentUser } from '@/services/user'
@@ -14,7 +14,7 @@ vi.mock('@/services/transfers', () => ({
   getTransferQuote: vi.fn(),
   createTransfer: vi.fn(),
 }))
-vi.mock('@/services/beneficiary', () => ({ getBeneficiaries: vi.fn() }))
+vi.mock('@/services/beneficiary', () => ({ getCompanyBeneficiaries: vi.fn() }))
 vi.mock('@/services/user', () => ({ getCurrentUser: vi.fn() }))
 
 const DEBOUNCE_MS = 500
@@ -79,7 +79,7 @@ describe('TransferCreate', () => {
       email: 'marina@example.com',
       companyId: 'c1',
     })
-    vi.mocked(getBeneficiaries).mockResolvedValue({
+    vi.mocked(getCompanyBeneficiaries).mockResolvedValue({
       content: [atlas, euroSupplier],
       totalElements: 2,
       totalPages: 1,
@@ -100,7 +100,7 @@ describe('TransferCreate', () => {
 
     expect(screen.getByText('Informe um valor para consultar a cotação.')).toBeInTheDocument()
     expect(continueButton()).toBeDisabled()
-    expect(getBeneficiaries).toHaveBeenCalledWith({ companyId: 'c1', size: 100 })
+    expect(getCompanyBeneficiaries).toHaveBeenCalledWith('c1', { size: 100 })
     expect(screen.getByRole('option', { name: 'Atlas Imports LLC' })).toBeInTheDocument()
     expect(getTransferQuote).not.toHaveBeenCalled()
   })
@@ -352,7 +352,9 @@ describe('TransferCreate', () => {
   })
 
   it('shows an alert when the beneficiaries cannot be loaded', async () => {
-    vi.mocked(getBeneficiaries).mockRejectedValueOnce(new Error('Request failed with status 403'))
+    vi.mocked(getCompanyBeneficiaries).mockRejectedValueOnce(
+      new Error('Request failed with status 403'),
+    )
 
     await renderPage()
 
