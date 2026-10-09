@@ -22,6 +22,7 @@ export const PATHS = {
   ADMIN_BENEFICIARIES: '/admin/beneficiarios',
   BENEFICIARIES: '/beneficiarios',
   BENEFICIARIES_NEW: '/beneficiarios/novo',
+  TRANSFERS: '/transferencias',
 } as const
 
 export type Path = (typeof PATHS)[keyof typeof PATHS]

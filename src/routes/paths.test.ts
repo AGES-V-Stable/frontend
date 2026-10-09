@@ -28,6 +28,7 @@ describe('PATHS configuration', () => {
       ADMIN_BENEFICIARIES: '/admin/beneficiarios',
       BENEFICIARIES: '/beneficiarios',
       BENEFICIARIES_NEW: '/beneficiarios/novo',
+      TRANSFERS: '/transferencias',
     }
 
     const actualPaths = PATHS

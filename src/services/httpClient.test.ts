@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { saveAccessToken } from './authToken'
+import { saveAccessToken, saveLoginToken } from './authToken'
 import { HttpError, httpRequest } from './httpClient'
 
 describe('httpClient', () => {
   beforeEach(() => {
     sessionStorage.clear()
+    localStorage.clear()
   })
 
   afterEach(() => {
@@ -78,5 +79,24 @@ describe('httpClient', () => {
       expect(error).toBeInstanceOf(Error)
       expect(error).toBeInstanceOf(HttpError)
     }
+  })
+
+  it('includes the login token when there is no onboarding token', async () => {
+    saveLoginToken('login-token')
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await httpRequest('/v1/transfers/quote', { method: 'POST' })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/v1/transfers/quote',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer login-token' }),
+      }),
+    )
   })
 })

@@ -152,6 +152,30 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByRole('heading', { name: 'Cadastro enviado' })).toBeInTheDocument()
   })
 
+  it('given the user navigates to the transfers path, when AppRoutes is rendered, then it should render the transfer page inside the client layout with the transfers item active', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'u1', name: 'Marina Costa', email: 'm@x.com', companyId: 'c1' }),
+      }),
+    )
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.TRANSFERS]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Realizar transferência' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /transferências/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect((await screen.findAllByText('Marina Costa')).length).toBeGreaterThan(0)
+  })
+
   it('renders the placeholder screen for the forgot password path', () => {
     const initialRoute = PATHS.FORGOT_PASSWORD
 
@@ -177,7 +201,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('walks the full wizard from access to the liveness step on a happy path', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     submitOnboardingMock.mockResolvedValueOnce({
       userId: 'user-1',
       companyId: 'company-1',
@@ -240,7 +264,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('shows the API message and preserves the form when representative submission fails with a client error', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     submitOnboardingMock.mockRejectedValueOnce(new ApiError(422, 'CPF já usado em outro cadastro'))
 
     render(
@@ -259,7 +283,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('shows a generic message when representative submission fails with a server error', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     submitOnboardingMock.mockRejectedValueOnce(new Error('network down'))
 
     render(
@@ -279,7 +303,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('uploads both sides of a double-sided document before advancing to liveness', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     startDocumentUploadMock.mockResolvedValueOnce({
       id: 'doc-2',
       uploadUrlFront: 'https://s3.example.com/front',
@@ -317,7 +341,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('shows a generic error when the document upload fails', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     startDocumentUploadMock.mockRejectedValueOnce(new Error('upload failed'))
 
     render(
