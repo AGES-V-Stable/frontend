@@ -1,60 +1,57 @@
-import { useEffect, useRef, useState } from "react";
-import { BeneficiaryFilters } from "../BeneficiaryFilters";
-import type { BeneficiaryFilterValues } from "../BeneficiaryFilters";
-import { Drawer } from "../Drawer";
-import { Table } from "../Table";
-import { beneficiaryTableColumns } from "@/config/beneficiaryTableColumns";
-import type { Beneficiary } from "@/types/beneficiary";
-import { getBeneficiaries, getBeneficiary } from "@/services/beneficiary";
-import { maskCNPJ } from "@/utils/masks";
-
+import { useEffect, useRef, useState } from 'react'
+import { BeneficiaryFilters } from '@/components/BeneficiaryFilters'
+import type { BeneficiaryFilterValues } from '@/components/BeneficiaryFilters'
+import { Drawer } from '@/components/Drawer'
+import { Table } from '@/components/Table'
+import { beneficiaryTableColumns } from '@/config/beneficiaryTableColumns'
+import type { Beneficiary } from '@/types/beneficiary'
+import { getBeneficiaries, getBeneficiary } from '@/services/beneficiary'
+import { maskCNPJ } from '@/utils/masks'
 
 const PAGE_SIZE = 10
 const emptyFilters: BeneficiaryFilterValues = {
-    companyOrCnpj: '',
-    search: '',
-    country: '',
-    currency: '',
-    status: '',
+  companyOrCnpj: '',
+  search: '',
+  country: '',
+  currency: '',
+  status: '',
 }
 
 export interface BeneficiaryListProps {
-    title: string
-    subtitle: string
-    //se for passado a lista sera restrita a empresa, serve para o cliente.
-    forceCompanyId?: string
+  title: string
+  subtitle: string
+  forceCompanyId?: string
 }
 
 export function BeneficiaryList({ title, subtitle, forceCompanyId }: BeneficiaryListProps) {
-    const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([])
-    const [totalRecords, setTotalRecords] = useState(0)
-    const [totalPages, setTotalPages] = useState(1)
-    const [isLoading, setIsLoading] = useState(true)
-    const [loadError, setLoadError] = useState<string | null>(null)
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([])
+  const [totalRecords, setTotalRecords] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-    const [currentPage, setCurrentPage] = useState(1)
-    const [appliedFilters, setAppliedFilters] = useState(emptyFilters)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [appliedFilters, setAppliedFilters] = useState(emptyFilters)
 
-    const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null)
-    const [details, setDetails] = useState<Beneficiary | null>(null)
-    const [isDetailsLoading, setIsDetailsLoading] = useState(false)
-    const [detailsError, setDetailsError] = useState<string | null>(null)
-    const detailsRequestId = useRef(0)
+  const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null)
+  const [details, setDetails] = useState<Beneficiary | null>(null)
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
+  const detailsRequestId = useRef(0)
 
-    useEffect(() => {
-        let active = true
-        const load = async () => {
-            setIsLoading(true)
-            setLoadError(null)
-            try {
-                const isDocument = /^[\d.\-/]+$/.test(appliedFilters.companyOrCnpj)
+  useEffect(() => {
+    let active = true
+    const load = async () => {
+      setIsLoading(true)
+      setLoadError(null)
+      try {
+        const isDocument = /^[\d.\-/]+$/.test(appliedFilters.companyOrCnpj)
+        
+        const effectiveCompanyId = forceCompanyId 
+          ? forceCompanyId 
+          : (!isDocument && appliedFilters.companyOrCnpj ? appliedFilters.companyOrCnpj : undefined)
 
-                //se for cliente logado, a request deve usar obrigatoriamente o companyId dele
-                const effectiveCompanyId = forceCompanyId
-                    ? forceCompanyId
-                    : (!isDocument && appliedFilters.companyOrCnpj ? appliedFilters.companyOrCnpj : undefined)
-                
-                const data = await getBeneficiaries({
+        const data = await getBeneficiaries({
           page: currentPage,
           size: PAGE_SIZE,
           search: appliedFilters.search,
