@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import {
   currencySymbol,
+  formatDateTime,
   formatDecimal,
   formatMoney,
+  formatMoneyString,
   formatPercent,
+  formatPercentString,
   parseDecimalInput,
 } from './formatters'
 
@@ -69,5 +72,47 @@ describe('parseDecimalInput', () => {
 
   it.each(['', 'abc', '10,123', '-5', '1,2,3'])('devolve null para "%s"', (text) => {
     expect(parseDecimalInput(text)).toBeNull()
+  })
+})
+
+describe('formatMoneyString', () => {
+  it.each([
+    ['125000.00', 'BRL', 'R$ 125.000,00'],
+    ['23062.73', 'USD', 'US$ 23.062,73'],
+    ['0.00', 'BRL', 'R$ 0,00'],
+  ])('formata "%s" em %s', (amount, currency, expected) => {
+    expect(normalizeSpaces(formatMoneyString(amount, currency) ?? '')).toBe(expected)
+  })
+
+  it('devolve null para ausente ou não numérico, sem virar zero', () => {
+    expect(formatMoneyString(null, 'BRL')).toBeNull()
+    expect(formatMoneyString('abc', 'BRL')).toBeNull()
+  })
+})
+
+describe('formatPercentString', () => {
+  it('formata pontos percentuais em string', () => {
+    expect(formatPercentString('0.45')).toBe('0,45%')
+    expect(formatPercentString('1.10')).toBe('1,10%')
+  })
+
+  it('devolve null para ausente ou inválido', () => {
+    expect(formatPercentString(null)).toBeNull()
+    expect(formatPercentString('x')).toBeNull()
+  })
+})
+
+describe('formatDateTime', () => {
+  it('formata data e hora no fuso de São Paulo', () => {
+    expect(formatDateTime('2026-08-24T14:32:00-03:00')).toBe('24 ago 2026 • 14:32')
+    expect(formatDateTime('2026-10-02T02:05:00Z')).toBe('01 out 2026 • 23:05')
+  })
+
+  it('respeita o fuso pedido', () => {
+    expect(formatDateTime('2026-08-24T14:32:00-03:00', 'UTC')).toBe('24 ago 2026 • 17:32')
+  })
+
+  it('devolve o texto original quando não é uma data', () => {
+    expect(formatDateTime('ontem')).toBe('ontem')
   })
 })

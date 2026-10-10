@@ -4,7 +4,13 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AppRoutes from './AppRoutes'
-import { compliancePath, livenessPath, PATHS, registrationCompletePath } from './paths'
+import {
+  compliancePath,
+  livenessPath,
+  PATHS,
+  registrationCompletePath,
+  transferDetailsPath,
+} from './paths'
 import { ApiError } from '@/services/onboarding'
 
 const { submitOnboardingMock } = vi.hoisted(() => ({ submitOnboardingMock: vi.fn() }))
@@ -174,6 +180,51 @@ describe('AppRoutes Navigation & Routing', () => {
       'page',
     )
     expect((await screen.findAllByText('Marina Costa')).length).toBeGreaterThan(0)
+  })
+
+  it('given the user navigates to a transfer details path, when AppRoutes is rendered, then it should open the details panel for that transfer inside the client layout', async () => {
+    const id = '17f2df21-32ed-45b2-b1cc-83146bb39cbb'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () =>
+            String(url).includes('/users/me')
+              ? { id: 'u1', name: 'Marina Costa', email: 'm@x.com', companyId: 'c1' }
+              : {
+                  id,
+                  companyId: 'c1',
+                  date: '2026-10-02T19:23:08Z',
+                  type: 'PAGAMENTO',
+                  status: 'SETTLED',
+                  counterpartyName: 'Atlas Imports LLC',
+                  counterpartyDetails: null,
+                  source: { amount: '5000.00', currency: 'BRL' },
+                  destination: { amount: '1000.00', currency: 'USD' },
+                  fundingSource: 'TED',
+                  exchangeRate: { fromCurrency: 'USD', toCurrency: 'BRL', rate: '5.00' },
+                  costs: { serviceFee: null, spreadPercentage: null, estimatedMarketCost: null },
+                  estimatedSavings: null,
+                  receiptAvailable: true,
+                },
+        }),
+      ),
+    )
+
+    render(
+      <MemoryRouter initialEntries={[transferDetailsPath(id)]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByText('Atlas Imports LLC')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /transferências/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 
   it('renders the placeholder screen for the forgot password path', () => {

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { compliancePath, livenessPath, PATHS, registrationCompletePath } from './paths'
+import {
+  compliancePath,
+  livenessPath,
+  PATHS,
+  registrationCompletePath,
+  transferDetailsPath,
+} from './paths'
 
 describe('PATHS configuration', () => {
   it('matches the expected route paths', () => {
@@ -29,6 +35,7 @@ describe('PATHS configuration', () => {
       BENEFICIARIES: '/beneficiarios',
       BENEFICIARIES_NEW: '/beneficiarios/novo',
       TRANSFERS: '/transferencias',
+      TRANSFER_DETAILS: '/transferencias/:id',
     }
 
     const actualPaths = PATHS
@@ -56,5 +63,10 @@ describe('PATHS configuration', () => {
     expect(compliancePath('abc 123')).toBe('/register/abc%20123/compliance')
     expect(livenessPath('abc 123')).toBe('/register/abc%20123/compliance/liveness')
     expect(registrationCompletePath('abc 123')).toBe('/register/abc%20123/concluido')
+  })
+
+  it('builds the transfer details path with the id encoded', () => {
+    expect(transferDetailsPath('17f2df21-32ed')).toBe('/transferencias/17f2df21-32ed')
+    expect(transferDetailsPath('a/b')).toBe('/transferencias/a%2Fb')
   })
 })

@@ -57,27 +57,69 @@ export const formatPercent = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value)}%`
 
+const SHORT_MONTHS = [
+  'jan',
+  'fev',
+  'mar',
+  'abr',
+  'mai',
+  'jun',
+  'jul',
+  'ago',
+  'set',
+  'out',
+  'nov',
+  'dez',
+]
+
 export const formatDate = (dateString: string) => {
   const date = new Date(dateString)
   const day = String(date.getDate()).padStart(2, '0')
-  const months = [
-    'jan',
-    'fev',
-    'mar',
-    'abr',
-    'mai',
-    'jun',
-    'jul',
-    'ago',
-    'set',
-    'out',
-    'nov',
-    'dez',
-  ]
-  const month = months[date.getMonth()]
+  const month = SHORT_MONTHS[date.getMonth()]
   const year = date.getFullYear()
 
   if (isNaN(date.getTime())) return dateString
 
   return `${day} ${month} ${year}`
+}
+
+/**
+ * Formata um valor monetário recebido como string decimal ("125000.00"). Devolve null quando o
+ * valor não existe ou não é numérico, para a tela mostrar "indisponível" em vez de inventar zero.
+ */
+export const formatMoneyString = (amount: string | null, currencyCode: string): string | null => {
+  if (amount === null) return null
+  const value = Number(amount)
+  return Number.isFinite(value) ? formatMoney(value, currencyCode) : null
+}
+
+/** Formata um percentual recebido como string em pontos percentuais ("0.45" → 0,45%). */
+export const formatPercentString = (value: string | null): string | null => {
+  if (value === null) return null
+  const number = Number(value)
+  return Number.isFinite(number) ? formatPercent(number) : null
+}
+
+/**
+ * Data e hora no padrão da tela de detalhes ("24 ago 2026 • 14:32"), no fuso informado
+ * (America/Sao_Paulo por padrão). Texto que não é uma data volta como veio.
+ */
+export const formatDateTime = (isoDate: string, timeZone = 'America/Sao_Paulo'): string => {
+  const date = new Date(isoDate)
+  if (Number.isNaN(date.getTime())) return isoDate
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: 'numeric',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? ''
+
+  const month = SHORT_MONTHS[Number(part('month')) - 1] ?? ''
+  return `${part('day')} ${month} ${part('year')} • ${part('hour')}:${part('minute')}`
 }

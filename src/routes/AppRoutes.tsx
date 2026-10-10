@@ -17,6 +17,7 @@ import { ClientLayout } from '@/pages/client/ClientLayout'
 import { BeneficiariesLanding } from '@/pages/client/beneficiaries/BeneficiariesLanding'
 import { BeneficiaryCreate } from '@/pages/client/beneficiaryCreate'
 import { TransferCreate } from '@/pages/client/transferCreate'
+import { TransferDetails } from '@/pages/client/transferDetails'
 import { RegisterStatus } from '@/pages/RegisterStatus/RegisterStatus'
 import { startDocumentUpload, submitDocumentResult, uploadFileToS3 } from '@/services/compliance'
 import { ApiError, saveRepresentativePersonalData, submitOnboarding } from '@/services/onboarding'
@@ -197,6 +198,14 @@ function AppRoutes() {
         element={
           <ClientLayout activeItemId="transfers">
             <TransferCreate />
+          </ClientLayout>
+        }
+      />
+      <Route
+        path={PATHS.TRANSFER_DETAILS}
+        element={
+          <ClientLayout activeItemId="transfers">
+            <TransferDetails />
           </ClientLayout>
         }
       />
