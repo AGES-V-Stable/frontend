@@ -45,7 +45,7 @@ describe('authService.login', () => {
       vi.fn().mockResolvedValue({
         ok: true,
         headers: new Headers(),
-        json: () => Promise.resolve({ token: 'fallback-token' })
+        json: () => Promise.resolve({ token: 'fallback-token' }),
       }),
     )
 
@@ -60,7 +60,7 @@ describe('authService.login', () => {
       vi.fn().mockResolvedValue({
         ok: true,
         headers: new Headers(),
-        json: () => Promise.resolve({})
+        json: () => Promise.resolve({}),
       }),
     )
 

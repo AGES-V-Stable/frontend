@@ -25,7 +25,14 @@ export const sidebarItems = [
 ].map((item) => ({
   ...item,
   icon: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-full" focusable="false">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      className="size-full"
+      focusable="false"
+    >
       {icons[item.id as keyof typeof icons]}
     </svg>
   ),

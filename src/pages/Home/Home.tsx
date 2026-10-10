@@ -16,9 +16,9 @@ function Home() {
             V-<span className="sidebar__brand-accent">Stable</span>
           </span>
         }
-        items={sidebarItems.map((item) => ({ 
-            ...item, 
-            onClick: () => navigate(item.path) 
+        items={sidebarItems.map((item) => ({
+          ...item,
+          onClick: () => navigate(item.path),
         }))}
         activeItemId="home"
         account={{ name: 'V-Stable Admin', description: 'Operações & Compliance', initials: 'CA' }}

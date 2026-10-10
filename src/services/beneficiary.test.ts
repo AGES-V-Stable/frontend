@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
-import { getBeneficiaries, getBeneficiary, createBeneficiary, type BeneficiaryCreatePayload } from './beneficiary'
+import {
+  getBeneficiaries,
+  getBeneficiary,
+  createBeneficiary,
+  type BeneficiaryCreatePayload,
+} from './beneficiary'
 import { ApiError } from './registration'
 
 const paginatedResponse = {
@@ -79,7 +84,9 @@ describe('beneficiary service', () => {
   it('throws when the list request fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }))
 
-    await expect(getBeneficiaries({ page: 1, size: 20 })).rejects.toThrow('Request failed with status 500')
+    await expect(getBeneficiaries({ page: 1, size: 20 })).rejects.toThrow(
+      'Request failed with status 500',
+    )
   })
 
   it('loads details from an enveloped or raw response', async () => {
@@ -101,7 +108,9 @@ describe('beneficiary service', () => {
   })
 
   it('creates a bank-account beneficiary via POST /v1/companies/{companyId}/beneficiaries', async () => {
-    const mock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) })
+    const mock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) })
     vi.stubGlobal('fetch', mock)
 
     const payload: BeneficiaryCreatePayload = {
@@ -132,7 +141,9 @@ describe('beneficiary service', () => {
   })
 
   it('creates a wallet beneficiary and encodes the companyId', async () => {
-    const mock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) })
+    const mock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) })
     vi.stubGlobal('fetch', mock)
 
     const payload: BeneficiaryCreatePayload = {

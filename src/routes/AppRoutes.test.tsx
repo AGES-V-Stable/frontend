@@ -213,9 +213,9 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(
       await screen.findByRole('heading', { name: 'Dados do Representante' }),
     ).toBeInTheDocument()
-    
+
     await fillRepresentativeForm(user)
-    
+
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(await screen.findByText('Compliance e documentos')).toBeInTheDocument()
