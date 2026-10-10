@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
 import { Sidebar } from '@/components/Sidebar'
@@ -7,7 +6,6 @@ import { sidebarItems } from './sidebarItems'
 
 function Home() {
   const navigate = useNavigate()
-  const [activeItemId, setActiveItemId] = useState('home')
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -18,8 +16,11 @@ function Home() {
             V-<span className="sidebar__brand-accent">Stable</span>
           </span>
         }
-        items={sidebarItems.map((item) => ({ ...item, onClick: () => setActiveItemId(item.id) }))}
-        activeItemId={activeItemId}
+        items={sidebarItems.map((item) => ({ 
+            ...item, 
+            onClick: () => navigate(item.path) 
+        }))}
+        activeItemId="home"
         account={{ name: 'V-Stable Admin', description: 'Operações & Compliance', initials: 'CA' }}
       />
       <main className="flex min-w-0 flex-1 flex-col gap-8 overflow-x-auto p-8">
@@ -37,6 +38,11 @@ function Home() {
             label="Ir para Clientes PME"
             variant="tertiary"
             onClick={() => navigate(PATHS.ADMIN_CLIENTS)}
+          />
+          <Button
+            label="Ir para Beneficiários"
+            variant="secondary"
+            onClick={() => navigate(PATHS.BENEFICIARIES)}
           />
         </div>
       </main>

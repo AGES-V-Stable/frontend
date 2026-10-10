@@ -1,7 +1,7 @@
 import type { Beneficiary, PaginatedBeneficiaries } from '@/types/beneficiary'
 import { ApiError } from './registration'
 
-const API_URL = '/v1'
+const API_URL = 'http://localhost:8080/v1'
 
 export interface BeneficiaryCreatePayload {
   beneficiaryType: string
@@ -90,7 +90,6 @@ export async function getBeneficiaries(
 
   const data = await response.json()
 
-  // Suporta respostas envelopadas { data: [...] } ou diretas do Spring Page { content: [...] }
   if (data.data && Array.isArray(data.data)) {
     return {
       content: data.data,
