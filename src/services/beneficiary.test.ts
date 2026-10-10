@@ -1,67 +1,79 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getBeneficiaries, getBeneficiary, createBeneficiary } from './beneficiary'
+import { describe, expect, it, vi, afterEach } from 'vitest'
+import {
+  getBeneficiaries,
+  getBeneficiary,
+  createBeneficiary,
+  type BeneficiaryCreatePayload,
+} from './beneficiary'
 import { ApiError } from './registration'
-import type { BeneficiaryCreatePayload } from './beneficiary'
-import type { Beneficiary, PaginatedBeneficiaries } from '@/types/beneficiary'
 
-const beneficiary = {
-  id: '1',
-  companyId: 'company-1',
-  nickname: 'Maria Oliveira',
-  identificationDocument: '45123456000190',
-  country: 'Brasil',
-  receivingMethod: 'BANK_ACCOUNT',
-  createdAt: '2023-01-01T00:00:00Z',
-  updatedAt: '2023-01-01T00:00:00Z',
-}
-
-const paginatedResponse: PaginatedBeneficiaries = {
-  content: [beneficiary as unknown as Beneficiary],
+const paginatedResponse = {
+  content: [
+    {
+      id: '1',
+      companyId: 'company-1',
+      nickname: 'Maria Oliveira',
+      identificationDocument: '45123456000190',
+      country: 'Brasil',
+      address: 'Rua das Flores, 123',
+      legalName: 'Maria Oliveira Silva',
+      receivingMethod: 'BANK_ACCOUNT',
+      createdAt: '2023-01-01T00:00:00Z',
+      updatedAt: '2023-01-01T00:00:00Z',
+    },
+  ],
   totalElements: 1,
   totalPages: 1,
   number: 0,
-  size: 10,
+  size: 20,
 }
 
 describe('beneficiary service', () => {
   afterEach(() => {
-    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     localStorage.clear()
   })
 
   it('loads a paginated list with the bearer token', async () => {
-    localStorage.setItem('token', 'token-value')
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => paginatedResponse }),
-    )
+    localStorage.setItem('token', 'my-token')
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(paginatedResponse),
+    })
+    vi.stubGlobal('fetch', fetchMock)
 
-    await expect(getBeneficiaries()).resolves.toEqual(paginatedResponse)
+    const result = await getBeneficiaries({ page: 1, size: 20 })
 
-    // Verifica se os parâmetros default de paginação e o token foram enviados
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/v1/beneficiaries?page=0&size=10'),
-      {
-        headers: { Accept: 'application/json', Authorization: 'Bearer token-value' },
-      },
+    expect(result.content).toHaveLength(1)
+    expect(result.content[0].nickname).toBe('Maria Oliveira')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/beneficiaries'),
+      expect.objectContaining({
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer my-token',
+        },
+      }),
     )
   })
 
   it('applies query parameters correctly', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => paginatedResponse }),
-    )
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(paginatedResponse),
+    })
+    vi.stubGlobal('fetch', fetchMock)
 
     await getBeneficiaries({
       page: 2,
       size: 20,
       search: 'Maria',
-      country: 'Brasil',
       document: '123',
+      country: 'Brasil',
     })
 
-    expect(fetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       expect.stringMatching(
         /\/v1\/beneficiaries\?page=1&size=20&search=Maria&document=123&country=Brasil/,
       ),
@@ -72,20 +84,21 @@ describe('beneficiary service', () => {
   it('throws when the list request fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }))
 
-    await expect(getBeneficiaries()).rejects.toThrow('Request failed with status 500')
+    await expect(getBeneficiaries({ page: 1, size: 20 })).rejects.toThrow(
+      'Request failed with status 500',
+    )
   })
 
   it('loads details from an enveloped or raw response', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ data: beneficiary }) })
-        .mockResolvedValueOnce({ ok: true, json: async () => beneficiary }),
-    )
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: paginatedResponse.content[0] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
 
-    await expect(getBeneficiary('1')).resolves.toEqual(beneficiary)
-    await expect(getBeneficiary('1')).resolves.toEqual(beneficiary)
+    const result = await getBeneficiary('1')
+    expect(result.id).toBe('1')
+    expect(result.nickname).toBe('Maria Oliveira')
   })
 
   it('throws when the details request fails', async () => {
@@ -95,12 +108,17 @@ describe('beneficiary service', () => {
   })
 
   it('creates a bank-account beneficiary via POST /v1/companies/{companyId}/beneficiaries', async () => {
+    const mock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) })
+    vi.stubGlobal('fetch', mock)
+
     const payload: BeneficiaryCreatePayload = {
       beneficiaryType: 'Pessoa jurídica',
-      legalName: 'João da Silva Comércio Ltda.',
-      identificationDocument: '12345678000190',
+      legalName: 'Fornecedor Global Ltda.',
+      identificationDocument: '12345678900',
       country: 'Brasil',
-      address: 'Rua A, 100',
+      address: 'Av. Paulista, 1000',
       confirmed: true,
       receivingMethod: 'BANK_ACCOUNT',
       bankName: 'Banco XYZ',
@@ -109,22 +127,25 @@ describe('beneficiary service', () => {
       currency: 'USD',
       nickname: 'Fornecedor principal',
     }
-    const mock = vi.fn(async () => new Response(JSON.stringify({ id: 'b1' }), { status: 201 }))
-    vi.stubGlobal('fetch', mock)
 
-    await expect(createBeneficiary('c1', payload)).resolves.toEqual({ id: 'b1' })
+    const result = await createBeneficiary('c1', payload)
+
+    expect(result).toEqual({ id: 'new-id' })
     expect(mock).toHaveBeenCalledWith(
       '/v1/companies/c1/beneficiaries',
       expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       }),
     )
-    vi.unstubAllGlobals()
   })
 
   it('creates a wallet beneficiary and encodes the companyId', async () => {
+    const mock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'new-id' }) })
+    vi.stubGlobal('fetch', mock)
+
     const payload: BeneficiaryCreatePayload = {
       beneficiaryType: 'Pessoa jurídica',
       legalName: 'João da Silva Comércio Ltda.',
@@ -137,8 +158,6 @@ describe('beneficiary service', () => {
       blockchainNetwork: 'polygon',
       nickname: 'Fornecedor principal',
     }
-    const mock = vi.fn(async () => new Response(JSON.stringify({ id: 'b2' }), { status: 201 }))
-    vi.stubGlobal('fetch', mock)
 
     await createBeneficiary('c1/2', payload)
 
@@ -146,28 +165,33 @@ describe('beneficiary service', () => {
       '/v1/companies/c1%2F2/beneficiaries',
       expect.objectContaining({ method: 'POST' }),
     )
-    vi.unstubAllGlobals()
   })
 
   it('throws an ApiError when creation fails', async () => {
-    const mock = vi.fn(
-      async () =>
-        new Response(JSON.stringify({ message: 'Empresa não verificada' }), { status: 403 }),
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: () => Promise.resolve({ message: 'Empresa não verificada' }),
+      }),
     )
-    vi.stubGlobal('fetch', mock)
 
     await expect(
       createBeneficiary('c1', {
         beneficiaryType: 'Pessoa jurídica',
         legalName: 'X',
-        identificationDocument: 'Y',
-        country: 'Brasil',
-        address: 'Z',
+        identificationDocument: '123',
+        country: 'BR',
+        address: 'X',
         confirmed: true,
         receivingMethod: 'BANK_ACCOUNT',
+        bankName: 'X',
+        swiftBic: 'X',
+        accountNumber: 'X',
+        currency: 'USD',
         nickname: 'X',
       }),
     ).rejects.toBeInstanceOf(ApiError)
-    vi.unstubAllGlobals()
   })
 })

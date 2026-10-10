@@ -1,3 +1,5 @@
+import { PATHS } from '@/routes/paths'
+
 const icons = {
   home: <path d="m3 10 9-7 9 7M5 9v11h5v-6h4v6h5V9" />,
   beneficiaries: (
@@ -16,10 +18,10 @@ const icons = {
 }
 
 export const sidebarItems = [
-  { id: 'home', label: 'Início' },
-  { id: 'beneficiaries', label: 'Beneficiários' },
-  { id: 'transfers', label: 'Transferências' },
-  { id: 'settings', label: 'Configurações' },
+  { id: 'home', label: 'Início', path: PATHS.HOME },
+  { id: 'beneficiaries', label: 'Beneficiários', path: PATHS.BENEFICIARIES },
+  { id: 'transfers', label: 'Transferências', path: PATHS.ADMIN_TRANSFERS },
+  { id: 'settings', label: 'Configurações', path: '/settings' },
 ].map((item) => ({
   ...item,
   icon: (

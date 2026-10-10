@@ -18,7 +18,10 @@ function Home() {
             V-<span className="sidebar__brand-accent">Stable</span>
           </span>
         }
-        items={sidebarItems.map((item) => ({ ...item, onClick: () => setActiveItemId(item.id) }))}
+        items={sidebarItems.map((item) => ({
+          ...item,
+          onClick: () => setActiveItemId(item.id),
+        }))}
         activeItemId={activeItemId}
         account={{ name: 'V-Stable Admin', description: 'Operações & Compliance', initials: 'CA' }}
       />
@@ -37,6 +40,11 @@ function Home() {
             label="Ir para Clientes PME"
             variant="tertiary"
             onClick={() => navigate(PATHS.ADMIN_CLIENTS)}
+          />
+          <Button
+            label="Ir para Beneficiários"
+            variant="secondary"
+            onClick={() => navigate(PATHS.BENEFICIARIES)}
           />
         </div>
       </main>
