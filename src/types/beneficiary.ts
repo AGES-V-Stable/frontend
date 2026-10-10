@@ -6,9 +6,9 @@ export interface Beneficiary {
   country: string
   address: string
   receivingMethod: string
+  legalName: string
   accountType?: string
   accountHolderName?: string
-  legalName: string
   accountNumber?: string
   bankCode?: string
   branchNumber?: string

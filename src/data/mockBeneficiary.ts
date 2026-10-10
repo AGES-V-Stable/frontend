@@ -1,37 +1,30 @@
-import type { Beneficiary } from '@/types/beneficiary'
+export interface Beneficiary {
+  id: string
+  nome: string
+  empresa: string
+  cnpj: string
+  country: string
+  currency: string
+  status: string
+}
 
 export const mockBeneficiary: Beneficiary[] = [
   {
     id: '1',
-    companyId: 'company-1',
-    nickname: 'Maria Oliveira',
-    identificationDocument: '45123456000190',
+    nome: 'Maria Oliveira',
+    empresa: 'Cooperativa AgroSul',
+    cnpj: '45.123.456/0001-90',
     country: 'Brasil',
-    address: 'Rua das Flores, 123',
-    receivingMethod: 'BANK_ACCOUNT',
-    legalName: 'Maria Oliveira Silva',
-    accountHolderName: 'Maria Oliveira Silva',
-    bankCode: '341',
-    branchNumber: '0001',
-    accountNumber: '12345-6',
     currency: 'BRL',
-    createdAt: '2023-01-01T00:00:00Z',
-    updatedAt: '2023-01-01T00:00:00Z',
+    status: 'Ativo',
   },
   {
     id: '2',
-    companyId: 'company-1',
-    nickname: 'TechVale Serviços Ltda.',
-    identificationDocument: '34567890000156',
+    nome: 'John Smith',
+    empresa: 'TechVale Serviços Ltda.',
+    cnpj: '34.567.890/0001-56',
     country: 'Estados Unidos',
-    address: '123 Tech Street, NY',
-    receivingMethod: 'BANK_ACCOUNT',
-    legalName: 'TechVale Serviços Ltda.',
-    accountHolderName: 'TechVale Serviços Ltda.',
-    swiftBic: 'CHASUS33',
-    accountNumber: '000123456789',
     currency: 'USD',
-    createdAt: '2023-01-01T00:00:00Z',
-    updatedAt: '2023-01-01T00:00:00Z',
+    status: 'Pendente',
   },
 ]

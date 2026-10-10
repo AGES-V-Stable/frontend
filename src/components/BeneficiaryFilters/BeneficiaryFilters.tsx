@@ -61,7 +61,9 @@ export function BeneficiaryFilters({
     >
       <h2 className="mb-4 text-base font-semibold text-slate-900">Filtros</h2>
 
-      <div className={`grid grid-cols-1 gap-3 ${hideCompanyFilter ? 'lg:grid-cols-[1.35fr_0.95fr_0.95fr_0.95fr_auto_auto]' : 'lg:grid-cols-[1.35fr_1.35fr_0.95fr_0.95fr_0.95fr_auto_auto]'} lg:items-end`}>
+      <div
+        className={`grid grid-cols-1 gap-3 ${hideCompanyFilter ? 'lg:grid-cols-[1.35fr_0.95fr_0.95fr_0.95fr_auto_auto]' : 'lg:grid-cols-[1.35fr_1.35fr_0.95fr_0.95fr_0.95fr_auto_auto]'} lg:items-end`}
+      >
         {!hideCompanyFilter && (
           <label className="text-xs font-medium text-slate-900">
             Empresa ou CNPJ

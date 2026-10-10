@@ -38,11 +38,7 @@ export function BeneficiariesLanding() {
         </header>
 
         {companyId ? (
-          <BeneficiaryList 
-            title="Meus beneficiários"
-            subtitle=""
-            forceCompanyId={companyId} 
-          />
+          <BeneficiaryList title="Meus beneficiários" subtitle="" forceCompanyId={companyId} />
         ) : (
           <p className="text-sm text-gray-500">Carregando dados da conta...</p>
         )}

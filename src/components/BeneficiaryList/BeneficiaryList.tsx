@@ -46,17 +46,22 @@ export function BeneficiaryList({ title, subtitle, forceCompanyId }: Beneficiary
       setLoadError(null)
       try {
         const isDocument = /^[\d.\-/]+$/.test(appliedFilters.companyOrCnpj)
-        
-        const effectiveCompanyId = forceCompanyId 
-          ? forceCompanyId 
-          : (!isDocument && appliedFilters.companyOrCnpj ? appliedFilters.companyOrCnpj : undefined)
+
+        const effectiveCompanyId = forceCompanyId
+          ? forceCompanyId
+          : !isDocument && appliedFilters.companyOrCnpj
+            ? appliedFilters.companyOrCnpj
+            : undefined
 
         const data = await getBeneficiaries({
           page: currentPage,
           size: PAGE_SIZE,
           search: appliedFilters.search,
           country: appliedFilters.country,
-          document: isDocument && !forceCompanyId ? appliedFilters.companyOrCnpj.replace(/\D/g, '') : undefined,
+          document:
+            isDocument && !forceCompanyId
+              ? appliedFilters.companyOrCnpj.replace(/\D/g, '')
+              : undefined,
           companyId: effectiveCompanyId,
         })
         if (active) {
@@ -111,7 +116,7 @@ export function BeneficiaryList({ title, subtitle, forceCompanyId }: Beneficiary
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
         <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
       </header>
-      
+
       <BeneficiaryFilters
         hideCompanyFilter={!!forceCompanyId}
         countries={countries}
@@ -133,7 +138,10 @@ export function BeneficiaryList({ title, subtitle, forceCompanyId }: Beneficiary
         </p>
       )}
       {loadError && (
-        <p role="alert" className="rounded-lg border border-red-200 bg-white px-6 py-5 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-white px-6 py-5 text-sm text-red-700"
+        >
           {loadError}
         </p>
       )}
@@ -149,9 +157,7 @@ export function BeneficiaryList({ title, subtitle, forceCompanyId }: Beneficiary
           totalRecords={totalRecords}
           columns={beneficiaryTableColumns}
           data={beneficiaries}
-          actions={[
-            { label: 'Ver detalhes', onClick: (item) => openDetails(item as Beneficiary) },
-          ]}
+          actions={[{ label: 'Ver detalhes', onClick: (item) => openDetails(item as Beneficiary) }]}
           pagination={{
             currentPage,
             totalPages,
@@ -206,19 +212,24 @@ export function BeneficiaryList({ title, subtitle, forceCompanyId }: Beneficiary
               <dd className="mt-1">{selectedDetails.address || 'N/A'}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase text-slate-500">Método de Recebimento</dt>
+              <dt className="text-xs font-medium uppercase text-slate-500">
+                Método de Recebimento
+              </dt>
               <dd className="mt-1">{selectedDetails.receivingMethod}</dd>
             </div>
             {selectedDetails.receivingMethod === 'BANK_ACCOUNT' && (
               <>
                 <div>
                   <dt className="text-xs font-medium uppercase text-slate-500">Titular</dt>
-                  <dd className="mt-1">{selectedDetails.accountHolderName || selectedDetails.legalName}</dd>
+                  <dd className="mt-1">
+                    {selectedDetails.accountHolderName || selectedDetails.legalName}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs font-medium uppercase text-slate-500">Conta / Tipo</dt>
                   <dd className="mt-1">
-                    {selectedDetails.accountNumber} {selectedDetails.accountType ? `(${selectedDetails.accountType})` : ''}
+                    {selectedDetails.accountNumber}{' '}
+                    {selectedDetails.accountType ? `(${selectedDetails.accountType})` : ''}
                   </dd>
                 </div>
               </>
