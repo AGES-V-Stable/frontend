@@ -18,6 +18,8 @@ const beneficiary: Beneficiary = {
   nickname: 'Maria Oliveira',
   identificationDocument: '45123456000190',
   country: 'Brasil',
+  address: 'Rua das Flores, 123',
+  legalName: 'Maria Oliveira Silva',
   receivingMethod: 'BANK_ACCOUNT',
   createdAt: '2023-01-01T00:00:00Z',
   updatedAt: '2023-01-01T00:00:00Z',
@@ -29,6 +31,8 @@ const otherBeneficiary: Beneficiary = {
   nickname: 'João Souza',
   identificationDocument: '77888999000111',
   country: 'Brasil',
+  address: 'Av. Paulista, 1000',
+  legalName: 'João Souza Ltda',
   receivingMethod: 'PIX_KEY',
   createdAt: '2023-01-01T00:00:00Z',
   updatedAt: '2023-01-01T00:00:00Z',
@@ -62,21 +66,19 @@ describe('BeneficiaryView', () => {
     expect(await screen.findByText('Maria Oliveira')).toBeInTheDocument()
     expect(screen.getByText('45.123.456/0001-90')).toBeInTheDocument()
 
-    // Testa filtro sem resultados na API
     vi.mocked(getBeneficiaries).mockResolvedValueOnce(paginatedResponse([]))
     fireEvent.change(screen.getByPlaceholderText('Buscar por empresa ou CNPJ'), {
       target: { value: 'empresa inexistente' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
 
-    // Como a API é responsável pela filtragem agora, ela será chamada com os parâmetros
     expect(getBeneficiaries).toHaveBeenCalledWith(
       expect.objectContaining({
-        companyId: 'empresa inexistente', // Passou como companyId pois tem letras
+        companyId: 'empresa inexistente',
       }),
     )
     expect(await screen.findByText('Nenhum beneficiário encontrado.')).toBeInTheDocument()
-    // Limpa filtro
+
     vi.mocked(getBeneficiaries).mockResolvedValueOnce(paginatedResponse([beneficiary]))
     fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
 
@@ -103,7 +105,6 @@ describe('BeneficiaryView', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
 
-    // Confirma que a string mascarada virou "document" apenas com dígitos
     expect(getBeneficiaries).toHaveBeenCalledWith(
       expect.objectContaining({
         document: '45123456000190',
