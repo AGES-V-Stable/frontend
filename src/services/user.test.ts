@@ -10,7 +10,7 @@ it('fetches the current user from /v1/users/me', async () => {
   vi.stubGlobal('fetch', mock)
 
   await expect(getCurrentUser()).resolves.toEqual(user)
-  expect(mock).toHaveBeenCalledWith('/v1/users/me', { signal: undefined })
+  expect(mock).toHaveBeenCalledWith('/v1/users/me', { signal: undefined, headers: {} })
 })
 
 it('forwards the abort signal', async () => {
@@ -20,7 +20,10 @@ it('forwards the abort signal', async () => {
 
   await getCurrentUser(controller.signal)
 
-  expect(mock).toHaveBeenCalledWith('/v1/users/me', { signal: controller.signal })
+  expect(mock).toHaveBeenCalledWith(
+    '/v1/users/me',
+    expect.objectContaining({ signal: controller.signal }),
+  )
 })
 
 it('throws an ApiError when the request fails', async () => {

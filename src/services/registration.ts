@@ -1,3 +1,5 @@
+import { getAccessToken } from './authToken'
+
 const API_BASE = '/v1'
 
 export class ApiError extends Error {
@@ -8,8 +10,15 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, options)
+export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getAccessToken()
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  })
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     throw new ApiError(

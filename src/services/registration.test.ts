@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { saveAccessToken, saveLoginToken } from './authToken'
 import { ApiError, request } from './registration'
 
 describe('registration service', () => {
@@ -72,5 +73,50 @@ describe('ApiError', () => {
     expect(error.status).toBe(404)
     expect(error.message).toBe('Não encontrado')
     expect(error).toBeInstanceOf(Error)
+  })
+})
+
+describe('request authentication', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('sends the login token as a Bearer header', async () => {
+    saveLoginToken('login-token')
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await request('/users/me')
+
+    expect(fetchMock).toHaveBeenCalledWith('/v1/users/me', {
+      headers: { Authorization: 'Bearer login-token' },
+    })
+  })
+
+  it('keeps the headers passed by the caller alongside the token', async () => {
+    saveAccessToken('onboarding-token')
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await request('/example', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+
+    expect(fetchMock).toHaveBeenCalledWith('/v1/example', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer onboarding-token', 'Content-Type': 'application/json' },
+    })
+  })
+
+  it('sends no Authorization header when there is no token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await request('/example')
+
+    expect(fetchMock.mock.calls[0]![1].headers).not.toHaveProperty('Authorization')
   })
 })

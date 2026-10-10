@@ -4,7 +4,13 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AppRoutes from './AppRoutes'
-import { compliancePath, livenessPath, PATHS, registrationCompletePath } from './paths'
+import {
+  compliancePath,
+  livenessPath,
+  PATHS,
+  registrationCompletePath,
+  transferDetailsPath,
+} from './paths'
 import { ApiError } from '@/services/onboarding'
 
 const { submitOnboardingMock } = vi.hoisted(() => ({ submitOnboardingMock: vi.fn() }))
@@ -152,6 +158,75 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByRole('heading', { name: 'Cadastro enviado' })).toBeInTheDocument()
   })
 
+  it('given the user navigates to the transfers path, when AppRoutes is rendered, then it should render the transfer page inside the client layout with the transfers item active', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 'u1', name: 'Marina Costa', email: 'm@x.com', companyId: 'c1' }),
+      }),
+    )
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.TRANSFERS]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Realizar transferência' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /transferências/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect((await screen.findAllByText('Marina Costa')).length).toBeGreaterThan(0)
+  })
+
+  it('given the user navigates to a transfer details path, when AppRoutes is rendered, then it should open the details panel for that transfer inside the client layout', async () => {
+    const id = '17f2df21-32ed-45b2-b1cc-83146bb39cbb'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () =>
+            String(url).includes('/users/me')
+              ? { id: 'u1', name: 'Marina Costa', email: 'm@x.com', companyId: 'c1' }
+              : {
+                  id,
+                  companyId: 'c1',
+                  date: '2026-10-02T19:23:08Z',
+                  type: 'PAGAMENTO',
+                  status: 'SETTLED',
+                  counterpartyName: 'Atlas Imports LLC',
+                  counterpartyDetails: null,
+                  source: { amount: '5000.00', currency: 'BRL' },
+                  destination: { amount: '1000.00', currency: 'USD' },
+                  fundingSource: 'TED',
+                  exchangeRate: { fromCurrency: 'USD', toCurrency: 'BRL', rate: '5.00' },
+                  costs: { serviceFee: null, spreadPercentage: null, estimatedMarketCost: null },
+                  estimatedSavings: null,
+                  receiptAvailable: true,
+                },
+        }),
+      ),
+    )
+
+    render(
+      <MemoryRouter initialEntries={[transferDetailsPath(id)]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(await screen.findByText('Atlas Imports LLC')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /transferências/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
   it('renders the placeholder screen for the forgot password path', () => {
     const initialRoute = PATHS.FORGOT_PASSWORD
 
@@ -177,7 +252,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('walks the full wizard from access to the liveness step on a happy path', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     submitOnboardingMock.mockResolvedValueOnce({
       userId: 'user-1',
       companyId: 'company-1',
@@ -240,7 +315,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('shows the API message and preserves the form when representative submission fails with a client error', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     submitOnboardingMock.mockRejectedValueOnce(new ApiError(422, 'CPF já usado em outro cadastro'))
 
     render(
@@ -259,7 +334,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('shows a generic message when representative submission fails with a server error', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     submitOnboardingMock.mockRejectedValueOnce(new Error('network down'))
 
     render(
@@ -279,7 +354,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('uploads both sides of a double-sided document before advancing to liveness', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     startDocumentUploadMock.mockResolvedValueOnce({
       id: 'doc-2',
       uploadUrlFront: 'https://s3.example.com/front',
@@ -317,7 +392,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('shows a generic error when the document upload fails', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     startDocumentUploadMock.mockRejectedValueOnce(new Error('upload failed'))
 
     render(
