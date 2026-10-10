@@ -1,6 +1,6 @@
 import { ApiError } from './registration'
 
-const API_URL = 'http://localhost:8080/v1/users'
+const API_URL = '/v1/users'
 
 export interface User {
   id: string
@@ -11,23 +11,29 @@ export interface User {
 
 function getHeaders(): HeadersInit {
   const token = localStorage.getItem('token')
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 export async function getCurrentUser(signal?: AbortSignal): Promise<User> {
+  const headers = getHeaders()
   const response = await fetch(`${API_URL}/me`, {
     signal,
-    headers: getHeaders(),
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
   })
 
   if (!response.ok) {
     if (response.status === 401) {
       localStorage.removeItem('token')
+      throw new ApiError(401, 'Não autenticado')
     }
-    throw new ApiError(response.status, 'Não foi possível carregar os dados do usuário')
+    let message = 'Não foi possível carregar os dados do usuário'
+    try {
+      const err = await response.json()
+      if (err.message) message = err.message
+    } catch {
+      // ignore
+    }
+    throw new ApiError(response.status, message)
   }
 
   return response.json()

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/Button'
 import { Sidebar } from '@/components/Sidebar'
@@ -6,6 +7,7 @@ import { sidebarItems } from './sidebarItems'
 
 function Home() {
   const navigate = useNavigate()
+  const [activeItemId, setActiveItemId] = useState('home')
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -18,9 +20,9 @@ function Home() {
         }
         items={sidebarItems.map((item) => ({
           ...item,
-          onClick: () => navigate(item.path),
+          onClick: () => setActiveItemId(item.id),
         }))}
-        activeItemId="home"
+        activeItemId={activeItemId}
         account={{ name: 'V-Stable Admin', description: 'Operações & Compliance', initials: 'CA' }}
       />
       <main className="flex min-w-0 flex-1 flex-col gap-8 overflow-x-auto p-8">

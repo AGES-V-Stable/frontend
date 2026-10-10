@@ -1,7 +1,7 @@
 import type { Beneficiary, PaginatedBeneficiaries } from '@/types/beneficiary'
 import { ApiError } from './registration'
 
-const API_URL = 'http://localhost:8080/v1'
+const API_URL = '/v1'
 
 export interface BeneficiaryCreatePayload {
   beneficiaryType: string
