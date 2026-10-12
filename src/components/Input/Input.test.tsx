@@ -36,4 +36,19 @@ describe('Input', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(input.className).toContain('border-sage-300')
   })
+
+  it('shows the prefix inside the field and reserves space for it', () => {
+    render(<Input label="Valor" prefix="US$" value="" onChange={vi.fn()} />)
+
+    expect(screen.getByText('US$')).toBeInTheDocument()
+    expect(screen.getByLabelText('Valor')).toHaveStyle({ paddingLeft: 'calc(1.25rem + 3ch)' })
+  })
+
+  it('keeps the plain markup and padding when there is no prefix', () => {
+    render(<Input label="Valor" value="" onChange={vi.fn()} />)
+
+    const input = screen.getByLabelText('Valor')
+    expect(input.parentElement?.className).not.toContain('relative')
+    expect(input.getAttribute('style')).toBeNull()
+  })
 })

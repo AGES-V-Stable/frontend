@@ -20,7 +20,7 @@ function initialsOf(name: string) {
 const menuItems = [
   { id: 'home' as const, label: 'Início', path: PATHS.HOME },
   { id: 'beneficiaries' as const, label: 'Beneficiários', path: PATHS.BENEFICIARIES },
-  { id: 'transfers' as const, label: 'Transferências', path: '/transferencias' },
+  { id: 'transfers' as const, label: 'Transferências', path: PATHS.TRANSFERS },
   { id: 'settings' as const, label: 'Configurações', path: '/settings' },
 ]
 

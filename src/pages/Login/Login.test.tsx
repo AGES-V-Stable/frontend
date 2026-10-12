@@ -31,6 +31,7 @@ describe('Login Page Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    sessionStorage.clear()
   })
 
   afterEach(() => vi.unstubAllGlobals())
@@ -121,6 +122,21 @@ describe('Login Page Component', () => {
 
     expect(await screen.findByText('Home page')).toBeInTheDocument()
     expect(localStorage.getItem('token')).toBe(mockUserToken)
+  })
+
+  it('discards a leftover onboarding token after a successful login', async () => {
+    const user = userEvent.setup()
+    sessionStorage.setItem('vstable:onboarding:access-token', 'onboarding-token')
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: 'login-token' })
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'cliente@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    expect(sessionStorage.getItem('vstable:onboarding:access-token')).toBeNull()
+    expect(localStorage.getItem('token')).toBe('login-token')
   })
 
   it('shows and clears credential errors after a failed login', async () => {

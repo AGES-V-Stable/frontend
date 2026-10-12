@@ -1,4 +1,13 @@
 import { type Transfer } from '@/data/mockTransfers'
+import { CreateTransferResponseSchema, TransferQuoteResponseSchema } from '@/schemas/transfer'
+import type {
+  CreateTransferRequest,
+  CreateTransferResponse,
+  TransferQuoteRequest,
+  TransferQuoteResponse,
+} from '@/types/transfer'
+
+import { httpRequest } from './httpClient'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -74,4 +83,61 @@ export const getTransfersById = async (id: string): Promise<Transfer> => {
   }
 
   throw new Error('Formato inválido retornado pela API')
+}
+
+const INVALID_RESPONSE_MESSAGE = 'Formato inválido retornado pela API'
+
+const toQuoteBody = ({
+  amount,
+  amountType,
+  sourceCurrency,
+  destinationCurrency,
+}: TransferQuoteRequest): TransferQuoteRequest => ({
+  amount,
+  amountType,
+  sourceCurrency,
+  destinationCurrency,
+})
+
+/**
+ * Consulta uma cotação só para exibição; não cria transferência. O `signal`
+ * permite cancelar a consulta anterior quando o usuário altera o valor.
+ */
+export const getTransferQuote = async (
+  request: TransferQuoteRequest,
+  signal?: AbortSignal,
+): Promise<TransferQuoteResponse> => {
+  const payload = await httpRequest<unknown>('/v1/transfers/quote', {
+    method: 'POST',
+    body: JSON.stringify(toQuoteBody(request)),
+    signal,
+  })
+
+  const quote = TransferQuoteResponseSchema.safeParse(payload)
+  if (!quote.success) throw new Error(INVALID_RESPONSE_MESSAGE)
+
+  return quote.data
+}
+
+/**
+ * Cria a transferência. Nenhum dado da cotação exibida é enviado: o backend
+ * gera uma cotação nova e a usa imediatamente.
+ */
+export const createTransfer = async (
+  request: CreateTransferRequest,
+): Promise<CreateTransferResponse> => {
+  const payload = await httpRequest<unknown>('/v1/transfers', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...toQuoteBody(request),
+      paymentMethod: request.paymentMethod,
+      beneficiaryId: request.beneficiaryId,
+      description: request.description,
+    }),
+  })
+
+  const result = CreateTransferResponseSchema.safeParse(payload)
+  if (!result.success) throw new Error(INVALID_RESPONSE_MESSAGE)
+
+  return result.data
 }

@@ -1,10 +1,12 @@
-import { describe, expect, it, vi, afterEach } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getBeneficiaries,
+  getCompanyBeneficiaries,
   getBeneficiary,
   createBeneficiary,
-  type BeneficiaryCreatePayload,
 } from './beneficiary'
+import { saveAccessToken } from './authToken'
+import type { BeneficiaryCreatePayload } from './beneficiary'
 import { ApiError } from './registration'
 
 const paginatedResponse = {
@@ -32,6 +34,21 @@ describe('beneficiary service', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     localStorage.clear()
+    sessionStorage.clear()
+  })
+
+  it('sends the onboarding token when it is the only token available', async () => {
+    saveAccessToken('onboarding-token')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => paginatedResponse }),
+    )
+
+    await getBeneficiaries()
+
+    expect(fetch).toHaveBeenCalledWith(expect.any(String), {
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer onboarding-token' },
+    })
   })
 
   it('loads a paginated list with the bearer token', async () => {
@@ -86,6 +103,64 @@ describe('beneficiary service', () => {
 
     await expect(getBeneficiaries({ page: 1, size: 20 })).rejects.toThrow(
       'Request failed with status 500',
+    )
+  })
+
+  it('loads the company beneficiaries from the company route with the bearer token', async () => {
+    localStorage.setItem('token', 'token-value')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => paginatedResponse }),
+    )
+
+    await expect(getCompanyBeneficiaries('company-1', { size: 100 })).resolves.toEqual(
+      paginatedResponse,
+    )
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/v1\/companies\/company-1\/beneficiaries\?page=0&size=100$/),
+      { headers: { 'Content-Type': 'application/json', Authorization: 'Bearer token-value' } },
+    )
+  })
+
+  it('encodes the company id and applies the filters on the company route', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => paginatedResponse }),
+    )
+
+    await getCompanyBeneficiaries('a/b', {
+      page: 2,
+      size: 20,
+      search: 'Maria',
+      document: '123',
+      country: 'Brasil',
+    })
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '/v1/companies/a%2Fb/beneficiaries?page=1&size=20&search=Maria&document=123&country=Brasil',
+      ),
+      expect.any(Object),
+    )
+  })
+
+  it('scopes the shared beneficiary list to the company endpoint', async () => {
+    const mock = vi.fn().mockResolvedValue({ ok: true, json: async () => paginatedResponse })
+    vi.stubGlobal('fetch', mock)
+
+    await getBeneficiaries({ companyId: 'a/b', page: 0, size: 20 })
+
+    expect(mock).toHaveBeenCalledWith('/v1/companies/a%2Fb/beneficiaries?page=0&size=20', {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+
+  it('throws when the company list request is forbidden', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }))
+
+    await expect(getCompanyBeneficiaries('company-1')).rejects.toThrow(
+      'Request failed with status 403',
     )
   })
 

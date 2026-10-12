@@ -22,6 +22,8 @@ export const PATHS = {
   ADMIN_BENEFICIARIES: '/admin/beneficiarios',
   BENEFICIARIES: '/beneficiarios',
   BENEFICIARIES_NEW: '/beneficiarios/novo',
+  TRANSFERS: '/transferencias',
+  TRANSFER_DETAILS: '/transferencias/:id',
 } as const
 
 export type Path = (typeof PATHS)[keyof typeof PATHS]
@@ -31,3 +33,4 @@ export const livenessPath = (id: string) =>
   `/register/${encodeURIComponent(id)}/compliance/liveness`
 export const registrationCompletePath = (id: string) =>
   `/register/${encodeURIComponent(id)}/concluido`
+export const transferDetailsPath = (id: string) => `/transferencias/${encodeURIComponent(id)}`

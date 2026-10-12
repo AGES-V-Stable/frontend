@@ -1,5 +1,6 @@
 import type { Beneficiary, PaginatedBeneficiaries } from '@/types/beneficiary'
 import { ApiError } from './registration'
+import { getAccessToken } from './authToken'
 
 const API_URL = '/v1'
 
@@ -30,7 +31,7 @@ export interface GetBeneficiariesParams {
 }
 
 function getHeaders(): HeadersInit {
-  const token = localStorage.getItem('token')
+  const token = getAccessToken()
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -124,4 +125,13 @@ export async function getBeneficiary(id: string, companyId?: string): Promise<Be
 
   const data = await response.json()
   return data.data ? data.data : data
+}
+
+export type GetCompanyBeneficiariesParams = Omit<GetBeneficiariesParams, 'companyId'>
+
+export function getCompanyBeneficiaries(
+  companyId: string,
+  params: GetCompanyBeneficiariesParams = {},
+): Promise<PaginatedBeneficiaries> {
+  return getBeneficiaries({ ...params, companyId })
 }

@@ -1,4 +1,5 @@
 import { ApiError } from './registration'
+import { getAccessToken } from './authToken'
 
 const API_URL = '/v1/users'
 
@@ -10,7 +11,7 @@ export interface User {
 }
 
 function getHeaders(): HeadersInit {
-  const token = localStorage.getItem('token')
+  const token = getAccessToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

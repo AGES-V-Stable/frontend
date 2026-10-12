@@ -69,5 +69,26 @@ describe('ClientLayout', () => {
 
     expect(await screen.findByText('Início')).toBeInTheDocument()
     expect(screen.getByText('Beneficiários')).toBeInTheDocument()
+    expect(screen.getByText('Transferências')).toBeInTheDocument()
+  })
+
+  it('marks the transfers item as the current page when it is the active item', async () => {
+    vi.mocked(getCurrentUser).mockReturnValue(new Promise(() => {}))
+
+    render(
+      <MemoryRouter>
+        <ClientLayout activeItemId="transfers">
+          <p>Conteúdo da página</p>
+        </ClientLayout>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('button', { name: /transferências/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(screen.getByRole('button', { name: /beneficiários/i })).not.toHaveAttribute(
+      'aria-current',
+    )
   })
 })

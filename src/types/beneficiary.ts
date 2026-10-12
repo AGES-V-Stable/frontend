@@ -2,12 +2,13 @@ export interface Beneficiary {
   id: string
   companyId: string
   nickname: string
-  identificationDocument: string
-  country: string
-  address: string
+  identificationDocument?: string
+  country?: string
+  address?: string
   receivingMethod: string
-  legalName: string
+  legalName?: string
   accountType?: string
+  internalDescription?: string
   accountHolderName?: string
   accountNumber?: string
   bankCode?: string
