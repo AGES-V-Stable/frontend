@@ -2,27 +2,33 @@ export interface Beneficiary {
   id: string
   companyId: string
   nickname: string
-  internalDescription?: string
-  receivingMethod: 'BANK_ACCOUNT' | 'PIX_KEY' | 'CRYPTO_WALLET'
-  pixKey?: string
-  identificationDocument?: string
+  identificationDocument: string
+  country: string
+  address: string
+  receivingMethod: string
+  legalName: string
+  accountType?: string
   accountHolderName?: string
+  accountNumber?: string
   bankCode?: string
   branchNumber?: string
-  accountNumber?: string
-  accountType?: 'checking' | 'payment' | 'savings' | 'salary'
-  country?: string
-  blockchainNetwork?: 'ethereum' | 'polygon' | 'celo' | 'gnosis' | 'moonbeam' | 'tron'
+  currency?: string
+  swiftBic?: string
+  pixKey?: string
   walletAddress?: string
+  blockchainNetwork?: string
   walletMemo?: string
   createdAt: string
   updatedAt: string
 }
 
-export interface PaginatedBeneficiaries {
+export interface BeneficiariesPage {
   content: Beneficiary[]
   totalElements: number
   totalPages: number
-  number: number // current page (0-indexed)
+}
+
+export type PaginatedBeneficiaries = BeneficiariesPage & {
+  number: number
   size: number
 }
