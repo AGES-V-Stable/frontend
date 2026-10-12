@@ -1,8 +1,13 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { ApiError } from './registration'
 import { getCurrentUser } from './user'
+import { saveAccessToken, saveLoginToken } from './authToken'
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  localStorage.clear()
+  sessionStorage.clear()
+})
 
 it('fetches the current user from /v1/users/me', async () => {
   const user = { id: 'u1', name: 'Marina Costa', email: 'marina@example.com', companyId: 'c1' }
@@ -10,7 +15,7 @@ it('fetches the current user from /v1/users/me', async () => {
   vi.stubGlobal('fetch', mock)
 
   await expect(getCurrentUser()).resolves.toEqual(user)
-  expect(mock).toHaveBeenCalledWith('/v1/users/me', { signal: undefined, headers: {} })
+  expect(mock).toHaveBeenCalledWith('/v1/users/me', { signal: undefined })
 })
 
 it('forwards the abort signal', async () => {
@@ -35,3 +40,20 @@ it('throws an ApiError when the request fails', async () => {
   await expect(getCurrentUser()).rejects.toBeInstanceOf(ApiError)
   await expect(getCurrentUser()).rejects.toThrow('Não autenticado')
 })
+
+it.each(['login', 'onboarding'])(
+  'sends the %s token when loading the current user',
+  async (source) => {
+    if (source === 'login') saveLoginToken('user-token')
+    else saveAccessToken('user-token')
+    const mock = vi.fn(async () => new Response('{}', { status: 200 }))
+    vi.stubGlobal('fetch', mock)
+
+    await getCurrentUser()
+
+    expect(mock).toHaveBeenCalledWith('/v1/users/me', {
+      signal: undefined,
+      headers: { Authorization: 'Bearer user-token' },
+    })
+  },
+)
