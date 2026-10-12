@@ -1,0 +1,60 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Routes, Route } from 'react-router'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { BeneficiariesLanding } from '@/features/beneficiaries/pages/client/beneficiaries/BeneficiariesLanding'
+import { useSession } from '@/features/auth'
+import { PATHS } from '@/shared/navigation/paths'
+
+vi.mock('@/features/auth', () => ({
+  useSession: vi.fn(),
+}))
+
+describe('BeneficiariesLanding', () => {
+  beforeEach(() => {
+    vi.mocked(useSession).mockReturnValue({
+      status: 'authenticated',
+      user: {
+        id: 'u1',
+        name: 'Marina Costa',
+        email: 'marina@example.com',
+        companyId: 'c1',
+        accountType: 'USER',
+        roles: ['ROLE_USER'],
+      },
+      company: null,
+      error: null,
+      retry: vi.fn(),
+    })
+  })
+
+  it('renders the heading and a button to create a new beneficiary', async () => {
+    render(
+      <MemoryRouter initialEntries={[PATHS.BENEFICIARIES]}>
+        <Routes>
+          <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
+          <Route path={PATHS.BENEFICIARIES_NEW} element={<p>Tela de cadastro</p>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Beneficiários' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Novo beneficiário' })).toBeInTheDocument()
+  })
+
+  it('navigates to the create screen when the button is clicked', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={[PATHS.BENEFICIARIES]}>
+        <Routes>
+          <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
+          <Route path={PATHS.BENEFICIARIES_NEW} element={<p>Tela de cadastro</p>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Novo beneficiário' }))
+
+    expect(await screen.findByText('Tela de cadastro')).toBeInTheDocument()
+  })
+})
