@@ -122,7 +122,9 @@ it('uses the company-scoped detail endpoint from the shared beneficiary list', a
 })
 it('renders the admin menu, expands auditing and updates selected children', async () => {
   role = 'ADMIN'
-  saveLoginToken('admin')
+  saveLoginToken(
+    `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
+  )
   renderRoute('/admin/transferencias')
   const nav = await screen.findByRole('navigation')
   expect(within(nav).getByRole('button', { name: 'Auditoria' })).toHaveAttribute(
@@ -145,7 +147,9 @@ it('renders the admin menu, expands auditing and updates selected children', asy
 })
 it('lets admins expand and collapse Auditoria from the clients landing', async () => {
   role = 'ADMIN'
-  saveLoginToken('admin')
+  saveLoginToken(
+    `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
+  )
   renderRoute()
   const nav = await screen.findByRole('navigation')
   const group = within(nav).getByRole('button', { name: 'Auditoria' })
@@ -185,7 +189,9 @@ it('redirects a company user away from administrator content', async () => {
 })
 it('redirects an admin away from company content', async () => {
   role = 'ADMIN'
-  saveLoginToken('admin')
+  saveLoginToken(
+    `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
+  )
   renderRoute('/app/beneficiarios')
   await screen.findByRole('heading', { name: 'Clientes PME' })
   expect(screen.getByTestId('location')).toHaveTextContent('/admin/clientes-pme')
@@ -217,4 +223,23 @@ it('reacts to logout and clears cached account identity', async () => {
   act(() => clearLoginToken())
   await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
   expect(screen.queryByText('Empresa de Teste')).not.toBeInTheDocument()
+})
+
+it('selects the administrator menu from localStorage even when /me reports a user profile', async () => {
+  saveLoginToken(
+    `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
+  )
+  renderRoute()
+  await screen.findByRole('heading', { name: 'Clientes PME' })
+  expect(screen.getByText('Painel administrativo')).toBeInTheDocument()
+  expect(mock.mock.calls.some(([url]) => url === '/v1/companies/c1')).toBe(false)
+})
+it('uses the company navigation when the stored token is not an admin despite /me reporting ADMIN', async () => {
+  role = 'ADMIN'
+  saveLoginToken(`header.${btoa(JSON.stringify({ account_type: 'USER' }))}.signature`)
+  mock.mockResolvedValueOnce(new Response(JSON.stringify({ ...user, accountType: 'ADMIN' })))
+  renderRoute('/admin/clientes-pme')
+  await screen.findByText('Atlas')
+  expect(screen.queryByText('Painel administrativo')).not.toBeInTheDocument()
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/beneficiarios')
 })

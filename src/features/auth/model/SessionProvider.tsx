@@ -4,6 +4,7 @@ import { ApiError } from '@/shared/http/httpClient'
 import { clearLoginToken, getLoginToken, SESSION_CHANGED } from '@/shared/http/authToken'
 import { getCompanyProfile, getCurrentUser } from '../api/user'
 
+import { isStoredAdmin } from './storedAccount'
 import { SessionContext } from './useSession'
 import type { Session } from './useSession'
 
@@ -49,7 +50,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       try {
         const user = await getCurrentUser(controller.signal)
         const company =
-          user.accountType === 'USER' && user.companyId
+          !isStoredAdmin() && user.companyId
             ? await getCompanyProfile(user.companyId, controller.signal)
             : null
         if (!controller.signal.aborted && getLoginToken() === token)

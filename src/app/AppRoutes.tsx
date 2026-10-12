@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
-import { useSession } from '@/features/auth'
+import { isStoredAdmin, useSession } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import AdminClients from '@/features/clients/pages/AdminClients'
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
@@ -46,7 +46,7 @@ function SessionState() {
   )
 }
 function RoleLanding() {
-  const { status, user } = useSession()
+  const { status } = useSession()
   if (status === 'loading' || status === 'error') return <SessionState />
   return (
     <Navigate
@@ -54,7 +54,7 @@ function RoleLanding() {
       to={
         status === 'anonymous'
           ? PATHS.LOGIN
-          : user?.accountType === 'ADMIN'
+          : isStoredAdmin()
             ? PATHS.ADMIN_CLIENTS
             : PATHS.BENEFICIARIES
       }
@@ -65,8 +65,8 @@ function RoleGuard({ role }: { role: 'ADMIN' | 'USER' }) {
   const { status, user } = useSession()
   if (status === 'loading' || status === 'error') return <SessionState />
   if (status === 'anonymous') return <Navigate to={PATHS.LOGIN} replace />
-  if (user?.accountType !== role) return <RoleLanding />
-  if (role === 'USER' && !user.companyId)
+  if ((isStoredAdmin() ? 'ADMIN' : 'USER') !== role) return <RoleLanding />
+  if (role === 'USER' && !user?.companyId)
     return (
       <p role="alert" className="p-8">
         Esta conta não possui vínculo empresarial.
@@ -95,7 +95,7 @@ function RoutedApplication() {
   const { user, company } = useSession()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const admin = user?.accountType === 'ADMIN'
+  const admin = isStoredAdmin()
   const icon = (src: string) => <img src={src} alt="" />
   const item = (id: string, label: string, path: string, src: string): NavigationItem => ({
     id,

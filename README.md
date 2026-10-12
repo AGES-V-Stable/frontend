@@ -30,6 +30,8 @@ src/
 
 `AppRoutes` é o único responsável por escolher menus, destinos, seleção e conteúdo conforme o perfil autenticado. Ele compõe um shell persistente com `NavBar` de apresentação e `Outlet`. Páginas de features não importam shell/NavBar nem configuram menus. Login e cadastro ficam fora do shell.
 
+O perfil de navegação e os redirecionamentos usam `account_type` do JWT salvo na chave `token` do `localStorage`, com suporte ao campo legado `role: ["ROLE_ADMIN"]` quando `account_type` está ausente. Tokens ausentes ou malformados não selecionam o perfil administrativo. Essa leitura orienta a interface; a autorização continua no backend.
+
 A sessão consulta `/v1/users/me` uma vez por ciclo de autenticação e carrega a empresa quando existe vínculo empresarial. As páginas consomem `useSession`, sem repetir consultas de identidade. Falhas de rede oferecem nova tentativa; 401 invalida a sessão correspondente, sem apagar um login mais recente nem confundir tokens de onboarding e login.
 
 O menu administrativo contém Início, Clientes PME, Auditoria (Transferências e Beneficiários) e Configurações. O menu empresarial contém Início, Beneficiários, Transferências e Configurações. Configurações e Suporte estão visíveis, mas desabilitados. Nome, CNPJ e iniciais vêm da conta autenticada. Não há demonstrações nem fallback automático para fixtures.
