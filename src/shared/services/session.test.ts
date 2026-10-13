@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getStoredUserType } from './session'
+import { clearStoredToken, getStoredUserType, hasStoredToken } from './session'
 
 const storePayload = (payload: unknown) =>
   localStorage.setItem('token', `header.${btoa(JSON.stringify(payload))}.signature`)
@@ -38,5 +38,15 @@ describe('stored user type', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     localStorage.setItem('token', 'invalid')
     expect(getStoredUserType()).toBe('pme')
+  })
+})
+
+describe('stored session token', () => {
+  it('reports whether a token is stored and clears it', () => {
+    expect(hasStoredToken()).toBe(false)
+    localStorage.setItem('token', 'header.payload.signature')
+    expect(hasStoredToken()).toBe(true)
+    clearStoredToken()
+    expect(hasStoredToken()).toBe(false)
   })
 })

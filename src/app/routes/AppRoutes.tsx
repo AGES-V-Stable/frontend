@@ -1,4 +1,4 @@
-import { getStoredUserType } from '@/shared/services/session'
+import { getStoredUserType, hasStoredToken } from '@/shared/services/session'
 import { PmeHome } from '@/features/home/content/pme/pages/PmeHome'
 import { AuditHome } from '@/features/home/content/admin/pages/AuditHome'
 import { useState } from 'react'
@@ -186,8 +186,13 @@ function LivenessRoute() {
   )
 }
 
-function HomeRoute() {
+function HomeContent() {
   return getStoredUserType() === 'admin' ? <AdminHome /> : <PmeHome />
+}
+
+function HomeRoute() {
+  if (!hasStoredToken()) return <Navigate to={PATHS.LOGIN} replace />
+  return <HomeContent />
 }
 
 function BeneficiaryCreateRoute() {
@@ -218,7 +223,7 @@ function AppRoutes() {
       <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />
       <Route path={PATHS.FORGOT_PASSWORD} element={<ForgotPassWordPlaceHolder />} />
       <Route path={PATHS.DEMO} element={<Demo />} />
-      <Route path={PATHS.DEMO_HOME} element={<HomeRoute />} />
+      <Route path={PATHS.DEMO_HOME} element={<HomeContent />} />
       <Route path={PATHS.DEMO_LOGIN} element={<Login />} />
       <Route
         path={PATHS.DEMO_REGISTER}

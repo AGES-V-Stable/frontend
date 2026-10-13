@@ -73,4 +73,30 @@ describe('ApiError', () => {
     expect(error.message).toBe('Não encontrado')
     expect(error).toBeInstanceOf(Error)
   })
+
+  it('clears the stored session token when the backend answers 401', async () => {
+    localStorage.setItem('token', 'expired.jwt.token')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ message: 'Não autenticado' }),
+      }),
+    )
+
+    await expect(request('/example')).rejects.toMatchObject({ status: 401 })
+    expect(localStorage.getItem('token')).toBeNull()
+  })
+
+  it('keeps the stored session token for other errors', async () => {
+    localStorage.setItem('token', 'valid.jwt.token')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: false, status: 403, json: async () => null }),
+    )
+
+    await expect(request('/example')).rejects.toBeInstanceOf(ApiError)
+    expect(localStorage.getItem('token')).toBe('valid.jwt.token')
+  })
 })

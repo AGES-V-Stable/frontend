@@ -74,11 +74,32 @@ describe('AppRoutes Navigation & Routing', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders the Home page for the root path', () => {
+  it('redirects to the Login page for the root path when no session token is stored', () => {
+    render(
+      <MemoryRouter initialEntries={[PATHS.HOME]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Bem-vindo à V-Stable!' })).toBeInTheDocument()
+  })
+
+  it('renders the Home page for the root path when a session token is stored', () => {
+    localStorage.setItem('token', 'header.payload.signature')
     const initialRoute = PATHS.HOME
 
     render(
       <MemoryRouter initialEntries={[initialRoute]}>
+        <AppRoutes />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Visão geral da conta PME' })).toBeInTheDocument()
+  })
+
+  it('keeps the demo home reachable without a session token', () => {
+    render(
+      <MemoryRouter initialEntries={[PATHS.DEMO_HOME]}>
         <AppRoutes />
       </MemoryRouter>,
     )
@@ -167,6 +188,7 @@ describe('AppRoutes Navigation & Routing', () => {
   })
 
   it('redirects to the Home page for an unknown route', () => {
+    localStorage.setItem('token', 'header.payload.signature')
     const unknownRoute = '/unknown-non-existent-route'
 
     render(

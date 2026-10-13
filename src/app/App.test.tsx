@@ -14,6 +14,6 @@ describe('App Component', () => {
 
     render(routerWrapper)
 
-    expect(screen.getByRole('heading', { name: 'Visão geral da conta PME' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Bem-vindo à V-Stable!' })).toBeInTheDocument()
   })
 })
