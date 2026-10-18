@@ -1,7 +1,10 @@
-import AppRoutes from '@/routes/AppRoutes'
+import AppRoutes from '@/app/AppRoutes'
+import { SessionProvider } from '@/features/auth'
 
-function App() {
-  return <AppRoutes />
+export default function App() {
+  return (
+    <SessionProvider>
+      <AppRoutes />
+    </SessionProvider>
+  )
 }
-
-export default App

@@ -1,0 +1,32 @@
+import { z } from 'zod'
+export const BeneficiarySchema = z.object({
+  id: z.string(),
+  companyId: z.string(),
+  nickname: z.string(),
+  receivingMethod: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  identificationDocument: z.string().nullish(),
+  country: z.string().nullish(),
+  address: z.string().nullish(),
+  legalName: z.string().nullish(),
+  accountType: z.string().nullish(),
+  internalDescription: z.string().nullish(),
+  accountHolderName: z.string().nullish(),
+  accountNumber: z.string().nullish(),
+  bankCode: z.string().nullish(),
+  branchNumber: z.string().nullish(),
+  currency: z.string().nullish(),
+  swiftBic: z.string().nullish(),
+  pixKey: z.string().nullish(),
+  walletAddress: z.string().nullish(),
+  blockchainNetwork: z.string().nullish(),
+  walletMemo: z.string().nullish(),
+})
+export const BeneficiariesPageSchema = z.object({
+  content: z.array(BeneficiarySchema),
+  totalElements: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
+  number: z.number().int().nonnegative(),
+  size: z.number().int().positive(),
+})

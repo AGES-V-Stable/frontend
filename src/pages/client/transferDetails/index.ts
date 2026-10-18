@@ -1,1 +1,0 @@
-export { TransferDetails } from './TransferDetails'
