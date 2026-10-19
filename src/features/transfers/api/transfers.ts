@@ -150,6 +150,7 @@ export const createTransfer = async (
       paymentMethod: request.paymentMethod,
       beneficiaryId: request.beneficiaryId,
       description: request.description,
+      ...(request.totpCode !== undefined ? { totpCode: request.totpCode } : {}),
     }),
   })
 

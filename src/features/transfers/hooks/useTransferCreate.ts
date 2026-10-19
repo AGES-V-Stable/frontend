@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 
-import { TransferAmountSchema, TransferFormSchema } from '@/features/transfers/schemas/transfer'
+import {
+  TotpCodeSchema,
+  TransferAmountSchema,
+  TransferFormSchema,
+} from '@/features/transfers/schemas/transfer'
 import { getCompanyBeneficiaries } from '@/features/beneficiaries'
 import { HttpError } from '@/shared/http/httpClient'
 import { createTransfer, getTransferQuote } from '@/features/transfers/api/transfers'
@@ -71,6 +75,8 @@ const quoteErrorMessage = (error: unknown) => {
 const createErrorMessage = (error: unknown) => {
   const fallback = 'Não foi possível criar a transferência. Tente novamente.'
   if (!(error instanceof HttpError)) return fallback
+  if (error.status === 400 || error.status === 401)
+    return backendMessage(error) ?? 'Código de autenticação inválido ou expirado.'
   if (error.status === 404) return 'Beneficiário não encontrado. Selecione outro beneficiário.'
   if (error.status === 422) return backendMessage(error) ?? fallback
   return fallback
@@ -81,6 +87,8 @@ const isValidAmount = (amount: number | null): amount is number =>
 
 export function useTransferCreate() {
   const companyId = useSession().user?.companyId
+  const [activeStep, setActiveStep] = useState<number>(0)
+  const [totpCode, setTotpCode] = useState('')
   const [values, setValues] = useState<FormValues>(initialValues)
   const [amountType, setAmountType] = useState<TransferAmountType>('SOURCE')
   const [quoteState, setQuoteState] = useState<QuoteState>({ status: 'idle' })
@@ -188,10 +196,37 @@ export function useTransferCreate() {
 
   function handleCancel() {
     setValues(initialValues)
+    setTotpCode('')
     setAmountType('SOURCE')
     setQuoteState({ status: 'idle' })
     setSubmitError(undefined)
     setCreatedStatus(undefined)
+    setActiveStep(0)
+  }
+
+  function handleNextStep() {
+    if (activeStep === 0) {
+      if (!canContinue || !form.success) return
+      setSubmitError(undefined)
+      setActiveStep(1)
+    } else if (activeStep === 1) {
+      setSubmitError(undefined)
+      setActiveStep(2)
+    }
+  }
+
+  function handlePreviousStep() {
+    setSubmitError(undefined)
+    if (activeStep === 2) {
+      setActiveStep(1)
+    } else if (activeStep === 1) {
+      setActiveStep(0)
+    }
+  }
+
+  function handleTotpChange(code: string) {
+    setTotpCode(code)
+    if (submitError) setSubmitError(undefined)
   }
 
   const form = TransferFormSchema.safeParse({
@@ -205,18 +240,27 @@ export function useTransferCreate() {
   })
   const canContinue = form.success && quoteState.status === 'ready' && !submitting
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!canContinue || !form.success) return
+  function handleSubmit(event?: React.FormEvent<HTMLFormElement>) {
+    if (event) event.preventDefault()
+    if (activeStep !== 2) return
+    if (!canContinue || !form.success || submitting) return
+
+    const totpValidation = TotpCodeSchema.safeParse(totpCode)
+    if (!totpValidation.success) {
+      setSubmitError(totpValidation.error.issues[0]?.message ?? 'Código de autenticação inválido.')
+      return
+    }
 
     setSubmitting(true)
     setSubmitError(undefined)
-    createTransfer(form.data)
+    createTransfer({ ...form.data, totpCode })
       .then((result) => {
         setCreatedStatus(result.status)
         setValues(initialValues)
+        setTotpCode('')
         setAmountType('SOURCE')
         setQuoteState({ status: 'idle' })
+        setActiveStep(0)
       })
       .catch((error: unknown) => setSubmitError(createErrorMessage(error)))
       .finally(() => setSubmitting(false))
@@ -229,6 +273,11 @@ export function useTransferCreate() {
   const quote = quoteState.status === 'ready' ? quoteState.quote : undefined
 
   return {
+    activeStep,
+    setActiveStep,
+    totpCode,
+    setTotpCode,
+    selectedBeneficiary,
     values,
     setValues,
     amountType,
@@ -247,6 +296,9 @@ export function useTransferCreate() {
     handleBeneficiaryChange,
     handleRetryQuote,
     handleCancel,
+    handleNextStep,
+    handlePreviousStep,
+    handleTotpChange,
     handleSubmit,
   }
 }

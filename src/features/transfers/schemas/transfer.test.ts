@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { TransferAmountSchema, TransferFormSchema } from '@/features/transfers/schemas/transfer'
+import {
+  CreateTransferSchema,
+  TotpCodeSchema,
+  TransferAmountSchema,
+  TransferFormSchema,
+} from '@/features/transfers/schemas/transfer'
 
 const validForm = {
   amount: 125000,
@@ -59,5 +64,30 @@ describe('TransferFormSchema', () => {
 
   it('rejeita lado do valor diferente de SOURCE ou DESTINATION', () => {
     expect(TransferFormSchema.safeParse({ ...validForm, amountType: 'BOTH' }).success).toBe(false)
+  })
+})
+
+describe('TotpCodeSchema', () => {
+  it('aceita código de 6 dígitos numéricos', () => {
+    expect(TotpCodeSchema.safeParse('123456').success).toBe(true)
+  })
+
+  it.each(['12345', '1234567', 'abcdef', '123 45', '12-345'])(
+    'rejeita %s como código TOTP',
+    (code) => {
+      expect(TotpCodeSchema.safeParse(code).success).toBe(false)
+    },
+  )
+})
+
+describe('CreateTransferSchema', () => {
+  it('aceita payload completo com totpCode de 6 dígitos', () => {
+    const result = CreateTransferSchema.safeParse({ ...validForm, totpCode: '654321' })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejeita payload sem totpCode ou com totpCode inválido', () => {
+    expect(CreateTransferSchema.safeParse(validForm).success).toBe(false)
+    expect(CreateTransferSchema.safeParse({ ...validForm, totpCode: 'abc' }).success).toBe(false)
   })
 })
