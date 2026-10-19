@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>V-Stable — Demo TOTP (2FA RFC 6238)</title>
+    <!-- Biblioteca leve de QR Code para renderizar a URI otpauth:// gerada pelo Backend -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --error: #ef4444;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 32px 16px;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 850px;
+            width: 100%;
+            display: grid;
+            gap: 20px;
+        }
+
+        h1 {
+            margin: 0 0 4px 0;
+            font-size: 24px;
+        }
+
+        p.subtitle {
+            margin: 0 0 16px 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .step-badge {
+            display: inline-block;
+            background: #1d4ed8;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+            margin-bottom: 8px;
+        }
+
+        h2 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #0f172a;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.15s;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        button.secondary {
+            background: #475569;
+        }
+
+        .qr-area {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        #qrcode {
+            background: white;
+            padding: 14px;
+            border-radius: 10px;
+            min-width: 188px;
+            min-height: 188px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .uri-box {
+            flex: 1;
+            min-width: 260px;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            color: #38bdf8;
+        }
+
+        .status-box {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            display: none;
+        }
+
+        .status-box.ok {
+            display: block;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--success);
+            color: #6ee7b7;
+        }
+
+        .status-box.err {
+            display: block;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--error);
+            color: #fca5a5;
+        }
+
+        .code-input {
+            font-size: 22px;
+            letter-spacing: 8px;
+            text-align: center;
+            font-weight: bold;
+            max-width: 220px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div>
+            <h1>🔐 V-Stable — Demo TOTP & QR Code (RFC 6238)</h1>
+            <p class="subtitle">Conectado ao backend Spring Boot em <code>http://localhost:8080</code></p>
+        </div>
+        <!-- PASSO 1: CRIAR CONTA OU LOGAR -->
+        <div class="card">
+            <span class="step-badge">PASSO 1</span>
+            <h2>Autenticar ou Criar Conta com 2FA no Onboarding</h2>
+            <div class="row">
+                <div>
+                    <label>E-mail do Usuário</label>
+                    <input type="email" id="email" value="demo.2fa@vstable.com" />
+                </div>
+                <div>
+                    <label>Senha</label>
+                    <input type="password" id="password" value="Senha@123" />
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="registerWith2FA()">Cadastrar Novo Usuário (POST /v1/onboarding c/ 2FA)</button>
+                <button class="secondary" onclick="loginUser()">Fazer Login se já existir (POST /v1/auth/login)</button>
+            </div>
+            <div id="step1-status" class="status-box"></div>
+        </div>
+        <!-- PASSO 2: SETUP 2FA E QR CODE -->
+        <div class="card">
+            <span class="step-badge">PASSO 2</span>
+            <h2>Gerar Segredo Base32 e QR Code (Google / Microsoft Authenticator)</h2>
+            <p style="font-size: 13px; color: var(--muted); margin-top: 0;">
+                Chama <code>POST /v1/auth/2fa/setup</code> (ou usa a URI recebida no Onboarding). O segredo é
+                criptografado no PostgreSQL com <strong>AES-256-GCM</strong> e <code>two_factor_enabled</code> permanece
+                <code>false</code> até a validação.
+            </p>
+            <button onclick="setup2FA()">Gerar Novo QR Code (POST /v1/auth/2fa/setup)</button>
+            <div class="qr-area">
+                <div id="qrcode"><span style="color: #64748b; font-size: 12px;">QR Code aparecerá aqui</span></div>
+                <div style="flex: 1;">
+                    <label>URI Universal Gerada pelo Backend (RFC 6238):</label>
+                    <div id="uri-display" class="uri-box">Aguardando geração...</div>
+                </div>
+            </div>
+            <div id="step2-status" class="status-box"></div>
+        </div>
+        <!-- PASSO 3: VALIDAR CÓDIGO DE 6 DÍGITOS -->
+        <div class="card">
+            <span class="step-badge">PASSO 3</span>
+            <h2>Validar Código de 6 Dígitos e Ativar 2FA</h2>
+            <p style="font-size: 13px; color: var(--muted); margin-top: 0;">
+                Abra o Google Authenticator ou Microsoft Authenticator no celular, escaneie o QR Code acima e digite o
+                código de 6 dígitos (janela de 30s com tolerância de ±1 janela):
+            </p>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <input type="text" id="totp-code" class="code-input" maxlength="6" placeholder="000000" />
+                <button onclick="activate2FA()">Validar e Ativar (POST /v1/auth/2fa/activate)</button>
+            </div>
+            <div id="step3-status" class="status-box"></div>
+        </div>
+    </div>
+    <script>
+        const API_URL = 'http://localhost:8080/v1';
+        let jwtToken = '';
+        function showStatus(id, isOk, text) {
+            const el = document.getElementById(id);
+            el.className = 'status-box ' + (isOk ? 'ok' : 'err');
+            el.textContent = text;
+        }
+        function renderQrCode(uri) {
+            document.getElementById('uri-display').textContent = uri;
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: uri,
+                width: 160,
+                height: 160,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+        // Geração de CNPJ válido aleatório para facilitar múltiplos testes na demo
+        function randomValidCnpj() {
+            const rnd = (n) => Math.round(Math.random() * n);
+            const mod = (a, b) => Math.round(a - Math.floor(a / b) * b);
+            const n = Array.from({ length: 8 }, () => rnd(9)).concat([0, 0, 0, 1]);
+            let d1 = n.reduce((acc, val, idx) => acc + val * [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2][idx], 0);
+            d1 = 11 - mod(d1, 11); if (d1 >= 10) d1 = 0;
+            let d2 = n.concat([d1]).reduce((acc, val, idx) => acc + val * [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2][idx], 0);
+            d2 = 11 - mod(d2, 11); if (d2 >= 10) d2 = 0;
+            return [...n, d1, d2].join('');
+        }
+        async function registerWith2FA() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            try {
+                const res = await fetch(`${API_URL}/onboarding`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        enableTwoFactor: true,
+                        fullName: 'Usuário Demo 2FA',
+                        email,
+                        password,
+                        confirmPassword: password,
+                        legalName: 'Empresa Demo 2FA Ltda',
+                        cnpj: randomValidCnpj(),
+                        country: 'Brasil',
+                        zipCode: '90619900',
+                        city: 'Porto Alegre',
+                        state: 'RS'
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showStatus('step1-status', false, `HTTP ${res.status}: ${JSON.stringify(data, null, 2)}`);
+                    return;
+                }
+                jwtToken = data.accessToken;
+                showStatus('step1-status', true, `✅ Conta criada (HTTP 201)!\nJWT Recebido: ${jwtToken.substring(0, 35)}...\ntwoFactorSetupRequired: ${data.twoFactorSetupRequired}`);
+                if (data.otpauthUri) {
+                    renderQrCode(data.otpauthUri);
+                    showStatus('step2-status', true, `✅ QR Code já gerado automaticamente pelo Onboarding!`);
+                }
+            } catch (err) {
+                showStatus('step1-status', false, 'Erro de conexão com o backend: ' + err.message);
+            }
+        }
+        async function loginUser() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            try {
+                const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    showStatus('step1-status', false, `HTTP ${res.status}: ${JSON.stringify(errData)}`);
+                    return;
+                }
+                const authHeader = res.headers.get('Authorization');
+                jwtToken = authHeader ? authHeader.replace(/^Bearer\s+/i, '').trim() : '';
+                showStatus('step1-status', true, `✅ Login realizado (HTTP 200)!\nJWT Recebido no Header Authorization: ${jwtToken.substring(0, 35)}...`);
+            } catch (err) {
+                showStatus('step1-status', false, 'Erro de conexão com o backend: ' + err.message);
+            }
+        }
+        async function setup2FA() {
+            if (!jwtToken) {
+                showStatus('step2-status', false, '⚠️ Faça o Passo 1 primeiro para obter o token JWT!');
+                return;
+            }
+            try {
+                const res = await fetch(`${API_URL}/auth/2fa/setup`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${jwtToken}` }
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showStatus('step2-status', false, `HTTP ${res.status}: ${JSON.stringify(data)}`);
+                    return;
+                }
+                renderQrCode(data.otpauthUri);
+                showStatus('step2-status', true, `✅ HTTP 200 OK — Resposta do Backend:\n${JSON.stringify(data, null, 2)}`);
+            } catch (err) {
+                showStatus('step2-status', false, 'Erro: ' + err.message);
+            }
+        }
+        async function activate2FA() {
+            if (!jwtToken) {
+                showStatus('step3-status', false, '⚠️ Faça o Passo 1 primeiro para obter o token JWT!');
+                return;
+            }
+            const code = document.getElementById('totp-code').value.trim();
+            try {
+                const res = await fetch(`${API_URL}/auth/2fa/activate`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showStatus('step3-status', false, `❌ HTTP ${res.status} (Código rejeitado!):\n${JSON.stringify(data, null, 2)}`);
+                    return;
+                }
+                showStatus('step3-status', true, `🎉 HTTP 200 OK (Código TOTP Validado e 2FA Ativado no Banco!):\n${JSON.stringify(data, null, 2)}`);
+            } catch (err) {
+                showStatus('step3-status', false, 'Erro: ' + err.message);
+            }
+        }
+    </script>
+</body>
+
+</html>
