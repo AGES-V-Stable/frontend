@@ -1,0 +1,79 @@
+name: Deploy frontend
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+concurrency:
+  group: frontend-${{ github.event_name == 'push' && 'staging' || 'production' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' || (github.event_name == 'release' && !github.event.release.prerelease)
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'staging' || 'production' }}
+
+    steps:
+      - name: Checkout frontend
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Ensure release commit is on main
+        if: github.event_name == 'release'
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check frontend
+        run: |
+          npm run audit
+          npm run format:check
+          npm run lint
+          npm run test:coverage
+
+      - name: Build for selected API
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        run: |
+          test -n "$VITE_API_URL"
+          npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+
+      - name: Upload frontend
+        env:
+          FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+        run: |
+          test -n "$FRONTEND_BUCKET"
+          aws s3 sync dist/assets/ "s3://$FRONTEND_BUCKET/assets/" --no-progress --cache-control 'public,max-age=31536000,immutable'
+          aws s3 sync dist/ "s3://$FRONTEND_BUCKET/" --exclude 'assets/*' --no-progress --cache-control 'public,max-age=0,must-revalidate'
+
+      - name: Refresh CloudFront
+        env:
+          FRONTEND_DISTRIBUTION_ID: ${{ vars.FRONTEND_DISTRIBUTION_ID }}
+        run: |
+          test -n "$FRONTEND_DISTRIBUTION_ID"
+          INVALIDATION_ID=$(aws cloudfront create-invalidation --distribution-id "$FRONTEND_DISTRIBUTION_ID" --paths '/*' --query 'Invalidation.Id' --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$FRONTEND_DISTRIBUTION_ID" --id "$INVALIDATION_ID"
