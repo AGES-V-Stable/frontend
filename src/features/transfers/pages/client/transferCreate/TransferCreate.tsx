@@ -298,7 +298,7 @@ export function TransferCreate() {
 
       {/* PASSO 1: REVISÃO DA TRANSFERÊNCIA */}
       {activeStep === 1 && (
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1096fr)_minmax(0,468fr)]">
+        <div className="mx-auto w-full max-w-[1038px]">
           <section className="flex flex-col gap-6 rounded-xl border border-sage-300 bg-white p-6">
             <div className="flex flex-col gap-1">
               <h2 className="text-sm font-bold text-slate-900">Revisão da transferência</h2>
@@ -402,18 +402,12 @@ export function TransferCreate() {
               </div>
             </div>
           </section>
-
-          {quoteAside}
         </div>
       )}
 
       {/* PASSO 2: AUTENTICAÇÃO EM DUAS ETAPAS */}
       {activeStep === 2 && (
-        <form
-          noValidate
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1096fr)_minmax(0,468fr)]"
-        >
+        <form noValidate onSubmit={handleSubmit} className="mx-auto w-full max-w-[1038px]">
           <section className="flex flex-col gap-6 rounded-xl border border-sage-300 bg-white p-6">
             <div className="flex flex-col gap-1">
               <h2 className="text-sm font-bold text-slate-900">Autenticação em duas etapas</h2>
@@ -453,8 +447,6 @@ export function TransferCreate() {
               </div>
             </div>
           </section>
-
-          {quoteAside}
         </form>
       )}
     </div>
