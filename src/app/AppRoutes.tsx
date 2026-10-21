@@ -14,6 +14,7 @@ import RegistrationComplete from '@/features/onboarding/pages/Register/Registrat
 import {
   CompanyRoute,
   RepresentativeRoute,
+  TwoFactorRoute,
   ComplianceRoute,
   LivenessRoute,
 } from '@/features/onboarding/pages/WizardRoutes'
@@ -195,6 +196,7 @@ export default function AppRoutes() {
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRoute />} />
       <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeRoute />} />
+      <Route path={PATHS.REGISTER_2FA} element={<TwoFactorRoute />} />
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<ComplianceRoute />} />
       <Route path={PATHS.COMPLIANCE_LIVENESS} element={<LivenessRoute />} />
       <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />

@@ -1,9 +1,22 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ComplianceStatusCard } from '@/features/onboarding/components/ComplianceStatusCard/ComplianceStatusCard'
 import { ComplianceStatus } from '@/features/onboarding/components/ComplianceStatusCard/ComplianceStatusType'
+import { twoFactorService } from '@/features/auth'
+
+vi.mock('@/features/auth', () => ({
+  twoFactorService: {
+    isActivated: vi.fn(),
+    setActivated: vi.fn(),
+    setup: vi.fn().mockResolvedValue({
+      otpauthUri: 'otpauth://totp/V-Stable:test@empresa.com?secret=TESTSECRET123',
+      secret: 'TESTSECRET123',
+    }),
+    activate: vi.fn().mockResolvedValue({ success: true }),
+  },
+}))
 
 function renderCard(status: ComplianceStatus) {
   return render(
@@ -14,6 +27,10 @@ function renderCard(status: ComplianceStatus) {
 }
 
 describe('ComplianceStatusCard Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('given status IN_REVIEW, when rendered, then it should display the analysis content', () => {
     renderCard(ComplianceStatus.IN_REVIEW)
 
@@ -24,7 +41,18 @@ describe('ComplianceStatusCard Component', () => {
     expect(screen.getByAltText('Em análise')).toBeInTheDocument()
   })
 
-  it('given status APPROVED, when rendered, then it should display the approved content', () => {
+  it('given status APPROVED and 2FA not active, then it should display the mandatory 2FA setup container', async () => {
+    vi.mocked(twoFactorService.isActivated).mockReturnValue(false)
+    renderCard(ComplianceStatus.APPROVED)
+
+    expect(screen.getByText('Cadastro Aprovado')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ativação de Segurança Obrigatória' })).toBeInTheDocument()
+    expect(await screen.findByText('Configuração de Segurança em Duas Etapas (2FA)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ativar 2FA e Acessar Plataforma' })).toBeInTheDocument()
+  })
+
+  it('given status APPROVED and 2FA already active, then it should display the account unlocked content and access button', () => {
+    vi.mocked(twoFactorService.isActivated).mockReturnValue(true)
     renderCard(ComplianceStatus.APPROVED)
 
     expect(screen.getByText('Aprovado')).toBeInTheDocument()

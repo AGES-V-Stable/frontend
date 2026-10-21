@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
+import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
 import { PATHS } from '@/shared/navigation/paths'
 import { saveLoginToken } from '@/shared/http/authToken'
 import { authService } from '@/features/auth/api/login'
@@ -26,8 +27,12 @@ function validate(data: LoginFormData): LoginErrors {
 }
 
 function Login() {
+  const [step, setStep] = useState<'CREDENTIALS' | '2FA'>('CREDENTIALS')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [tempToken, setTempToken] = useState<string | undefined>()
+  const [totpCode, setTotpCode] = useState('')
+  const [totpError, setTotpError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<LoginErrors>({})
 
@@ -56,14 +61,21 @@ function Login() {
 
     setSubmitting(true)
     try {
-      const { token } = await authService.login({
+      const result = await authService.login({
         email,
         password,
       })
 
-      saveLoginToken(token)
+      if (result.twoFactorRequired) {
+        setTempToken(result.tempToken)
+        setStep('2FA')
+        return
+      }
 
-      void navigate(PATHS.HOME, { replace: true })
+      if (result.token) {
+        saveLoginToken(result.token)
+        void navigate(PATHS.HOME, { replace: true })
+      }
     } catch (error) {
       setErrors({
         email:
@@ -72,6 +84,36 @@ function Login() {
             : 'E-mail ou senha inválidos',
         password: 'E-mail ou senha inválidos',
       })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleVerify2FA(code: string) {
+    if (code.length !== 6 || submitting) return
+    setSubmitting(true)
+    setTotpError('')
+    try {
+      const result = await authService.login({
+        email,
+        password,
+        totpCode: code,
+        tempToken,
+      })
+
+      if (!result.token) {
+        setTotpError('Código de autenticação inválido ou expirado.')
+        return
+      }
+
+      saveLoginToken(result.token)
+      void navigate(PATHS.HOME, { replace: true })
+    } catch (error) {
+      setTotpError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Código de autenticação inválido ou expirado.',
+      )
     } finally {
       setSubmitting(false)
     }
@@ -92,51 +134,85 @@ function Login() {
         </div>
       </div>
       <div className="bg-white flex flex-col items-center justify-center min-h-screen w-full gap-y-[20px]">
-        <div className="flex flex-col gap-y-[10px]">
-          <h1 className="text-slate-900 text-[32px] font-bold">Bem-vindo à V-Stable!</h1>
+        <div className="flex flex-col gap-y-[10px] text-center">
+          <h1 className="text-slate-900 text-[32px] font-bold">
+            {step === '2FA' ? 'Verificação de Segurança' : 'Bem-vindo à V-Stable!'}
+          </h1>
           <p className="text-slate-500 text-[18px] font-semibold">
-            Acesse sua conta com suas credenciais
+            {step === '2FA'
+              ? 'Confirme o acesso com o código de 6 dígitos'
+              : 'Acesse sua conta com suas credenciais'}
           </p>
         </div>
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-y-[50px]">
-          <div className="flex flex-col w-[560px] gap-y-[10px]">
-            <Input
-              id="email"
-              type="email"
-              label="E-mail"
-              placeholder="nome@empresa.com.br"
-              value={email}
-              onChange={(e) => handleEmailChange(e.target.value)}
-              error={errors.email}
+
+        {step === '2FA' ? (
+          <div className="flex flex-col w-[560px] gap-y-4">
+            <TwoFactorAuthContainer
+              title="Autenticação em duas etapas"
+              description="Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta."
+              value={totpCode}
+              onChange={(value) => {
+                setTotpCode(value)
+                if (totpError) setTotpError('')
+              }}
+              onVerify={handleVerify2FA}
+              error={totpError}
+              loading={submitting}
+              submitLabel="Verificar e Entrar"
             />
-            <Input
-              id="password"
-              type="password"
-              label="Senha"
-              placeholder="Digite sua senha"
-              value={password}
-              onChange={(e) => handlePasswordChange(e.target.value)}
-              error={errors.password}
-            />
-          </div>
-          <div className="flex flex-col w-[560px] gap-y-[10px]">
-            <Button type="submit" label="Entrar" variant="primary" disabled={submitting} />
             <Button
               type="button"
-              label="Cadastrar PME"
+              label="Voltar para o login"
               variant="secondary"
-              onClick={() => navigate(PATHS.REGISTER)}
+              disabled={submitting}
+              onClick={() => {
+                setStep('CREDENTIALS')
+                setTotpCode('')
+                setTotpError('')
+              }}
             />
           </div>
-          <div className="flex justify-center -mt-7">
-            <Link
-              to={PATHS.FORGOT_PASSWORD}
-              className="text-[16px] font-medium text-primary hover:text-primary-hover hover:underline transition-colors"
-            >
-              Esqueci minha senha
-            </Link>
-          </div>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-y-[50px]">
+            <div className="flex flex-col w-[560px] gap-y-[10px]">
+              <Input
+                id="email"
+                type="email"
+                label="E-mail"
+                placeholder="nome@empresa.com.br"
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                error={errors.email}
+              />
+              <Input
+                id="password"
+                type="password"
+                label="Senha"
+                placeholder="Digite sua senha"
+                value={password}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+                error={errors.password}
+              />
+            </div>
+            <div className="flex flex-col w-[560px] gap-y-[10px]">
+              <Button type="submit" label="Entrar" variant="primary" disabled={submitting} />
+              <Button
+                type="button"
+                label="Cadastrar PME"
+                variant="secondary"
+                onClick={() => navigate(PATHS.REGISTER)}
+              />
+            </div>
+            <div className="flex justify-center -mt-7">
+              <Link
+                to={PATHS.FORGOT_PASSWORD}
+                className="text-[16px] font-medium text-primary hover:text-primary-hover hover:underline transition-colors"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )

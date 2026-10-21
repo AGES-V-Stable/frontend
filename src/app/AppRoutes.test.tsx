@@ -244,6 +244,9 @@ describe('AppRoutes Navigation & Routing', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
+    expect(await screen.findByRole('heading', { name: 'Segurança da Conta (2FA)' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Configurar 2FA mais tarde' }))
+
     expect(await screen.findByText('Compliance e documentos')).toBeInTheDocument()
     expect(submitOnboardingMock).toHaveBeenCalledWith(
       expect.objectContaining({ fullName: access.nomeCompleto, email: access.email }),

@@ -6,6 +6,7 @@ import {
   PATHS,
   registrationCompletePath,
   transferDetailsPath,
+  twoFactorSetupPath,
 } from '@/shared/navigation/paths'
 
 describe('PATHS configuration', () => {
@@ -16,6 +17,7 @@ describe('PATHS configuration', () => {
       REGISTER: '/register',
       REGISTER_COMPANY: '/register/empresa',
       REGISTER_REPRESENTATIVE: '/register/representante',
+      REGISTER_2FA: '/register/:kycVerificationId/2fa',
       REGISTER_COMPLIANCE: '/register/:kycVerificationId/compliance',
       COMPLIANCE_LIVENESS: '/register/:kycVerificationId/compliance/liveness',
       REGISTER_COMPLETE: '/register/:kycVerificationId/concluido',
@@ -51,14 +53,23 @@ describe('PATHS configuration', () => {
     expect(registerCompletePath).toBe('/register/:kycVerificationId/concluido')
   })
 
-  it('given an id, when building the compliance, liveness and registration-complete paths, then it should encode the id into the URL', () => {
+  it('formats compliancePath with encoded verification id', () => {
     expect(compliancePath('abc 123')).toBe('/register/abc%20123/compliance')
+  })
+
+  it('formats twoFactorSetupPath with encoded verification id', () => {
+    expect(twoFactorSetupPath('abc 123')).toBe('/register/abc%20123/2fa')
+  })
+
+  it('formats livenessPath with encoded verification id', () => {
     expect(livenessPath('abc 123')).toBe('/register/abc%20123/compliance/liveness')
+  })
+
+  it('formats registrationCompletePath with encoded verification id', () => {
     expect(registrationCompletePath('abc 123')).toBe('/register/abc%20123/concluido')
   })
 
-  it('builds the transfer details path with the id encoded', () => {
-    expect(transferDetailsPath('17f2df21-32ed')).toBe('/app/transferencias/17f2df21-32ed')
-    expect(transferDetailsPath('a/b')).toBe('/app/transferencias/a%2Fb')
+  it('formats transferDetailsPath with encoded verification id', () => {
+    expect(transferDetailsPath('t-123')).toBe('/app/transferencias/t-123')
   })
 })

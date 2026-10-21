@@ -163,4 +163,94 @@ describe('Login Page Component', () => {
 
     expect(await screen.findByText('Register page')).toBeInTheDocument()
   })
+
+  it('transições para a etapa de 2FA quando o login exige segundo fator', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockResolvedValueOnce({
+      twoFactorRequired: true,
+      tempToken: 'temp-token-123',
+    })
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'user2fa@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByText('Verificação de Segurança')).toBeInTheDocument()
+    expect(screen.getByText('Autenticação em duas etapas')).toBeInTheDocument()
+    expect(screen.getByLabelText('Código de autenticação')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verificar e Entrar' })).toBeInTheDocument()
+  })
+
+  it('envia o código totp de 6 dígitos e conclui o login com sucesso', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login)
+      .mockResolvedValueOnce({
+        twoFactorRequired: true,
+        tempToken: 'temp-token-123',
+      })
+      .mockResolvedValueOnce({
+        token: 'final-token-after-2fa',
+      })
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'user2fa@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    const totpInput = await screen.findByLabelText('Código de autenticação')
+    await user.type(totpInput, '123456')
+    await user.click(screen.getByRole('button', { name: 'Verificar e Entrar' }))
+
+    expect(authService.login).toHaveBeenLastCalledWith({
+      email: 'user2fa@empresa.com',
+      password: 'senha-valida',
+      totpCode: '123456',
+      tempToken: 'temp-token-123',
+    })
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    expect(localStorage.getItem('token')).toBe('final-token-after-2fa')
+  })
+
+  it('exibe mensagem de erro quando o código totp for rejeitado no login', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login)
+      .mockResolvedValueOnce({
+        twoFactorRequired: true,
+        tempToken: 'temp-token-123',
+      })
+      .mockRejectedValueOnce(new Error('Código de autenticação inválido ou expirado.'))
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'user2fa@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    const totpInput = await screen.findByLabelText('Código de autenticação')
+    await user.type(totpInput, '000000')
+    await user.click(screen.getByRole('button', { name: 'Verificar e Entrar' }))
+
+    expect(
+      await screen.findByText('Código de autenticação inválido ou expirado.'),
+    ).toBeInTheDocument()
+  })
+
+  it('permite voltar da etapa de 2FA para o formulário de credenciais', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockResolvedValueOnce({
+      twoFactorRequired: true,
+      tempToken: 'temp-token-123',
+    })
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'user2fa@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByText('Verificação de Segurança')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Voltar para o login' }))
+
+    expect(screen.getByRole('heading', { name: 'Bem-vindo à V-Stable!' })).toBeInTheDocument()
+    expect(screen.getByLabelText('E-mail')).toBeInTheDocument()
+  })
 })

@@ -8,7 +8,29 @@ const TwoFactorSetupSchema = z.object({
 
 export type TwoFactorSetupResponse = z.infer<typeof TwoFactorSetupSchema>
 
+const TWO_FACTOR_STORAGE_KEY = 'vstable_2fa_active'
+
 export const twoFactorService = {
+  isActivated(): boolean {
+    try {
+      return localStorage.getItem(TWO_FACTOR_STORAGE_KEY) === 'true'
+    } catch {
+      return false
+    }
+  },
+
+  setActivated(active: boolean): void {
+    try {
+      if (active) {
+        localStorage.setItem(TWO_FACTOR_STORAGE_KEY, 'true')
+      } else {
+        localStorage.removeItem(TWO_FACTOR_STORAGE_KEY)
+      }
+    } catch {
+      // ignore
+    }
+  },
+
   async setup(signal?: AbortSignal): Promise<TwoFactorSetupResponse> {
     try {
       const response = await httpRequest<unknown>(
@@ -40,6 +62,7 @@ export const twoFactorService = {
       },
       false,
     )
+    this.setActivated(true)
     return { success: true }
   },
 }

@@ -65,7 +65,87 @@ describe('authService.login', () => {
     expect(result).toEqual({ token: 'fallback-token' })
   })
 
-  it('throws when the response has no Authorization header', async () => {
+  it('returns twoFactorRequired and tempToken when 2FA is challenged by backend', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        text: async function () {
+          return JSON.stringify(await this.json())
+        },
+        ok: true,
+        headers: new Headers(),
+        json: () =>
+          Promise.resolve({
+            twoFactorRequired: true,
+            tempToken: 'temp-jwt-token-123',
+          }),
+      }),
+    )
+
+    const result = await authService.login({ email: 'user2fa@empresa.com', password: '123' })
+
+    expect(result).toEqual({
+      twoFactorRequired: true,
+      tempToken: 'temp-jwt-token-123',
+    })
+  })
+
+  it('sends totpCode and tempToken in payload when provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      text: async function () {
+        return JSON.stringify(await this.json())
+      },
+      ok: true,
+      headers: new Headers({ Authorization: 'Bearer final-token-2fa' }),
+      json: async () => null,
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await authService.login({
+      email: 'user2fa@empresa.com',
+      password: '123',
+      totpCode: '123456',
+      tempToken: 'temp-token',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/v1/auth/login',
+      expect.objectContaining({
+        body: JSON.stringify({
+          email: 'user2fa@empresa.com',
+          password: '123',
+          totpCode: '123456',
+          code: '123456',
+          tempToken: 'temp-token',
+        }),
+      }),
+    )
+    expect(result).toEqual({ token: 'final-token-2fa' })
+  })
+
+  it('throws an invalid totp error on 401 when totpCode was submitted', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: async () => null,
+        text: async function () {
+          return JSON.stringify(await this.json())
+        },
+        ok: false,
+        status: 401,
+      }),
+    )
+
+    await expect(
+      authService.login({
+        email: 'a@b.com',
+        password: '123',
+        totpCode: '000000',
+      }),
+    ).rejects.toThrow('Código de autenticação inválido ou expirado')
+  })
+
+  it('throws when the response has no Authorization header and no token in body', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
