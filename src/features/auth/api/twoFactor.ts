@@ -8,6 +8,16 @@ const TwoFactorSetupSchema = z.object({
 
 export type TwoFactorSetupResponse = z.infer<typeof TwoFactorSetupSchema>
 
+const TwoFactorActivateSchema = z.object({
+  success: z.boolean().optional(),
+  recoveryCodes: z.array(z.string()).optional(),
+})
+
+export interface TwoFactorActivateResponse {
+  success: boolean
+  recoveryCodes?: string[]
+}
+
 const TWO_FACTOR_STORAGE_KEY = 'vstable_2fa_active'
 
 export const twoFactorService = {
@@ -52,8 +62,8 @@ export const twoFactorService = {
     }
   },
 
-  async activate(code: string, signal?: AbortSignal): Promise<{ success: boolean }> {
-    await httpRequest<unknown>(
+  async activate(code: string, signal?: AbortSignal): Promise<TwoFactorActivateResponse> {
+    const response = await httpRequest<unknown>(
       '/v1/auth/2fa/activate',
       {
         method: 'POST',
@@ -63,6 +73,16 @@ export const twoFactorService = {
       false,
     )
     this.setActivated(true)
-    return { success: true }
+    const parsed = TwoFactorActivateSchema.safeParse(response)
+    const recoveryCodes =
+      parsed.success &&
+      Array.isArray(parsed.data.recoveryCodes) &&
+      parsed.data.recoveryCodes.length > 0
+        ? parsed.data.recoveryCodes
+        : undefined
+    return { success: true, recoveryCodes }
   },
 }
+
+export const activate2fa = (code: string, signal?: AbortSignal) =>
+  twoFactorService.activate(code, signal)

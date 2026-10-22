@@ -54,6 +54,15 @@ describe('twoFactorService', () => {
       }),
       false,
     )
-    expect(result).toEqual({ success: true })
+    expect(result).toEqual({ success: true, recoveryCodes: undefined })
+  })
+
+  it('retorna os códigos de recuperação quando fornecidos pelo backend no activate', async () => {
+    const recoveryCodes = ['A1B2-C3D4', 'E5F6-G7H8']
+    vi.mocked(httpRequest).mockResolvedValueOnce({ success: true, recoveryCodes })
+
+    const result = await twoFactorService.activate('123456')
+
+    expect(result).toEqual({ success: true, recoveryCodes })
   })
 })

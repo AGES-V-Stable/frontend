@@ -3,3 +3,6 @@ export type { TwoFactorAuthProps } from './TwoFactorAuth'
 
 export { TwoFactorAuthContainer } from './TwoFactorAuthContainer'
 export type { TwoFactorAuthContainerProps } from './TwoFactorAuthContainer'
+
+export { RecoveryCodesContainer } from './RecoveryCodesContainer'
+export type { RecoveryCodesContainerProps } from './RecoveryCodesContainer'

@@ -11,7 +11,19 @@ vi.mock('@/features/auth', () => ({
       otpauthUri: 'otpauth://totp/V-Stable:test@empresa.com?secret=TESTSECRET123',
       secret: 'TESTSECRET123',
     }),
-    activate: vi.fn().mockResolvedValue({ success: true }),
+    activate: vi.fn().mockResolvedValue({
+      success: true,
+      recoveryCodes: [
+        'A1B2-C3D4',
+        'E5F6-G7H8',
+        'J9K0-L1M2',
+        'N3P4-Q5R6',
+        'S7T8-U9V0',
+        'W1X2-Y3Z4',
+        'B5C6-D7E8',
+        'F9G0-H1J2',
+      ],
+    }),
   },
 }))
 
@@ -42,7 +54,7 @@ describe('TwoFactorStep', () => {
     expect(onSkip).toHaveBeenCalledTimes(1)
   })
 
-  it('activates 2FA and allows proceeding to compliance on success', async () => {
+  it('activates 2FA and displays recovery codes before proceeding to compliance', async () => {
     const user = userEvent.setup()
     const onContinue = vi.fn()
     render(<TwoFactorStep kycVerificationId="kyc-123" onContinue={onContinue} onSkip={vi.fn()} />)
@@ -54,12 +66,25 @@ describe('TwoFactorStep', () => {
     await user.click(submitBtn)
 
     expect(twoFactorService.activate).toHaveBeenCalledWith('123456')
-    expect(
-      await screen.findByText('✓ Autenticação de dois fatores configurada com sucesso!'),
-    ).toBeInTheDocument()
 
-    const continueBtn = screen.getByRole('button', { name: 'Avançar para o Compliance' })
-    await user.click(continueBtn)
+    // Deve exibir a tela de códigos de recuperação pós-ativação
+    expect(
+      await screen.findByRole('heading', { name: 'Códigos de recuperação de emergência' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('A1B2-C3D4')).toBeInTheDocument()
+    expect(screen.getByText('F9G0-H1J2')).toBeInTheDocument()
+
+    // Botão fica desabilitado até confirmar o checkbox
+    const completeBtn = screen.getByRole('button', { name: 'Concluir Configuração' })
+    expect(completeBtn).toBeDisabled()
+
+    const checkbox = screen.getByLabelText(
+      'Confirmo que anotei ou salvei meus códigos em local seguro',
+    )
+    await user.click(checkbox)
+    expect(completeBtn).toBeEnabled()
+
+    await user.click(completeBtn)
     expect(onContinue).toHaveBeenCalledTimes(1)
   })
 
@@ -81,4 +106,3 @@ describe('TwoFactorStep', () => {
     ).toBeInTheDocument()
   })
 })
-

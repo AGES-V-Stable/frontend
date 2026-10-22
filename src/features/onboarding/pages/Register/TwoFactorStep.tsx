@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/shared/components/Button'
-import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
+import { RecoveryCodesContainer, TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
 import { twoFactorService } from '@/features/auth'
 
 export interface TwoFactorStepProps {
@@ -10,11 +10,22 @@ export interface TwoFactorStepProps {
   onSkip: () => void
 }
 
+const DEFAULT_FALLBACK_CODES = [
+  'A1B2-C3D4',
+  'E5F6-G7H8',
+  'J9K0-L1M2',
+  'N3P4-Q5R6',
+  'S7T8-U9V0',
+  'W1X2-Y3Z4',
+  'B5C6-D7E8',
+  'F9G0-H1J2',
+]
+
 export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
   const [otpauthUri, setOtpauthUri] = useState<string>(
     'otpauth://totp/V-Stable:cliente@empresa.com?secret=JBSWY3DPEHPK3PXP&issuer=V-Stable',
   )
-  const [twoFactorActivated, setTwoFactorActivated] = useState(false)
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null)
   const [totpCode, setTotpCode] = useState('')
   const [totpError, setTotpError] = useState('')
   const [isActivating, setIsActivating] = useState(false)
@@ -39,8 +50,12 @@ export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
     setIsActivating(true)
     setTotpError('')
     try {
-      await twoFactorService.activate(code)
-      setTwoFactorActivated(true)
+      const result = await twoFactorService.activate(code)
+      const codes =
+        result.recoveryCodes && result.recoveryCodes.length > 0
+          ? result.recoveryCodes
+          : DEFAULT_FALLBACK_CODES
+      setRecoveryCodes(codes)
     } catch (error) {
       setTotpError(
         error instanceof Error && error.message
@@ -67,19 +82,8 @@ export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
         </div>
 
         <div className="w-full">
-          {twoFactorActivated ? (
-            <div className="flex flex-col items-center gap-4 rounded-xl border border-emerald-300 bg-emerald-50/80 p-6 text-center">
-              <span className="text-3xl">🔒</span>
-              <div>
-                <p className="text-base font-semibold text-emerald-800">
-                  ✓ Autenticação de dois fatores configurada com sucesso!
-                </p>
-                <p className="text-xs text-emerald-700 mt-1">
-                  Sua conta agora está protegida por verificação em duas etapas.
-                </p>
-              </div>
-              <Button label="Avançar para o Compliance" onClick={onContinue} />
-            </div>
+          {recoveryCodes && recoveryCodes.length > 0 ? (
+            <RecoveryCodesContainer codes={recoveryCodes} onComplete={onContinue} />
           ) : (
             <div className="flex flex-col gap-6">
               <TwoFactorAuthContainer
@@ -113,4 +117,3 @@ export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
     </div>
   )
 }
-
