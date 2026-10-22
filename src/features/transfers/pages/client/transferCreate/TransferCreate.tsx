@@ -2,7 +2,7 @@ import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
 import { ActionIcon } from '@/shared/components/Icons/ActionIcon'
 import { Stepper } from '@/shared/components/Stepper'
-import { TwoFactorAuth } from '@/shared/components/TwoFactorAuth'
+import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
 import type { Beneficiary } from '@/features/beneficiaries'
 import type { TransactionStatus, TransferPaymentMethod } from '@/features/transfers/types/transfer'
 import { currencySymbol, formatMoney, formatPercent } from '@/shared/utils/formatters'
@@ -407,47 +407,25 @@ export function TransferCreate() {
 
       {/* PASSO 2: AUTENTICAÇÃO EM DUAS ETAPAS */}
       {activeStep === 2 && (
-        <form noValidate onSubmit={handleSubmit} className="mx-auto w-full max-w-[1038px]">
-          <section className="flex flex-col gap-6 rounded-xl border border-sage-300 bg-white p-6">
-            <div className="flex flex-col gap-1">
-              <h2 className="text-sm font-bold text-slate-900">Autenticação em duas etapas</h2>
-              <p className="text-xs text-slate-500">
-                Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para confirmar
-                a transferência.
-              </p>
-            </div>
-
-            <TwoFactorAuth
-              value={totpCode}
-              onChange={handleTotpChange}
-              error={submitError}
-              disabled={submitting}
-              autoFocus
-            />
-
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <div className="w-full sm:w-[200px]">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  label="Voltar"
-                  onClick={handlePreviousStep}
-                  disabled={submitting}
-                  className="h-12 font-medium"
-                />
-              </div>
-              <div className="w-full sm:w-[240px]">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  label={submitting ? 'Enviando...' : 'Confirmar transferência'}
-                  disabled={submitting || totpCode.trim().length !== 6}
-                  className="h-12 font-medium"
-                />
-              </div>
-            </div>
-          </section>
-        </form>
+        <div className="mx-auto w-full max-w-[1038px]">
+          <TwoFactorAuthContainer
+            title="Autenticação em duas etapas"
+            description="Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para confirmar a transferência."
+            value={totpCode}
+            onChange={handleTotpChange}
+            onVerify={(code) => handleSubmit(code)}
+            onVerifyRecovery={(recoveryCode) => handleSubmit(recoveryCode)}
+            error={submitError}
+            loading={submitting}
+            loadingLabel="Enviando..."
+            submitLabel="Confirmar transferência"
+            submitRecoveryLabel="Confirmar transferência"
+            onBack={handlePreviousStep}
+            backLabel="Voltar"
+            allowRecovery
+            autoFocus
+          />
+        </div>
       )}
     </div>
   )

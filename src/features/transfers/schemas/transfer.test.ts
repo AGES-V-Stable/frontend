@@ -72,6 +72,11 @@ describe('TotpCodeSchema', () => {
     expect(TotpCodeSchema.safeParse('123456').success).toBe(true)
   })
 
+  it('aceita código de recuperação alfanumérico de 8 caracteres (com ou sem hífen)', () => {
+    expect(TotpCodeSchema.safeParse('ABCD1234').success).toBe(true)
+    expect(TotpCodeSchema.safeParse('ABCD-1234').success).toBe(true)
+  })
+
   it.each(['12345', '1234567', 'abcdef', '123 45', '12-345'])(
     'rejeita %s como código TOTP',
     (code) => {
@@ -83,6 +88,11 @@ describe('TotpCodeSchema', () => {
 describe('CreateTransferSchema', () => {
   it('aceita payload completo com totpCode de 6 dígitos', () => {
     const result = CreateTransferSchema.safeParse({ ...validForm, totpCode: '654321' })
+    expect(result.success).toBe(true)
+  })
+
+  it('aceita payload com código de recuperação de 8 caracteres', () => {
+    const result = CreateTransferSchema.safeParse({ ...validForm, totpCode: 'ABCD-1234' })
     expect(result.success).toBe(true)
   })
 

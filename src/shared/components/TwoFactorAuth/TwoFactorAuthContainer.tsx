@@ -23,12 +23,18 @@ export interface TwoFactorAuthContainerProps {
   error?: string
   /** Indica se a operação está em processamento */
   loading?: boolean
+  /** Texto exibido no botão durante loading (padrão: "Verificando...") */
+  loadingLabel?: string
   /** Desabilita campos e botões */
   disabled?: boolean
   /** Texto do botão de confirmação (padrão: "Verificar código") */
   submitLabel?: string
   /** Texto do botão de confirmação no modo de recuperação */
   submitRecoveryLabel?: string
+  /** Ação de voltar opcional (ex: voltar para etapa anterior) */
+  onBack?: () => void
+  /** Rótulo do botão de voltar (padrão: "Voltar") */
+  backLabel?: string
   /** Título principal do container */
   title?: string
   /** Descrição introdutória */
@@ -73,9 +79,12 @@ export function TwoFactorAuthContainer({
   onRecoveryModeChange,
   error,
   loading = false,
+  loadingLabel,
   disabled = false,
   submitLabel = 'Verificar código',
   submitRecoveryLabel,
+  onBack,
+  backLabel = 'Voltar',
   title,
   description,
   autoFocus = true,
@@ -203,7 +212,9 @@ export function TwoFactorAuthContainer({
         className={
           showQrSection
             ? 'grid grid-cols-1 items-start gap-8 md:grid-cols-2'
-            : 'mx-auto flex w-full max-w-[420px] flex-col'
+            : onBack
+              ? 'mx-auto flex w-full max-w-[480px] flex-col'
+              : 'mx-auto flex w-full max-w-[420px] flex-col'
         }
       >
         {/* LADO ESQUERDO: QR CODE E INSTRUÇÕES (QUANDO OTPAUTH_URI ESTIVER PRESENTE) */}
@@ -314,17 +325,45 @@ export function TwoFactorAuthContainer({
                 )}
               </div>
 
-              <Button
-                type="submit"
-                variant="primary"
-                label={
-                  loading
-                    ? 'Verificando...'
-                    : submitRecoveryLabel || 'Verificar código de recuperação'
-                }
-                disabled={!canVerifyRecovery}
-                className="h-12 w-full font-medium"
-              />
+              {onBack ? (
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <div className="w-full sm:w-[200px]">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      label={backLabel}
+                      onClick={onBack}
+                      disabled={isBusy}
+                      className="h-12 w-full font-medium"
+                    />
+                  </div>
+                  <div className="w-full sm:w-[240px]">
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      label={
+                        loading
+                          ? loadingLabel || 'Verificando...'
+                          : submitRecoveryLabel || 'Verificar código de recuperação'
+                      }
+                      disabled={!canVerifyRecovery}
+                      className="h-12 w-full font-medium"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="submit"
+                  variant="primary"
+                  label={
+                    loading
+                      ? loadingLabel || 'Verificando...'
+                      : submitRecoveryLabel || 'Verificar código de recuperação'
+                  }
+                  disabled={!canVerifyRecovery}
+                  className="h-12 w-full font-medium"
+                />
+              )}
 
               <button
                 type="button"
@@ -418,13 +457,37 @@ export function TwoFactorAuthContainer({
                 )}
               </div>
 
-              <Button
-                type="submit"
-                variant="primary"
-                label={loading ? 'Verificando...' : submitLabel}
-                disabled={!canVerify}
-                className="h-12 w-full font-medium"
-              />
+              {onBack ? (
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <div className="w-full sm:w-[200px]">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      label={backLabel}
+                      onClick={onBack}
+                      disabled={isBusy}
+                      className="h-12 w-full font-medium"
+                    />
+                  </div>
+                  <div className="w-full sm:w-[240px]">
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      label={loading ? loadingLabel || 'Verificando...' : submitLabel}
+                      disabled={!canVerify}
+                      className="h-12 w-full font-medium"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="submit"
+                  variant="primary"
+                  label={loading ? loadingLabel || 'Verificando...' : submitLabel}
+                  disabled={!canVerify}
+                  className="h-12 w-full font-medium"
+                />
+              )}
 
               {canAllowRecovery && (
                 <button

@@ -460,6 +460,55 @@ describe('TransferCreate', () => {
     expect(screen.getByLabelText('Passo 2 de 3')).toBeInTheDocument()
   })
 
+  it('alterna para o modo de recuperação em Passo 2 e submete a transferência com código de emergência', async () => {
+    vi.mocked(createTransfer).mockResolvedValueOnce({ status: 'PROCESSING' })
+
+    await renderPage()
+    await goToAuth()
+
+    expect(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('timer')).toBeInTheDocument()
+
+    // Clica no botão de recuperação
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    )
+    await advance()
+
+    // Timer e input de 6 dígitos somem
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Código de autenticação')).not.toBeInTheDocument()
+
+    // Input de recuperação de 8 caracteres está presente
+    const recoveryInput = screen.getByTestId('recovery-code-input')
+    expect(recoveryInput).toBeInTheDocument()
+    expect(confirmTransferButton()).toBeDisabled()
+
+    // Preenche os 8 caracteres
+    fireEvent.change(recoveryInput, { target: { value: 'ABCD-1234' } })
+    expect(confirmTransferButton()).toBeEnabled()
+
+    // Submete
+    fireEvent.click(confirmTransferButton())
+    await advance()
+
+    expect(createTransfer).toHaveBeenCalledWith({
+      amount: 125000,
+      amountType: 'SOURCE',
+      sourceCurrency: 'BRL',
+      destinationCurrency: 'USD',
+      paymentMethod: 'ACCOUNT_BALANCE',
+      beneficiaryId: atlas.id,
+      description: 'Pagamento de importação',
+      totpCode: 'ABCD-1234',
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Transferência criada com sucesso. Status: em processamento.',
+    )
+  })
+
   it('clears the form and returns to step 0 when Cancelar is clicked in Passo 0', async () => {
     await renderPage()
     fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })

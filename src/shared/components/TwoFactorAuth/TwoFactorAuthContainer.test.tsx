@@ -359,4 +359,36 @@ describe('TwoFactorAuthContainer', () => {
     expect(screen.getByPlaceholderText('000000')).toBeInTheDocument()
     expect(screen.getByRole('timer')).toBeInTheDocument()
   })
+
+  it('renderiza botão de voltar e dispara onBack quando a prop é fornecida', () => {
+    const handleBack = vi.fn()
+    render(<TwoFactorAuthContainer onBack={handleBack} backLabel="Etapa anterior" />)
+
+    const backBtn = screen.getByRole('button', { name: 'Etapa anterior' })
+    expect(backBtn).toBeInTheDocument()
+
+    fireEvent.click(backBtn)
+    expect(handleBack).toHaveBeenCalledTimes(1)
+  })
+
+  it('exibe loadingLabel no botão de submit durante o processamento', () => {
+    render(<TwoFactorAuthContainer loading loadingLabel="Processando..." onBack={() => {}} />)
+
+    expect(screen.getByRole('button', { name: 'Processando...' })).toBeInTheDocument()
+  })
+
+  it('renderiza botão de voltar também no modo de recuperação quando onBack é fornecido', () => {
+    const handleBack = vi.fn()
+    render(<TwoFactorAuthContainer onBack={handleBack} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    )
+
+    const backBtn = screen.getByRole('button', { name: 'Voltar' })
+    expect(backBtn).toBeInTheDocument()
+
+    fireEvent.click(backBtn)
+    expect(handleBack).toHaveBeenCalledTimes(1)
+  })
 })

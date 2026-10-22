@@ -240,12 +240,19 @@ export function useTransferCreate() {
   })
   const canContinue = form.success && quoteState.status === 'ready' && !submitting
 
-  function handleSubmit(event?: React.FormEvent<HTMLFormElement>) {
-    if (event) event.preventDefault()
+  function handleSubmit(eventOrCode?: React.FormEvent<HTMLFormElement> | string) {
+    if (
+      typeof eventOrCode === 'object' &&
+      eventOrCode !== null &&
+      'preventDefault' in eventOrCode
+    ) {
+      eventOrCode.preventDefault()
+    }
     if (activeStep !== 2) return
     if (!canContinue || !form.success || submitting) return
 
-    const totpValidation = TotpCodeSchema.safeParse(totpCode)
+    const effectiveCode = typeof eventOrCode === 'string' ? eventOrCode : totpCode
+    const totpValidation = TotpCodeSchema.safeParse(effectiveCode)
     if (!totpValidation.success) {
       setSubmitError(totpValidation.error.issues[0]?.message ?? 'Código de autenticação inválido.')
       return
@@ -253,7 +260,7 @@ export function useTransferCreate() {
 
     setSubmitting(true)
     setSubmitError(undefined)
-    createTransfer({ ...form.data, totpCode })
+    createTransfer({ ...form.data, totpCode: effectiveCode })
       .then((result) => {
         setCreatedStatus(result.status)
         setValues(initialValues)
