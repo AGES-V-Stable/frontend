@@ -1,5 +1,14 @@
 #!/usr/bin/env sh
 
+# Git clients can inherit the system Node instead of the version used in the terminal.
+if command -v fnm >/dev/null 2>&1; then
+  fnm_environment=$(fnm env --shell bash) || exit 1
+  eval "$fnm_environment"
+  fnm use || exit 1
+fi
+
+node -e "if (process.versions.node.split('.')[0] !== '24') { console.error('PRE-PUSH: Node 24 is required; active version: ' + process.version + '. Run fnm install 24 and fnm use 24, or select Node 24 with your version manager.'); process.exit(1) }" || exit 1
+
 echo ""
 echo "🧪 [PRE-PUSH] Executando testes antes de enviar ao repositório remoto..."
 echo ""

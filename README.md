@@ -13,6 +13,11 @@ npm run dev
 
 No PowerShell com scripts bloqueados, use `npm.cmd ci` e `npm.cmd run dev`.
 
+O hook de pre-push seleciona a versão de `.node-version` quando `fnm` está disponível
+no PATH. Sem `fnm`, selecione Node 24 pelo seu gerenciador antes do push; o hook
+informa a versão incompatível antes de iniciar os testes. A suíte executa com até
+dois workers, mantendo os testes e a cobertura obrigatórios.
+
 A aplicação usa a mesma origem por padrão. O Vite encaminha `/v1` e `/api` para `http://localhost:8080`; configure `API_PROXY_TARGET` para outro backend de desenvolvimento. Em produção, o servidor que publica a SPA precisa encaminhar esses prefixos ao backend e devolver `index.html` nas rotas da aplicação.
 
 Para um backend em outra origem, configure `VITE_API_URL=https://api.exemplo.com` antes do build. O valor deve conter apenas protocolo, host e porta opcional, sem `/api` ou `/v1`. As permissões CORS do backend devem permitir a origem da SPA e expor Authorization e Content-Disposition.

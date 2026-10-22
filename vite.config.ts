@@ -26,6 +26,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Keep coverage and ESLint architecture checks within local/CI resource limits.
+    maxWorkers: 2,
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.ts'],
