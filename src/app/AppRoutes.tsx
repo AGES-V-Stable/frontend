@@ -1,3 +1,4 @@
+import Dashboard from '@/features/dashboard/pages/Dashboard'
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
 import { isStoredAdmin, useSession } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
@@ -55,8 +56,8 @@ function RoleLanding() {
         status === 'anonymous'
           ? PATHS.LOGIN
           : isStoredAdmin()
-            ? PATHS.ADMIN_CLIENTS
-            : PATHS.BENEFICIARIES
+            ? PATHS.ADMIN_DASHBOARD
+            : PATHS.DASHBOARD
       }
     />
   )
@@ -130,15 +131,18 @@ function RoutedApplication() {
         item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
       ]
   items.push({ id: 'settings', label: 'Configurações', icon: icon(settingsIcon), disabled: true })
-  const activeId = admin
-    ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
-      ? 'admin-transfers'
-      : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
-        ? 'admin-beneficiaries'
-        : 'clients'
-    : pathname.startsWith('/app/transferencias')
-      ? 'transfers'
-      : 'beneficiaries'
+  const activeId =
+    pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
+      ? 'home'
+      : admin
+        ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
+          ? 'admin-transfers'
+          : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
+            ? 'admin-beneficiaries'
+            : 'clients'
+        : pathname.startsWith('/app/transferencias')
+          ? 'transfers'
+          : 'beneficiaries'
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -151,18 +155,46 @@ function RoutedApplication() {
         : 'Conta empresarial',
     initials: initials(name),
   }
+  const dashboardRoute = pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
+  const mobileItems = items
+    .flatMap((entry) => entry.children ?? [entry])
+    .filter((entry) => !entry.disabled)
   return (
     <ApplicationShell
       navigation={
-        <NavBar
-          logo={<img src={logo} alt="V-Stable" className="h-[60px] w-[149px] object-contain" />}
-          items={items}
-          activeId={activeId}
-          account={account}
-          supportIcon={icon(supportIcon)}
-        />
+        <div className={dashboardRoute ? 'hidden md:block' : undefined}>
+          <NavBar
+            logo={<img src={logo} alt="V-Stable" className="h-[60px] w-[149px] object-contain" />}
+            items={items}
+            activeId={activeId}
+            account={account}
+            supportIcon={icon(supportIcon)}
+          />
+        </div>
       }
     >
+      {dashboardRoute && (
+        <div className="border-b border-sage-300 bg-white p-4 md:hidden">
+          <label className="text-sm text-slate-700" htmlFor="dashboard-navigation">
+            Menu
+          </label>
+          <select
+            id="dashboard-navigation"
+            aria-label="Menu"
+            className="ml-3 rounded border border-sage-300 p-2"
+            value={activeId}
+            onChange={(event) =>
+              mobileItems.find((entry) => entry.id === event.target.value)?.onClick?.()
+            }
+          >
+            {mobileItems.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <Outlet />
     </ApplicationShell>
   )
@@ -174,6 +206,7 @@ export default function AppRoutes() {
       <Route path={PATHS.HOME} element={<RoleLanding />} />
       <Route element={<RoleGuard role="ADMIN" />}>
         <Route element={<RoutedApplication />}>
+          <Route path={PATHS.ADMIN_DASHBOARD} element={<Dashboard admin />} />
           <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
           <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
           <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
@@ -181,6 +214,7 @@ export default function AppRoutes() {
       </Route>
       <Route element={<RoleGuard role="USER" />}>
         <Route element={<RoutedApplication />}>
+          <Route path={PATHS.DASHBOARD} element={<Dashboard />} />
           <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
           <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
           <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />

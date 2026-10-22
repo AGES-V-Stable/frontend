@@ -40,6 +40,25 @@ beforeEach(() => {
   role = 'USER'
   sessionStorage.clear()
   mock = vi.fn(async (url: string) => {
+    if (url.includes('/dashboard/summary'))
+      return new Response(
+        JSON.stringify({
+          year: 2026,
+          currency: 'BRL',
+          amount: '0.00',
+          knownSubtotal: '0.00',
+          incomplete: false,
+          undatedOperations: 0,
+        }),
+      )
+    if (url.includes('/dashboard/settlements'))
+      return new Response(
+        JSON.stringify({ content: [], number: 0, size: 5, totalElements: 0, totalPages: 0 }),
+      )
+    if (url.includes('/dashboard/'))
+      return new Response(
+        JSON.stringify({ currency: 'BRL', period: 'SIX_MONTHS', points: [], undatedOperations: 0 }),
+      )
     if (url === '/v1/users/me')
       return new Response(
         JSON.stringify({
@@ -88,7 +107,7 @@ it('renders the company menu with real company identity and disabled unavailable
   saveLoginToken('login')
   renderRoute()
   const nav = await screen.findByRole('navigation')
-  expect(within(nav).getByRole('button', { name: 'Beneficiários' })).toHaveAttribute(
+  expect(within(nav).getByRole('button', { name: 'Início' })).toHaveAttribute(
     'aria-current',
     'page',
   )
@@ -183,8 +202,8 @@ it('preserves the transfer identifier and query when redirecting an old details 
 it('redirects a company user away from administrator content', async () => {
   saveLoginToken('login')
   renderRoute('/admin/clientes-pme')
-  await screen.findByText('Atlas')
-  expect(screen.getByTestId('location')).toHaveTextContent('/app/beneficiarios')
+  await screen.findByRole('heading', { name: 'Conta empresarial' })
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/dashboard')
   expect(mock.mock.calls.some(([url]) => url === '/v1/companies/summaries')).toBe(false)
 })
 it('redirects an admin away from company content', async () => {
@@ -193,8 +212,8 @@ it('redirects an admin away from company content', async () => {
     `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
   )
   renderRoute('/app/beneficiarios')
-  await screen.findByRole('heading', { name: 'Clientes PME' })
-  expect(screen.getByTestId('location')).toHaveTextContent('/admin/clientes-pme')
+  await screen.findByRole('heading', { name: 'Dashboard administrativo' })
+  expect(screen.getByTestId('location')).toHaveTextContent('/admin/dashboard')
 })
 it('clears the shell when an authenticated request expires', async () => {
   saveLoginToken('login')
@@ -214,12 +233,12 @@ it('provides a retry when identity loading fails', async () => {
   renderRoute()
   expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar')
   await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
-  await screen.findByText('Atlas')
+  await screen.findByRole('heading', { name: 'Conta empresarial' })
 })
 it('reacts to logout and clears cached account identity', async () => {
   saveLoginToken('login')
   renderRoute()
-  await screen.findByText('Atlas')
+  await screen.findByRole('heading', { name: 'Conta empresarial' })
   act(() => clearLoginToken())
   await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
   expect(screen.queryByText('Empresa de Teste')).not.toBeInTheDocument()
@@ -230,7 +249,7 @@ it('selects the administrator menu from localStorage even when /me reports a use
     `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
   )
   renderRoute()
-  await screen.findByRole('heading', { name: 'Clientes PME' })
+  await screen.findByRole('heading', { name: 'Dashboard administrativo' })
   expect(screen.getByText('Painel administrativo')).toBeInTheDocument()
   expect(mock.mock.calls.some(([url]) => url === '/v1/companies/c1')).toBe(false)
 })
@@ -239,7 +258,7 @@ it('uses the company navigation when the stored token is not an admin despite /m
   saveLoginToken(`header.${btoa(JSON.stringify({ account_type: 'USER' }))}.signature`)
   mock.mockResolvedValueOnce(new Response(JSON.stringify({ ...user, accountType: 'ADMIN' })))
   renderRoute('/admin/clientes-pme')
-  await screen.findByText('Atlas')
+  await screen.findByRole('heading', { name: 'Conta empresarial' })
   expect(screen.queryByText('Painel administrativo')).not.toBeInTheDocument()
-  expect(screen.getByTestId('location')).toHaveTextContent('/app/beneficiarios')
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/dashboard')
 })

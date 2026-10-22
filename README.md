@@ -4,10 +4,14 @@ React, TypeScript, Vite, React Router, Tailwind CSS e Zod. O CI usa Node.js 24 e
 
 ## Desenvolvimento
 
+Use Node.js 24. Com `fnm`, execute `fnm use` nesta pasta para selecionar a versão de `.node-version`.
+
 ```bash
 npm ci
 npm run dev
 ```
+
+No PowerShell com scripts bloqueados, use `npm.cmd ci` e `npm.cmd run dev`.
 
 A aplicação usa a mesma origem por padrão. O Vite encaminha `/v1` e `/api` para `http://localhost:8080`; configure `API_PROXY_TARGET` para outro backend de desenvolvimento. Em produção, o servidor que publica a SPA precisa encaminhar esses prefixos ao backend e devolver `index.html` nas rotas da aplicação.
 

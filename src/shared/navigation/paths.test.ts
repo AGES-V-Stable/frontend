@@ -12,6 +12,8 @@ describe('PATHS configuration', () => {
   it('matches the expected route paths', () => {
     const expectedPaths = {
       HOME: '/',
+      DASHBOARD: '/app/dashboard',
+      ADMIN_DASHBOARD: '/admin/dashboard',
       LOGIN: '/login',
       REGISTER: '/register',
       REGISTER_COMPANY: '/register/empresa',

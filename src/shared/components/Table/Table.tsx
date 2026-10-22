@@ -10,6 +10,7 @@ function getCellValue<T>(item: T, key: string): ReactNode {
 }
 
 export function Table<T>({
+  compact = false,
   title,
   totalRecords,
   columns,
@@ -64,8 +65,12 @@ export function Table<T>({
         </div>
       )}
 
-      <div className="w-full min-w-max flex flex-col min-h-[580px] px-6">
-        <table className="w-full text-left border-collapse">
+      <div
+        className={
+          compact ? 'w-full overflow-x-auto' : 'w-full min-w-max flex flex-col px-6 min-h-[580px]'
+        }
+      >
+        <table className={`w-full text-left border-collapse ${compact ? 'min-w-max' : ''}`}>
           <thead>
             <tr className="h-[40px]">
               {columns.map((col, index) => (
@@ -121,10 +126,17 @@ export function Table<T>({
 
         <div className="w-full h-[1px] bg-sage-300 mt-8"></div>
 
-        {pagination && data.length > 0 && (
+        {!compact && pagination && data.length > 0 && (
           <TablePagination {...pagination} entityLabel={pagination.entityLabel ?? entityLabel} />
         )}
       </div>
+      {compact && pagination && data.length > 0 && (
+        <TablePagination
+          {...pagination}
+          compact
+          entityLabel={pagination.entityLabel ?? entityLabel}
+        />
+      )}
     </div>
   )
 }
