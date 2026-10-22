@@ -65,4 +65,35 @@ describe('twoFactorService', () => {
 
     expect(result).toEqual({ success: true, recoveryCodes })
   })
+
+  it('envia currentTotpCode no body e no header durante a reconfiguração', async () => {
+    const mockData = {
+      otpauthUri: 'otpauth://totp/V-Stable:test@empresa.com?secret=NEWSECRET123',
+      secret: 'NEWSECRET123',
+    }
+    vi.mocked(httpRequest).mockResolvedValueOnce(mockData)
+
+    const result = await twoFactorService.setup('654321')
+
+    expect(httpRequest).toHaveBeenCalledWith(
+      '/v1/auth/2fa/setup',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'X-Current-Totp': '654321' }),
+        body: JSON.stringify({ currentTotpCode: '654321' }),
+      }),
+      false,
+    )
+    expect(result).toEqual(mockData)
+  })
+
+  it('propaga erro quando o endpoint de reconfiguração com currentTotpCode falha', async () => {
+    vi.mocked(httpRequest).mockRejectedValueOnce(
+      new Error('Código do autenticador atual inválido ou expirado.'),
+    )
+
+    await expect(twoFactorService.setup('000000')).rejects.toThrow(
+      'Código do autenticador atual inválido ou expirado.',
+    )
+  })
 })

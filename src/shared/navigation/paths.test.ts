@@ -30,6 +30,7 @@ describe('PATHS configuration', () => {
       BENEFICIARIES_NEW: '/app/beneficiarios/novo',
       TRANSFERS: '/app/transferencias/nova',
       TRANSFER_DETAILS: '/app/transferencias/:id',
+      SETTINGS: '/app/configuracoes',
     }
 
     const actualPaths = PATHS

@@ -3,6 +3,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/shared/components/Button'
 
 export interface TwoFactorAuthContainerProps {
+  /** Se deve exibir a seção com QR Code e chave manual (padrão: Boolean(otpauthUri)) */
+  showQrCode?: boolean
   /** URI otpauth padrão (ex: otpauth://totp/V-Stable:email?secret=...) */
   otpauthUri?: string
   /** Chave secreta Base32 para configuração manual (opcional se puder ser extraída de otpauthUri) */
@@ -69,6 +71,7 @@ function getTotpCycleState() {
 }
 
 export function TwoFactorAuthContainer({
+  showQrCode,
   otpauthUri,
   secret,
   value,
@@ -190,7 +193,7 @@ export function TwoFactorAuthContainer({
     }
   }
 
-  const showQrSection = Boolean(otpauthUri) && !isRecoveryMode
+  const showQrSection = (showQrCode ?? Boolean(otpauthUri)) && !isRecoveryMode
   const secondsLeft = timerState.secondsLeft
   const progressPercent = timerState.percent
   const isExpiringSoon = secondsLeft <= 5

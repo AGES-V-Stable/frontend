@@ -35,6 +35,50 @@ describe('TwoFactorAuthContainer', () => {
     expect(screen.getByRole('button', { name: 'Copiar chave secreta' })).toBeInTheDocument()
   })
 
+  it('oculta o QR Code e a chave manual quando showQrCode é falso mesmo com otpauthUri fornecido', () => {
+    render(
+      <TwoFactorAuthContainer
+        otpauthUri={sampleUri}
+        showQrCode={false}
+        description="Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca"
+      />,
+    )
+
+    expect(
+      screen.queryByRole('region', { name: 'Configuração do aplicativo autenticador' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByLabelText('QR Code para configuração de dois fatores'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Código de autenticação')).toBeInTheDocument()
+  })
+
+  it('oculta o QR Code e a chave manual quando showQrCode é falso mesmo com otpauthUri fornecido', () => {
+    render(
+      <TwoFactorAuthContainer
+        otpauthUri={sampleUri}
+        showQrCode={false}
+        description="Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca"
+      />,
+    )
+
+    expect(
+      screen.queryByRole('region', { name: 'Configuração do aplicativo autenticador' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByLabelText('QR Code para configuração de dois fatores'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Código de autenticação')).toBeInTheDocument()
+  })
+
   it('permite copiar o segredo para a área de transferência e exibe feedback de Copiado', async () => {
     const writeTextMock = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, {

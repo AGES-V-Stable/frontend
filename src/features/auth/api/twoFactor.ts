@@ -41,18 +41,43 @@ export const twoFactorService = {
     }
   },
 
-  async setup(signal?: AbortSignal): Promise<TwoFactorSetupResponse> {
+  async setup(
+    currentTotpCodeOrSignal?: string | AbortSignal,
+    signal?: AbortSignal,
+  ): Promise<TwoFactorSetupResponse> {
+    let currentTotpCode: string | undefined
+    let effectiveSignal: AbortSignal | undefined
+
+    if (typeof currentTotpCodeOrSignal === 'string') {
+      currentTotpCode = currentTotpCodeOrSignal
+      effectiveSignal = signal
+    } else if (currentTotpCodeOrSignal instanceof AbortSignal) {
+      effectiveSignal = currentTotpCodeOrSignal
+    } else {
+      effectiveSignal = signal
+    }
+
     try {
+      const body = currentTotpCode ? JSON.stringify({ currentTotpCode }) : undefined
+      const headers: Record<string, string> = {}
+      if (currentTotpCode) {
+        headers['X-Current-Totp'] = currentTotpCode
+      }
       const response = await httpRequest<unknown>(
         '/v1/auth/2fa/setup',
         {
           method: 'POST',
-          signal,
+          headers: Object.keys(headers).length > 0 ? headers : undefined,
+          body,
+          signal: effectiveSignal,
         },
         false,
       )
       return TwoFactorSetupSchema.parse(response)
-    } catch {
+    } catch (error) {
+      if (currentTotpCode) {
+        throw error
+      }
       // Fallback seguro com parâmetros padrão para ambiente de desenvolvimento/mock
       return {
         otpauthUri:
@@ -60,6 +85,13 @@ export const twoFactorService = {
         secret: 'JBSWY3DPEHPK3PXP',
       }
     }
+  },
+
+  async reconfigure(
+    currentTotpCode: string,
+    signal?: AbortSignal,
+  ): Promise<TwoFactorSetupResponse> {
+    return this.setup(currentTotpCode, signal)
   },
 
   async activate(code: string, signal?: AbortSignal): Promise<TwoFactorActivateResponse> {
@@ -86,3 +118,9 @@ export const twoFactorService = {
 
 export const activate2fa = (code: string, signal?: AbortSignal) =>
   twoFactorService.activate(code, signal)
+
+export const setup2fa = (currentTotpCodeOrSignal?: string | AbortSignal, signal?: AbortSignal) =>
+  twoFactorService.setup(currentTotpCodeOrSignal, signal)
+
+export const reconfigure2fa = (currentTotpCode: string, signal?: AbortSignal) =>
+  twoFactorService.reconfigure(currentTotpCode, signal)

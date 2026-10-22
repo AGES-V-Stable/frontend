@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
-import { isStoredAdmin, useSession } from '@/features/auth'
+import { isStoredAdmin, useSession, Settings } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import AdminClients from '@/features/clients/pages/AdminClients'
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
@@ -139,7 +139,9 @@ function RoutedApplication() {
         : 'clients'
     : pathname.startsWith('/app/transferencias')
       ? 'transfers'
-      : 'beneficiaries'
+      : pathname.startsWith(PATHS.SETTINGS)
+        ? 'settings'
+        : 'beneficiaries'
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -186,12 +188,14 @@ export default function AppRoutes() {
           <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
           <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />
           <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetails />} />
+          <Route path={PATHS.SETTINGS} element={<Settings />} />
         </Route>
       </Route>
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
       <Route path="/beneficiarios/novo" element={<LegacyRedirect to={PATHS.BENEFICIARIES_NEW} />} />
       <Route path="/transferencias" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
       <Route path="/transferencias/:id" element={<LegacyRedirect details />} />
+      <Route path="/configuracoes" element={<LegacyRedirect to={PATHS.SETTINGS} />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRoute />} />
