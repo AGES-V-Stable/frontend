@@ -294,4 +294,52 @@ describe('Login Page Component', () => {
     expect(screen.getByRole('heading', { name: 'Bem-vindo à V-Stable!' })).toBeInTheDocument()
     expect(screen.getByLabelText('E-mail')).toBeInTheDocument()
   })
+
+  it('alterna para o modo de recuperação, oculta os textos de 6 dígitos e autentica com o código de emergência', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockResolvedValueOnce({
+      requires2fa: true,
+      challengeToken: 'challenge-token-123',
+    })
+    vi.mocked(authService.verify2fa).mockResolvedValueOnce({
+      token: 'jwt-via-recovery',
+    })
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'user2fa@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    // Verifica que na etapa de 6 dígitos o texto de 6 dígitos está presente
+    expect(
+      await screen.findByText('Confirme o acesso com o código de 6 dígitos'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Autenticação em duas etapas')).toBeInTheDocument()
+
+    // Clica para usar código de recuperação
+    await user.click(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    )
+
+    // Os textos de 6 dígitos não devem mais estar visíveis
+    expect(
+      screen.queryByText('Confirme o acesso com o código de 6 dígitos'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Autenticação em duas etapas')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador/),
+    ).not.toBeInTheDocument()
+
+    // Preenche o código de recuperação de 8 caracteres
+    const recoveryInput = screen.getByTestId('recovery-code-input')
+    await user.type(recoveryInput, 'abcd1234')
+    await user.click(screen.getByRole('button', { name: 'Verificar código de recuperação' }))
+
+    expect(authService.verify2fa).toHaveBeenCalledWith({
+      challengeToken: 'challenge-token-123',
+      code: 'ABCD1234',
+    })
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    expect(localStorage.getItem('token')).toBe('jwt-via-recovery')
+  })
 })

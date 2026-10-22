@@ -35,6 +35,7 @@ function Login() {
   const [otpauthUri, setOtpauthUri] = useState<string | undefined>()
   const [totpCode, setTotpCode] = useState('')
   const [totpError, setTotpError] = useState('')
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<LoginErrors>({})
 
@@ -93,7 +94,7 @@ function Login() {
   }
 
   async function handleVerify2FA(code: string) {
-    if (code.length !== 6 || submitting) return
+    if ((code.length !== 6 && code.length < 8) || submitting) return
     setSubmitting(true)
     setTotpError('')
     try {
@@ -139,11 +140,13 @@ function Login() {
           <h1 className="text-slate-900 text-[32px] font-bold">
             {step === '2FA' ? 'Verificação de Segurança' : 'Bem-vindo à V-Stable!'}
           </h1>
-          <p className="text-slate-500 text-[18px] font-semibold">
-            {step === '2FA'
-              ? 'Confirme o acesso com o código de 6 dígitos'
-              : 'Acesse sua conta com suas credenciais'}
-          </p>
+          {!(step === '2FA' && isRecoveryMode) && (
+            <p className="text-slate-500 text-[18px] font-semibold">
+              {step === '2FA'
+                ? 'Confirme o acesso com o código de 6 dígitos'
+                : 'Acesse sua conta com suas credenciais'}
+            </p>
+          )}
         </div>
 
         {step === '2FA' ? (
@@ -162,6 +165,8 @@ function Login() {
                 if (totpError) setTotpError('')
               }}
               onVerify={handleVerify2FA}
+              onVerifyRecovery={handleVerify2FA}
+              onRecoveryModeChange={setIsRecoveryMode}
               error={totpError}
               loading={submitting}
               submitLabel="Verificar e Entrar"
@@ -177,6 +182,7 @@ function Login() {
                 setTotpError('')
                 setChallengeToken(undefined)
                 setOtpauthUri(undefined)
+                setIsRecoveryMode(false)
               }}
             />
           </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/shared/components/Button'
 
@@ -13,6 +13,12 @@ export interface TwoFactorAuthContainerProps {
   onChange?: (code: string) => void
   /** Callback ao clicar em verificar ou submeter com 6 dígitos */
   onVerify?: (code: string) => void
+  /** Permite alternar para modo de recuperação (padrão: true quando não há otpauthUri) */
+  allowRecovery?: boolean
+  /** Callback ao submeter o código de recuperação */
+  onVerifyRecovery?: (recoveryCode: string) => void
+  /** Notifica alterações no modo de recuperação (true = modo emergência, false = modo TOTP) */
+  onRecoveryModeChange?: (isRecovery: boolean) => void
   /** Mensagem de erro de código inválido ou expirado */
   error?: string
   /** Indica se a operação está em processamento */
@@ -21,6 +27,8 @@ export interface TwoFactorAuthContainerProps {
   disabled?: boolean
   /** Texto do botão de confirmação (padrão: "Verificar código") */
   submitLabel?: string
+  /** Texto do botão de confirmação no modo de recuperação */
+  submitRecoveryLabel?: string
   /** Título principal do container */
   title?: string
   /** Descrição introdutória */
@@ -42,16 +50,32 @@ function extractSecret(uri?: string): string | undefined {
   }
 }
 
+/** Calcula o estado exato e sincronizado do ciclo TOTP de 30 segundos (RFC 6238) */
+function getTotpCycleState() {
+  const now = Date.now()
+  const remainingMs = 30000 - (now % 30000)
+  const secondsLeft = Math.ceil(remainingMs / 1000)
+  const percent = (remainingMs / 30000) * 100
+  return {
+    secondsLeft: secondsLeft <= 0 ? 30 : secondsLeft,
+    percent: Math.max(0, Math.min(100, percent)),
+  }
+}
+
 export function TwoFactorAuthContainer({
   otpauthUri,
   secret,
   value,
   onChange,
   onVerify,
+  allowRecovery,
+  onVerifyRecovery,
+  onRecoveryModeChange,
   error,
   loading = false,
   disabled = false,
   submitLabel = 'Verificar código',
+  submitRecoveryLabel,
   title,
   description,
   autoFocus = true,
@@ -59,6 +83,9 @@ export function TwoFactorAuthContainer({
 }: TwoFactorAuthContainerProps) {
   const [internalCode, setInternalCode] = useState('')
   const [copied, setCopied] = useState(false)
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false)
+  const [recoveryCode, setRecoveryCode] = useState('')
+  const [timerState, setTimerState] = useState(getTotpCycleState)
 
   const isControlled = value !== undefined
   const currentCode = isControlled ? value : internalCode
@@ -66,6 +93,24 @@ export function TwoFactorAuthContainer({
   const effectiveSecret = secret || extractSecret(otpauthUri)
   const isBusy = loading || disabled
   const canVerify = currentCode.length === 6 && !isBusy
+
+  const cleanRecovery = recoveryCode.trim()
+  const rawAlphanumeric = cleanRecovery.replace(/[^A-Z0-9]/g, '')
+  const canVerifyRecovery = rawAlphanumeric.length === 8 && !isBusy
+
+  const canAllowRecovery = allowRecovery ?? !otpauthUri
+
+  useEffect(() => {
+    if (isRecoveryMode) return
+
+    const updateTimer = () => {
+      setTimerState(getTotpCycleState())
+    }
+
+    updateTimer()
+    const interval = setInterval(updateTimer, 100)
+    return () => clearInterval(interval)
+  }, [isRecoveryMode])
 
   function handleCodeChange(event: React.ChangeEvent<HTMLInputElement>) {
     const raw = event.target.value
@@ -76,11 +121,38 @@ export function TwoFactorAuthContainer({
     onChange?.(digitsOnly)
   }
 
+  function handleRecoveryChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const raw = event.target.value.toUpperCase()
+    const hasHyphen = raw.includes('-')
+    // Limite estrito de 8 caracteres alfanuméricos (ou 9 incluindo o hífen, ex: ABCD-1234)
+    const formatted = raw.replace(/[^A-Z0-9-]/g, '').slice(0, hasHyphen ? 9 : 8)
+    setRecoveryCode(formatted)
+  }
+
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Enter' && canVerify) {
       event.preventDefault()
       onVerify?.(currentCode)
     }
+  }
+
+  function handleRecoveryKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter' && canVerifyRecovery) {
+      event.preventDefault()
+      onVerifyRecovery?.(cleanRecovery)
+    }
+  }
+
+  function handleSwitchToRecovery() {
+    setIsRecoveryMode(true)
+    setRecoveryCode('')
+    onRecoveryModeChange?.(true)
+  }
+
+  function handleSwitchToTotp() {
+    setIsRecoveryMode(false)
+    setRecoveryCode('')
+    onRecoveryModeChange?.(false)
   }
 
   async function handleCopySecret() {
@@ -98,19 +170,29 @@ export function TwoFactorAuthContainer({
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    if (isRecoveryMode) {
+      if (canVerifyRecovery) {
+        onVerifyRecovery?.(cleanRecovery)
+      }
+      return
+    }
     if (canVerify) {
       onVerify?.(currentCode)
     }
   }
 
-  const hasQrSection = Boolean(otpauthUri)
+  const showQrSection = Boolean(otpauthUri) && !isRecoveryMode
+  const secondsLeft = timerState.secondsLeft
+  const progressPercent = timerState.percent
+  const isExpiringSoon = secondsLeft <= 5
 
   return (
     <div
       className={`rounded-xl border border-sage-300 bg-white p-6 shadow-xs ${className}`}
       data-testid="two-factor-auth-container"
     >
-      {(title || description) && (
+      {/* O cabeçalho só é exibido fora do modo de recuperação */}
+      {!isRecoveryMode && (title || description) && (
         <div className="mb-6 flex flex-col gap-1 border-b border-sage-200 pb-4">
           {title && <h2 className="text-base font-bold text-slate-900">{title}</h2>}
           {description && <p className="text-xs text-slate-500">{description}</p>}
@@ -119,13 +201,13 @@ export function TwoFactorAuthContainer({
 
       <div
         className={
-          hasQrSection
+          showQrSection
             ? 'grid grid-cols-1 items-start gap-8 md:grid-cols-2'
             : 'mx-auto flex w-full max-w-[420px] flex-col'
         }
       >
         {/* LADO ESQUERDO: QR CODE E INSTRUÇÕES (QUANDO OTPAUTH_URI ESTIVER PRESENTE) */}
-        {hasQrSection && (
+        {showQrSection && (
           <section
             aria-label="Configuração do aplicativo autenticador"
             className="flex flex-col items-center gap-4 text-center md:items-start md:border-r md:border-sage-200 md:pr-8 md:text-left"
@@ -175,64 +257,188 @@ export function TwoFactorAuthContainer({
           </section>
         )}
 
-        {/* LADO DIREITO (OU CENTRALIZADO): INPUT DE 6 DÍGITOS E BOTÃO DE VERIFICAÇÃO */}
-        <section
-          aria-label="Verificação do código de 6 dígitos"
-          className="flex flex-col gap-4 w-full"
-        >
-          <div className="flex flex-col gap-1">
-            {hasQrSection && (
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Passo 2
-              </span>
-            )}
-            <h3 className="text-sm font-bold text-slate-900">Inserir código de verificação</h3>
-            <p className="text-xs text-slate-500">
-              Digite o código de 6 dígitos gerado pelo aplicativo autenticador:
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="two-factor-code-input" className="sr-only">
-                Código de autenticação
-              </label>
-              <input
-                id="two-factor-code-input"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                autoComplete="one-time-code"
-                autoFocus={autoFocus}
-                disabled={isBusy}
-                value={currentCode}
-                onChange={handleCodeChange}
-                onKeyDown={handleKeyDown}
-                placeholder="000000"
-                aria-invalid={!!error}
-                aria-describedby={error ? 'two-factor-error' : undefined}
-                className={`h-12 w-full rounded-lg border bg-surface px-4 text-center font-mono text-xl tracking-[0.3em] placeholder:tracking-normal placeholder:text-gray-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                  error ? 'border-red-700' : 'border-sage-300'
-                }`}
-              />
-
-              {error && (
-                <p id="two-factor-error" role="alert" className="text-xs text-red-700">
-                  {error}
-                </p>
-              )}
+        {/* LADO DIREITO (OU CENTRALIZADO): MODO NORMAL OU MODO DE RECUPERAÇÃO */}
+        {isRecoveryMode ? (
+          <section
+            aria-label="Código de recuperação de emergência"
+            className="flex flex-col gap-4 w-full"
+          >
+            <div className="flex flex-col gap-1">
+              <h3 className="text-sm font-bold text-slate-900">
+                Código de recuperação de emergência
+              </h3>
+              <p className="text-xs text-slate-500">
+                Insira um dos códigos de backup gerados para acessar sua conta sem o aplicativo
+                autenticador:
+              </p>
             </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              label={loading ? 'Verificando...' : submitLabel}
-              disabled={!canVerify}
-              className="h-12 w-full font-medium"
-            />
-          </form>
-        </section>
+            <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="recovery-code-input"
+                    className="text-xs font-medium text-slate-700"
+                  >
+                    Código de recuperação
+                  </label>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    {rawAlphanumeric.length}/8 dígitos
+                  </span>
+                </div>
+                <input
+                  id="recovery-code-input"
+                  data-testid="recovery-code-input"
+                  type="text"
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={9}
+                  autoFocus={autoFocus}
+                  disabled={isBusy}
+                  value={recoveryCode}
+                  onChange={handleRecoveryChange}
+                  onKeyDown={handleRecoveryKeyDown}
+                  placeholder="ex: ABCD-1234"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? 'recovery-error' : undefined}
+                  className={`h-12 w-full rounded-lg border bg-surface px-4 text-center font-mono text-base uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                    error ? 'border-red-700' : 'border-sage-300'
+                  }`}
+                />
+
+                {error && (
+                  <p id="recovery-error" role="alert" className="text-xs text-red-700">
+                    {error}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                label={
+                  loading
+                    ? 'Verificando...'
+                    : submitRecoveryLabel || 'Verificar código de recuperação'
+                }
+                disabled={!canVerifyRecovery}
+                className="h-12 w-full font-medium"
+              />
+
+              <button
+                type="button"
+                onClick={handleSwitchToTotp}
+                disabled={isBusy}
+                className="text-xs font-medium text-primary hover:text-primary-hover hover:underline transition-colors text-center cursor-pointer -mt-1"
+              >
+                Voltar para código do autenticador
+              </button>
+            </form>
+          </section>
+        ) : (
+          <section
+            aria-label="Verificação do código de 6 dígitos"
+            className="flex flex-col gap-4 w-full"
+          >
+            <div className="flex flex-col gap-1">
+              {showQrSection && (
+                <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Passo 2
+                </span>
+              )}
+              <h3 className="text-sm font-bold text-slate-900">Inserir código de verificação</h3>
+              <p className="text-xs text-slate-500">
+                Digite o código de 6 dígitos gerado pelo aplicativo autenticador:
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="two-factor-code-input" className="sr-only">
+                  Código de autenticação
+                </label>
+                <input
+                  id="two-factor-code-input"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  autoComplete="one-time-code"
+                  autoFocus={autoFocus}
+                  disabled={isBusy}
+                  value={currentCode}
+                  onChange={handleCodeChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="000000"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? 'two-factor-error' : undefined}
+                  className={`h-12 w-full rounded-lg border bg-surface px-4 text-center font-mono text-xl tracking-[0.3em] placeholder:tracking-normal placeholder:text-gray-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                    error ? 'border-red-700' : 'border-sage-300'
+                  }`}
+                />
+
+                {/* TIMER REGRESSIVO DE 30 SEGUNDOS (CICLO TOTP RFC 6238) */}
+                <div
+                  role="timer"
+                  aria-label={`Novo código em ${secondsLeft} segundos`}
+                  className="flex flex-col gap-1.5 pt-1"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <span
+                      className={isExpiringSoon ? 'font-medium text-red-600' : 'text-slate-500'}
+                    >
+                      {isExpiringSoon ? 'Código expirando...' : 'Novo código em'}
+                    </span>
+                    <span
+                      className={`font-mono font-semibold ${
+                        isExpiringSoon ? 'text-red-600' : 'text-slate-700'
+                      }`}
+                    >
+                      {secondsLeft}s
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      data-testid="totp-timer-progress"
+                      className={`h-full ${
+                        progressPercent > 98
+                          ? 'transition-none'
+                          : 'transition-[width] duration-100 ease-linear'
+                      } ${isExpiringSoon ? 'bg-red-600' : 'bg-primary'}`}
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+
+                {error && (
+                  <p id="two-factor-error" role="alert" className="text-xs text-red-700">
+                    {error}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                label={loading ? 'Verificando...' : submitLabel}
+                disabled={!canVerify}
+                className="h-12 w-full font-medium"
+              />
+
+              {canAllowRecovery && (
+                <button
+                  type="button"
+                  onClick={handleSwitchToRecovery}
+                  disabled={isBusy}
+                  className="text-xs font-medium text-primary hover:text-primary-hover hover:underline transition-colors text-center cursor-pointer -mt-1"
+                >
+                  Perdi meu celular / Usar código de recuperação
+                </button>
+              )}
+            </form>
+          </section>
+        )}
       </div>
     </div>
   )

@@ -185,4 +185,178 @@ describe('TwoFactorAuthContainer', () => {
 
     expect(screen.getByRole('button', { name: 'Ativar 2FA' })).toBeInTheDocument()
   })
+
+  it('renderiza o timer de 30 segundos sincronizado e altera a cor para alerta nos últimos 5 segundos', () => {
+    // 1700000000 s % 30 = 20 -> 30 - 20 = 10 s restantes
+    vi.setSystemTime(new Date(1700000000 * 1000))
+
+    render(<TwoFactorAuthContainer />)
+
+    const timer = screen.getByRole('timer')
+    expect(timer).toBeInTheDocument()
+    expect(screen.getByText('10s')).toBeInTheDocument()
+
+    const progressBar = screen.getByTestId('totp-timer-progress')
+    expect(progressBar).toHaveClass('bg-primary')
+
+    // Avança 5 segundos no relógio: 10s - 5s = 5s restantes (alerta)
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+
+    expect(screen.getByText('5s')).toBeInTheDocument()
+    expect(screen.getByText('Código expirando...')).toBeInTheDocument()
+    expect(progressBar).toHaveClass('bg-red-600')
+  })
+
+  it('exibe o botão de recuperação por padrão quando não está em modo QR Code', () => {
+    render(<TwoFactorAuthContainer />)
+
+    expect(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    ).toBeInTheDocument()
+  })
+
+  it('não exibe o botão de recuperação no modo de setup com QR Code por padrão, a menos que allowRecovery seja true', () => {
+    const { unmount } = render(<TwoFactorAuthContainer otpauthUri={sampleUri} />)
+
+    expect(
+      screen.queryByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    ).not.toBeInTheDocument()
+
+    unmount()
+
+    render(<TwoFactorAuthContainer otpauthUri={sampleUri} allowRecovery />)
+    expect(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    ).toBeInTheDocument()
+  })
+
+  it('alterna para o modo de recuperação ao clicar no botão, ocultando o timer e o input de 6 dígitos', () => {
+    render(<TwoFactorAuthContainer />)
+
+    expect(screen.getByPlaceholderText('000000')).toBeInTheDocument()
+    expect(screen.getByRole('timer')).toBeInTheDocument()
+
+    const recoveryLink = screen.getByRole('button', {
+      name: 'Perdi meu celular / Usar código de recuperação',
+    })
+    fireEvent.click(recoveryLink)
+
+    expect(screen.queryByPlaceholderText('000000')).not.toBeInTheDocument()
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument()
+    expect(screen.getByTestId('recovery-code-input')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Voltar para código do autenticador' }),
+    ).toBeInTheDocument()
+  })
+
+  it('formata para maiúsculo e dispara onVerifyRecovery com o código ao submeter', () => {
+    const handleVerifyRecovery = vi.fn()
+    render(<TwoFactorAuthContainer onVerifyRecovery={handleVerifyRecovery} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    )
+
+    const recoveryInput = screen.getByTestId('recovery-code-input')
+    const submitBtn = screen.getByRole('button', { name: 'Verificar código de recuperação' })
+
+    // Menos de 8 caracteres mantém desabilitado
+    fireEvent.change(recoveryInput, { target: { value: 'abc-12' } })
+    expect(submitBtn).toBeDisabled()
+
+    // 8 ou mais caracteres alfanuméricos com hífens habilita
+    fireEvent.change(recoveryInput, { target: { value: 'abcd-1234' } })
+    expect(recoveryInput).toHaveValue('ABCD-1234')
+    expect(submitBtn).toBeEnabled()
+
+    fireEvent.click(submitBtn)
+    expect(handleVerifyRecovery).toHaveBeenCalledWith('ABCD-1234')
+  })
+
+  it('dispara onVerifyRecovery ao pressionar Enter com código de recuperação válido', () => {
+    const handleVerifyRecovery = vi.fn()
+    render(<TwoFactorAuthContainer onVerifyRecovery={handleVerifyRecovery} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    )
+
+    const recoveryInput = screen.getByTestId('recovery-code-input')
+    fireEvent.change(recoveryInput, { target: { value: 'emerg-123' } })
+    fireEvent.keyDown(recoveryInput, { key: 'Enter' })
+
+    expect(handleVerifyRecovery).toHaveBeenCalledWith('EMERG-123')
+  })
+
+  it('oculta título e descrição principais ao entrar no modo de recuperação', () => {
+    render(
+      <TwoFactorAuthContainer
+        title="Autenticação em duas etapas"
+        description="Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta."
+      />,
+    )
+
+    expect(screen.getByText('Autenticação em duas etapas')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta.',
+      ),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    )
+
+    expect(screen.queryByText('Autenticação em duas etapas')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta.',
+      ),
+    ).not.toBeInTheDocument()
+    expect(screen.getByText('Código de recuperação de emergência')).toBeInTheDocument()
+  })
+
+  it('notifica onRecoveryModeChange ao alternar entre os modos', () => {
+    const handleModeChange = vi.fn()
+    render(<TwoFactorAuthContainer onRecoveryModeChange={handleModeChange} />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    )
+    expect(handleModeChange).toHaveBeenCalledWith(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar para código do autenticador' }))
+    expect(handleModeChange).toHaveBeenCalledWith(false)
+  })
+
+  it('limita o campo de código de recuperação a 8 caracteres alfanuméricos', () => {
+    render(<TwoFactorAuthContainer />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    )
+
+    const input = screen.getByTestId('recovery-code-input')
+    fireEvent.change(input, { target: { value: 'abcdefghijk123' } })
+
+    expect(input).toHaveValue('ABCDEFGH')
+  })
+
+  it('permite retornar do modo de recuperação para o modo TOTP de 6 dígitos', () => {
+    render(<TwoFactorAuthContainer />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+    )
+
+    expect(screen.getByTestId('recovery-code-input')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar para código do autenticador' }))
+
+    expect(screen.queryByTestId('recovery-code-input')).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('000000')).toBeInTheDocument()
+    expect(screen.getByRole('timer')).toBeInTheDocument()
+  })
 })
