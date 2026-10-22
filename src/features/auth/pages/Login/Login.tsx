@@ -7,6 +7,7 @@ import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
 import { PATHS } from '@/shared/navigation/paths'
 import { saveLoginToken } from '@/shared/http/authToken'
 import { authService } from '@/features/auth/api/login'
+import { isStoredAdmin } from '@/features/auth/model/storedAccount'
 
 import { LoginSchema, type LoginFormData } from '@/features/auth/schemas/auth'
 
@@ -30,7 +31,8 @@ function Login() {
   const [step, setStep] = useState<'CREDENTIALS' | '2FA'>('CREDENTIALS')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [tempToken, setTempToken] = useState<string | undefined>()
+  const [challengeToken, setChallengeToken] = useState<string | undefined>()
+  const [otpauthUri, setOtpauthUri] = useState<string | undefined>()
   const [totpCode, setTotpCode] = useState('')
   const [totpError, setTotpError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -66,15 +68,16 @@ function Login() {
         password,
       })
 
-      if (result.twoFactorRequired) {
-        setTempToken(result.tempToken)
+      if (result.requires2fa || result.twoFactorRequired) {
+        setChallengeToken(result.challengeToken ?? result.tempToken)
+        setOtpauthUri(result.otpauthUri)
         setStep('2FA')
         return
       }
 
       if (result.token) {
         saveLoginToken(result.token)
-        void navigate(PATHS.HOME, { replace: true })
+        void navigate(isStoredAdmin() ? PATHS.ADMIN_CLIENTS : PATHS.HOME, { replace: true })
       }
     } catch (error) {
       setErrors({
@@ -94,11 +97,9 @@ function Login() {
     setSubmitting(true)
     setTotpError('')
     try {
-      const result = await authService.login({
-        email,
-        password,
-        totpCode: code,
-        tempToken,
+      const result = await authService.verify2fa({
+        challengeToken: challengeToken ?? '',
+        code,
       })
 
       if (!result.token) {
@@ -107,7 +108,7 @@ function Login() {
       }
 
       saveLoginToken(result.token)
-      void navigate(PATHS.HOME, { replace: true })
+      void navigate(isStoredAdmin() ? PATHS.ADMIN_CLIENTS : PATHS.HOME, { replace: true })
     } catch (error) {
       setTotpError(
         error instanceof Error && error.message
@@ -148,8 +149,13 @@ function Login() {
         {step === '2FA' ? (
           <div className="flex flex-col w-[560px] gap-y-4">
             <TwoFactorAuthContainer
+              otpauthUri={otpauthUri}
               title="Autenticação em duas etapas"
-              description="Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta."
+              description={
+                otpauthUri
+                  ? 'Escaneie o QR Code abaixo com seu aplicativo autenticador ou insira o código de 6 dígitos gerado:'
+                  : 'Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta.'
+              }
               value={totpCode}
               onChange={(value) => {
                 setTotpCode(value)
@@ -169,6 +175,8 @@ function Login() {
                 setStep('CREDENTIALS')
                 setTotpCode('')
                 setTotpError('')
+                setChallengeToken(undefined)
+                setOtpauthUri(undefined)
               }}
             />
           </div>
@@ -181,8 +189,8 @@ function Login() {
                 label="E-mail"
                 placeholder="nome@empresa.com.br"
                 value={email}
-                onChange={(e) => handleEmailChange(e.target.value)}
                 error={errors.email}
+                onChange={(e) => handleEmailChange(e.target.value)}
               />
               <Input
                 id="password"
@@ -190,12 +198,17 @@ function Login() {
                 label="Senha"
                 placeholder="Digite sua senha"
                 value={password}
-                onChange={(e) => handlePasswordChange(e.target.value)}
                 error={errors.password}
+                onChange={(e) => handlePasswordChange(e.target.value)}
               />
             </div>
             <div className="flex flex-col w-[560px] gap-y-[10px]">
-              <Button type="submit" label="Entrar" variant="primary" disabled={submitting} />
+              <Button
+                type="submit"
+                label={submitting ? 'Entrando...' : 'Entrar'}
+                variant="primary"
+                disabled={submitting}
+              />
               <Button
                 type="button"
                 label="Cadastrar PME"

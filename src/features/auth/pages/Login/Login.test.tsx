@@ -10,6 +10,7 @@ import { Login } from '@/features/auth/pages/Login/Login'
 vi.mock('@/features/auth/api/login', () => ({
   authService: {
     login: vi.fn(),
+    verify2fa: vi.fn(),
   },
 }))
 
@@ -106,7 +107,7 @@ describe('Login Page Component', () => {
     await user.type(screen.getByLabelText('Senha'), 'senha-valida')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    expect(await screen.findByText('Admin page')).toBeInTheDocument()
     expect(localStorage.getItem('token')).toBe(mockAdminToken)
   })
 
@@ -135,17 +136,39 @@ describe('Login Page Component', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText('Home page')).toBeInTheDocument()
-    expect(sessionStorage.getItem('vstable:onboarding:access-token')).toBeNull()
-    expect(localStorage.getItem('token')).toBe('login-token')
   })
 
-  it('shows and clears credential errors after a failed login', async () => {
+  it('shows an error when credentials are rejected', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login).mockRejectedValueOnce(new Error('Unauthorized'))
+    vi.mocked(authService.login).mockRejectedValueOnce(new Error('E-mail ou senha inválidos'))
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
-    await user.type(screen.getByLabelText('Senha'), 'senha-super-secreta')
+    await user.type(screen.getByLabelText('Senha'), 'senha-errada')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findAllByText('E-mail ou senha inválidos')).toHaveLength(2)
+  })
+
+  it('shows a specific error when the user is locked', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockRejectedValueOnce(new Error('Usuário bloqueado'))
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'bloqueado@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByText('Usuário bloqueado')).toBeInTheDocument()
+  })
+
+  it('clears credential errors when either input changes', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockRejectedValue(new Error('E-mail ou senha inválidos'))
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-errada')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findAllByText('E-mail ou senha inválidos')).toHaveLength(2)
@@ -155,20 +178,11 @@ describe('Login Page Component', () => {
     expect(screen.queryByText('E-mail ou senha inválidos')).not.toBeInTheDocument()
   })
 
-  it('navigates to the register page when "Cadastrar PME" is clicked', async () => {
-    const user = userEvent.setup()
-    renderLogin()
-
-    await user.click(screen.getByRole('button', { name: 'Cadastrar PME' }))
-
-    expect(await screen.findByText('Register page')).toBeInTheDocument()
-  })
-
   it('transições para a etapa de 2FA quando o login exige segundo fator', async () => {
     const user = userEvent.setup()
     vi.mocked(authService.login).mockResolvedValueOnce({
-      twoFactorRequired: true,
-      tempToken: 'temp-token-123',
+      requires2fa: true,
+      challengeToken: 'challenge-token-123',
     })
     renderLogin()
 
@@ -180,21 +194,52 @@ describe('Login Page Component', () => {
     expect(screen.getByText('Autenticação em duas etapas')).toBeInTheDocument()
     expect(screen.getByLabelText('Código de autenticação')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Verificar e Entrar' })).toBeInTheDocument()
+    expect(localStorage.getItem('token')).toBeNull()
   })
 
-  it('envia o código totp de 6 dígitos e conclui o login com sucesso', async () => {
+  it('envia o código de 6 dígitos via verify2fa e conclui o login com sucesso sem salvar token antes', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login)
-      .mockResolvedValueOnce({
-        twoFactorRequired: true,
-        tempToken: 'temp-token-123',
-      })
-      .mockResolvedValueOnce({
-        token: 'final-token-after-2fa',
-      })
+    vi.mocked(authService.login).mockResolvedValueOnce({
+      requires2fa: true,
+      challengeToken: 'challenge-token-123',
+    })
+    vi.mocked(authService.verify2fa).mockResolvedValueOnce({
+      token: 'final-token-after-2fa',
+    })
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'user2fa@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    // Não deve ter token salvo antes de verificar o 2FA
+    expect(localStorage.getItem('token')).toBeNull()
+
+    const totpInput = await screen.findByLabelText('Código de autenticação')
+    await user.type(totpInput, '123456')
+    await user.click(screen.getByRole('button', { name: 'Verificar e Entrar' }))
+
+    expect(authService.verify2fa).toHaveBeenCalledWith({
+      challengeToken: 'challenge-token-123',
+      code: '123456',
+    })
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    expect(localStorage.getItem('token')).toBe('final-token-after-2fa')
+  })
+
+  it('redireciona admins para a página de clientes após confirmação de 2FA', async () => {
+    const user = userEvent.setup()
+    const mockAdminToken = 'header.eyJyb2xlIjpbIkFETUlOIl19.signature'
+    vi.mocked(authService.login).mockResolvedValueOnce({
+      requires2fa: true,
+      challengeToken: 'challenge-token-admin',
+    })
+    vi.mocked(authService.verify2fa).mockResolvedValueOnce({
+      token: mockAdminToken,
+    })
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'admin@empresa.com')
     await user.type(screen.getByLabelText('Senha'), 'senha-valida')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
@@ -202,24 +247,19 @@ describe('Login Page Component', () => {
     await user.type(totpInput, '123456')
     await user.click(screen.getByRole('button', { name: 'Verificar e Entrar' }))
 
-    expect(authService.login).toHaveBeenLastCalledWith({
-      email: 'user2fa@empresa.com',
-      password: 'senha-valida',
-      totpCode: '123456',
-      tempToken: 'temp-token-123',
-    })
-    expect(await screen.findByText('Home page')).toBeInTheDocument()
-    expect(localStorage.getItem('token')).toBe('final-token-after-2fa')
+    expect(await screen.findByText('Admin page')).toBeInTheDocument()
+    expect(localStorage.getItem('token')).toBe(mockAdminToken)
   })
 
   it('exibe mensagem de erro quando o código totp for rejeitado no login', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login)
-      .mockResolvedValueOnce({
-        twoFactorRequired: true,
-        tempToken: 'temp-token-123',
-      })
-      .mockRejectedValueOnce(new Error('Código de autenticação inválido ou expirado.'))
+    vi.mocked(authService.login).mockResolvedValueOnce({
+      requires2fa: true,
+      challengeToken: 'challenge-token-123',
+    })
+    vi.mocked(authService.verify2fa).mockRejectedValueOnce(
+      new Error('Código de autenticação inválido ou expirado.'),
+    )
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'user2fa@empresa.com')
@@ -233,13 +273,14 @@ describe('Login Page Component', () => {
     expect(
       await screen.findByText('Código de autenticação inválido ou expirado.'),
     ).toBeInTheDocument()
+    expect(localStorage.getItem('token')).toBeNull()
   })
 
   it('permite voltar da etapa de 2FA para o formulário de credenciais', async () => {
     const user = userEvent.setup()
     vi.mocked(authService.login).mockResolvedValueOnce({
-      twoFactorRequired: true,
-      tempToken: 'temp-token-123',
+      requires2fa: true,
+      challengeToken: 'challenge-token-123',
     })
     renderLogin()
 

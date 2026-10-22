@@ -109,7 +109,7 @@ export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
                 onVerify={handleActivate2fa}
                 error={totpError}
                 loading={isActivating}
-                submitLabel="Validar"
+                submitLabel="Ativar 2FA e Acessar Plataforma"
               />
             </div>
           </div>
