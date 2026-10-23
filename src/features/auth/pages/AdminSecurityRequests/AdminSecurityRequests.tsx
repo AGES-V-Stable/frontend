@@ -101,9 +101,7 @@ export function AdminSecurityRequests() {
       </div>
 
       <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900 flex items-start gap-3">
-        <span className="text-base shrink-0" aria-hidden="true">
-          
-        </span>
+        <span className="text-base shrink-0" aria-hidden="true"></span>
         <p>
           <strong>Regra de Proteção (Bloqueio de 48h):</strong> Ao aprovar uma solicitação, o 2FA do
           usuário é resetado e a conta entra automaticamente em bloqueio preventivo de segurança por{' '}

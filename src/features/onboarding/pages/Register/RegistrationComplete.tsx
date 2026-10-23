@@ -22,10 +22,7 @@ export default function RegistrationComplete() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button
-            label="Acompanhar status"
-            onClick={() => navigate(PATHS.REGISTER_STATUS)}
-          />
+          <Button label="Acompanhar status" onClick={() => navigate(PATHS.REGISTER_STATUS)} />
           <Button
             label="Voltar para o início"
             variant="secondary"

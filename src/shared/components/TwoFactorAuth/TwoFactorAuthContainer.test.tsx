@@ -74,7 +74,9 @@ describe('TwoFactorAuthContainer', () => {
       screen.queryByLabelText('QR Code para configuração de dois fatores'),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByText('Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca'),
+      screen.getByText(
+        'Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca',
+      ),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Código de autenticação')).toBeInTheDocument()
   })

@@ -70,8 +70,7 @@ export function TwoFactorRecoveryRequest({
 
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-left w-full">
           <div className="flex items-start gap-2.5">
-            <span className="text-lg shrink-0" aria-hidden="true">
-            </span>
+            <span className="text-lg shrink-0" aria-hidden="true"></span>
             <div className="flex flex-col gap-1 text-xs text-amber-900">
               <strong className="font-semibold">Aviso de Segurança (Bloqueio de 48h)</strong>
               <p>
@@ -105,9 +104,7 @@ export function TwoFactorRecoveryRequest({
       </div>
 
       <div className="rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
-        <span className="text-base shrink-0" aria-hidden="true">
-        
-        </span>
+        <span className="text-base shrink-0" aria-hidden="true"></span>
         <p>
           <strong>Importante:</strong> Esta solicitação passará por análise manual da equipe de
           compliance. Após a aprovação, saques e transferências ficarão bloqueados por 48 horas por

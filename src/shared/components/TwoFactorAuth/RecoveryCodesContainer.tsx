@@ -90,9 +90,7 @@ export function RecoveryCodesContainer({
         role="alert"
         className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900"
       >
-        <span className="text-base select-none" aria-hidden="true">
-          
-        </span>
+        <span className="text-base select-none" aria-hidden="true"></span>
         <div className="flex flex-col gap-0.5">
           <strong className="font-semibold text-amber-950">Aviso importante de segurança:</strong>
           <span>
