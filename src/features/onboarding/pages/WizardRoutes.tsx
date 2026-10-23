@@ -7,8 +7,9 @@ import LivenessStep from '@/features/onboarding/pages/LivenessStep'
 import { CompanyStep } from '@/features/onboarding/pages/Register/CompanyStep'
 import ComplianceStep from '@/features/onboarding/pages/Register/ComplianceStep'
 import { RepresentativeStep } from '@/features/onboarding/pages/Register/RepresentativeStep'
+import { TwoFactorStep } from '@/features/onboarding/pages/Register/TwoFactorStep'
 
-import { PATHS, registrationCompletePath } from '@/shared/navigation/paths'
+import { PATHS, compliancePath, registrationCompletePath } from '@/shared/navigation/paths'
 
 const AccessState = z.object({
   nomeCompleto: z.string(),
@@ -55,6 +56,19 @@ export function RepresentativeRoute() {
 
   return (
     <RepresentativeStep onContinue={handleContinue} saving={saving} serverError={serverError} />
+  )
+}
+
+export function TwoFactorRoute() {
+  const { kycVerificationId } = useParams()
+  const navigate = useNavigate()
+
+  return (
+    <TwoFactorStep
+      kycVerificationId={kycVerificationId!}
+      onContinue={() => navigate(compliancePath(kycVerificationId!))}
+      onSkip={() => navigate(compliancePath(kycVerificationId!))}
+    />
   )
 }
 

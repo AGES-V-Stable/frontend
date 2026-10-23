@@ -32,6 +32,23 @@ export const SESSION_CHANGED = 'vstable:session-changed'
 export function getLoginToken(): string | null {
   return localStorage.getItem(LOGIN_TOKEN_KEY)
 }
+
+/** Identifica apenas o dono do cache local; a autorização continua sendo do backend. */
+export function getStoredUserId(): string | undefined {
+  const token = getLoginToken() ?? getAccessToken()
+  if (!token) return undefined
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const bytes = Uint8Array.from(atob(payload), (character) => character.charCodeAt(0))
+    const claims: unknown = JSON.parse(new TextDecoder().decode(bytes))
+    if (typeof claims === 'object' && claims !== null && 'sub' in claims) {
+      return typeof claims.sub === 'string' && claims.sub.trim() ? claims.sub : undefined
+    }
+  } catch {
+    // Sem identidade válida, não compartilha nem persiste o estado de 2FA.
+  }
+  return undefined
+}
 export function clearLoginToken(): void {
   localStorage.removeItem(LOGIN_TOKEN_KEY)
   window.dispatchEvent(new Event(SESSION_CHANGED))

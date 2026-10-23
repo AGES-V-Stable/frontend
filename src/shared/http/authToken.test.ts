@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   clearAccessToken,
   getAccessToken,
+  getStoredUserId,
   saveAccessToken,
   saveLoginToken,
 } from '@/shared/http/authToken'
@@ -60,5 +61,35 @@ describe('authToken service', () => {
     clearAccessToken()
 
     expect(getAccessToken()).toBe('login-token')
+  })
+})
+
+describe('getStoredUserId', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+
+  it('uses the subject of the onboarding token before login', () => {
+    saveAccessToken('header.' + btoa(JSON.stringify({ sub: 'onboarding-user' })) + '.signature')
+    expect(getStoredUserId()).toBe('onboarding-user')
+  })
+
+  it('uses the login subject when both tokens exist, matching 2FA requests', () => {
+    saveLoginToken('header.' + btoa(JSON.stringify({ sub: 'login-user' })) + '.signature')
+    saveAccessToken('header.' + btoa(JSON.stringify({ sub: 'other-user' })) + '.signature')
+    expect(getStoredUserId()).toBe('login-user')
+  })
+
+  it.each(['invalid', 'header.' + btoa('{}') + '.sig', 'header.' + btoa('{"sub":42}') + '.sig'])(
+    'returns no identity for unusable token %s',
+    (token) => {
+      saveAccessToken(token)
+      expect(getStoredUserId()).toBeUndefined()
+    },
+  )
+
+  it('returns no identity without a token', () => {
+    expect(getStoredUserId()).toBeUndefined()
   })
 })

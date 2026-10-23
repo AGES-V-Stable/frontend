@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
-import { isStoredAdmin, useSession } from '@/features/auth'
+import { isStoredAdmin, useSession, Settings, AdminSecurityRequests } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import AdminClients from '@/features/clients/pages/AdminClients'
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
@@ -14,6 +14,7 @@ import RegistrationComplete from '@/features/onboarding/pages/Register/Registrat
 import {
   CompanyRoute,
   RepresentativeRoute,
+  TwoFactorRoute,
   ComplianceRoute,
   LivenessRoute,
 } from '@/features/onboarding/pages/WizardRoutes'
@@ -61,11 +62,11 @@ function RoleLanding() {
     />
   )
 }
-function RoleGuard({ role }: { role: 'ADMIN' | 'USER' }) {
+function RoleGuard({ role }: { role?: 'ADMIN' | 'USER' }) {
   const { status, user } = useSession()
   if (status === 'loading' || status === 'error') return <SessionState />
   if (status === 'anonymous') return <Navigate to={PATHS.LOGIN} replace />
-  if ((isStoredAdmin() ? 'ADMIN' : 'USER') !== role) return <RoleLanding />
+  if (role && (isStoredAdmin() ? 'ADMIN' : 'USER') !== role) return <RoleLanding />
   if (role === 'USER' && !user?.companyId)
     return (
       <p role="alert" className="p-8">
@@ -109,6 +110,7 @@ function RoutedApplication() {
     ? [
         item('home', 'Início', PATHS.HOME, homeIcon),
         item('clients', 'Clientes PME', PATHS.ADMIN_CLIENTS, clientsIcon),
+        item('security-requests', 'Solicitações de Segurança', PATHS.ADMIN_SECURITY, supportIcon),
         {
           id: 'audit',
           label: 'Auditoria',
@@ -129,16 +131,20 @@ function RoutedApplication() {
         item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
         item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
       ]
-  items.push({ id: 'settings', label: 'Configurações', icon: icon(settingsIcon), disabled: true })
-  const activeId = admin
-    ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
-      ? 'admin-transfers'
-      : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
-        ? 'admin-beneficiaries'
-        : 'clients'
-    : pathname.startsWith('/app/transferencias')
-      ? 'transfers'
-      : 'beneficiaries'
+  items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
+  const activeId = pathname.startsWith(PATHS.SETTINGS)
+    ? 'settings'
+    : admin
+      ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
+        ? 'admin-transfers'
+        : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
+          ? 'admin-beneficiaries'
+          : pathname.startsWith(PATHS.ADMIN_SECURITY)
+            ? 'security-requests'
+            : 'clients'
+      : pathname.startsWith('/app/transferencias')
+        ? 'transfers'
+        : 'beneficiaries'
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -177,6 +183,7 @@ export default function AppRoutes() {
           <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
           <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
           <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
+          <Route path={PATHS.ADMIN_SECURITY} element={<AdminSecurityRequests />} />
         </Route>
       </Route>
       <Route element={<RoleGuard role="USER" />}>
@@ -187,14 +194,22 @@ export default function AppRoutes() {
           <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetails />} />
         </Route>
       </Route>
+      <Route element={<RoleGuard />}>
+        <Route element={<RoutedApplication />}>
+          <Route path={PATHS.SETTINGS} element={<Settings />} />
+        </Route>
+      </Route>
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
       <Route path="/beneficiarios/novo" element={<LegacyRedirect to={PATHS.BENEFICIARIES_NEW} />} />
       <Route path="/transferencias" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
+      <Route path="/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
       <Route path="/transferencias/:id" element={<LegacyRedirect details />} />
+      <Route path="/configuracoes" element={<LegacyRedirect to={PATHS.SETTINGS} />} />
       <Route path={PATHS.LOGIN} element={<Login />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRoute />} />
       <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeRoute />} />
+      <Route path={PATHS.REGISTER_2FA} element={<TwoFactorRoute />} />
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<ComplianceRoute />} />
       <Route path={PATHS.COMPLIANCE_LIVENESS} element={<LivenessRoute />} />
       <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />
