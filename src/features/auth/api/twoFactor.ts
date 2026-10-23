@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { httpRequest } from '@/shared/http/httpClient'
+import { getStoredUserId } from '@/shared/http/authToken'
 
 const TwoFactorSetupSchema = z.object({
   otpauthUri: z.string().min(1),
@@ -9,7 +10,7 @@ const TwoFactorSetupSchema = z.object({
 export type TwoFactorSetupResponse = z.infer<typeof TwoFactorSetupSchema>
 
 const TwoFactorActivateSchema = z.object({
-  success: z.boolean().optional(),
+  success: z.boolean(),
   recoveryCodes: z.array(z.string()).optional(),
 })
 
@@ -18,23 +19,27 @@ export interface TwoFactorActivateResponse {
   recoveryCodes?: string[]
 }
 
-const TWO_FACTOR_STORAGE_KEY = 'vstable_2fa_active'
+const getStorageKey = (userId?: string) => (userId ? `vstable_2fa_active_${userId}` : undefined)
 
 export const twoFactorService = {
-  isActivated(): boolean {
+  isActivated(userId = getStoredUserId()): boolean {
+    const key = getStorageKey(userId)
+    if (!key) return false
     try {
-      return localStorage.getItem(TWO_FACTOR_STORAGE_KEY) === 'true'
+      return localStorage.getItem(key) === 'true'
     } catch {
       return false
     }
   },
 
-  setActivated(active: boolean): void {
+  setActivated(active: boolean, userId = getStoredUserId()): void {
+    const key = getStorageKey(userId)
+    if (!key) return
     try {
       if (active) {
-        localStorage.setItem(TWO_FACTOR_STORAGE_KEY, 'true')
+        localStorage.setItem(key, 'true')
       } else {
-        localStorage.removeItem(TWO_FACTOR_STORAGE_KEY)
+        localStorage.removeItem(key)
       }
     } catch {
       // ignore
@@ -57,34 +62,18 @@ export const twoFactorService = {
       effectiveSignal = signal
     }
 
-    try {
-      const body = currentTotpCode ? JSON.stringify({ currentTotpCode }) : undefined
-      const headers: Record<string, string> = {}
-      if (currentTotpCode) {
-        headers['X-Current-Totp'] = currentTotpCode
-      }
-      const response = await httpRequest<unknown>(
-        '/v1/auth/2fa/setup',
-        {
-          method: 'POST',
-          headers: Object.keys(headers).length > 0 ? headers : undefined,
-          body,
-          signal: effectiveSignal,
-        },
-        false,
-      )
-      return TwoFactorSetupSchema.parse(response)
-    } catch (error) {
-      if (currentTotpCode) {
-        throw error
-      }
-      // Fallback seguro com parâmetros padrão para ambiente de desenvolvimento/mock
-      return {
-        otpauthUri:
-          'otpauth://totp/V-Stable:cliente@empresa.com?secret=JBSWY3DPEHPK3PXP&issuer=V-Stable',
-        secret: 'JBSWY3DPEHPK3PXP',
-      }
+    const body = currentTotpCode ? JSON.stringify({ currentTotpCode }) : undefined
+    const headers: Record<string, string> = {}
+    if (currentTotpCode) {
+      headers['X-Current-Totp'] = currentTotpCode
     }
+    const response = await httpRequest<unknown>('/v1/auth/2fa/setup', {
+      method: 'POST',
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      body,
+      signal: effectiveSignal,
+    })
+    return TwoFactorSetupSchema.parse(response)
   },
 
   async reconfigure(
@@ -94,30 +83,31 @@ export const twoFactorService = {
     return this.setup(currentTotpCode, signal)
   },
 
-  async activate(code: string, signal?: AbortSignal): Promise<TwoFactorActivateResponse> {
-    const response = await httpRequest<unknown>(
-      '/v1/auth/2fa/activate',
-      {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-        signal,
-      },
-      false,
-    )
-    this.setActivated(true)
+  async activate(
+    code: string,
+    signal?: AbortSignal,
+    userId = getStoredUserId(),
+  ): Promise<TwoFactorActivateResponse> {
+    const response = await httpRequest<unknown>('/v1/auth/2fa/activate', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+      signal,
+    })
     const parsed = TwoFactorActivateSchema.safeParse(response)
+    if (!parsed.success || !parsed.data.success) {
+      throw new Error('Falha na ativação da autenticação em duas etapas.')
+    }
+    this.setActivated(true, userId)
     const recoveryCodes =
-      parsed.success &&
-      Array.isArray(parsed.data.recoveryCodes) &&
-      parsed.data.recoveryCodes.length > 0
+      Array.isArray(parsed.data.recoveryCodes) && parsed.data.recoveryCodes.length > 0
         ? parsed.data.recoveryCodes
         : undefined
     return { success: true, recoveryCodes }
   },
 }
 
-export const activate2fa = (code: string, signal?: AbortSignal) =>
-  twoFactorService.activate(code, signal)
+export const activate2fa = (code: string, signal?: AbortSignal, userId?: string) =>
+  twoFactorService.activate(code, signal, userId)
 
 export const setup2fa = (currentTotpCodeOrSignal?: string | AbortSignal, signal?: AbortSignal) =>
   twoFactorService.setup(currentTotpCodeOrSignal, signal)
@@ -149,80 +139,35 @@ export async function request2faRecovery(
   data: RecoveryRequestData,
   signal?: AbortSignal,
 ): Promise<{ success: boolean; id: string }> {
-  try {
-    return await httpRequest<{ success: boolean; id: string }>(
-      '/v1/auth/2fa/recovery-request',
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-        signal,
-      },
-      false,
-    )
-  } catch {
-    return { success: true, id: 'req-' + Date.now() }
-  }
+  return await httpRequest<{ success: boolean; id: string }>(
+    '/v1/auth/2fa/recovery-request',
+    {
+      method: 'POST',
+      body: JSON.stringify(data),
+      signal,
+    },
+    false,
+  )
 }
 
 export async function get2faResetRequests(signal?: AbortSignal): Promise<TwoFactorResetRequest[]> {
-  try {
-    const res = await httpRequest<TwoFactorResetRequest[]>('/v1/admin/2fa-recovery-requests', {
-      signal,
-    })
-    return Array.isArray(res) ? res : []
-  } catch {
-    return [
-      {
-        id: 'req-1',
-        userId: 'u1',
-        userName: 'Marina Costa',
-        userEmail: 'marina@example.com',
-        companyName: 'Empresa Exemplo Ltda',
-        requestedAt: new Date(Date.now() - 3600000).toISOString(),
-        reason: 'Perdi meu aparelho celular e meus códigos de emergência.',
-        documentNumber: '123.456.789-00',
-        status: 'PENDING',
-      },
-      {
-        id: 'req-2',
-        userId: 'u2',
-        userName: 'Carlos Silva',
-        userEmail: 'carlos@comercio.com',
-        companyName: 'Silva Comércio S.A.',
-        requestedAt: new Date(Date.now() - 86400000).toISOString(),
-        reason: 'Celular furtado em viagem. Necessito redefinir segundo fator.',
-        documentNumber: '987.654.321-99',
-        status: 'PENDING',
-      },
-    ]
-  }
+  const res = await httpRequest<TwoFactorResetRequest[]>('/v1/admin/2fa-recovery-requests', {
+    signal,
+  })
+  return Array.isArray(res) ? res : []
 }
 
 export async function approve2faReset(
   requestId: string,
   signal?: AbortSignal,
 ): Promise<{ success: boolean; withdrawalLockedUntil: string }> {
-  const withdrawalLockedUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
-  try {
-    const res = await httpRequest<{ success: boolean; withdrawalLockedUntil?: string }>(
-      `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/approve`,
-      {
-        method: 'POST',
-        signal,
-      },
-    )
-    return {
-      success: true,
-      withdrawalLockedUntil: res?.withdrawalLockedUntil ?? withdrawalLockedUntil,
-    }
-  } catch {
-    try {
-      localStorage.setItem('vstable_withdrawal_locked_until', withdrawalLockedUntil)
-    } catch {
-      // ignore
-    }
-    return { success: true, withdrawalLockedUntil }
-  }
+  return await httpRequest<{ success: boolean; withdrawalLockedUntil: string }>(
+    `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/approve`,
+    {
+      method: 'POST',
+      signal,
+    },
+  )
 }
 
 export async function reject2faReset(
@@ -230,17 +175,12 @@ export async function reject2faReset(
   reason?: string,
   signal?: AbortSignal,
 ): Promise<{ success: boolean }> {
-  try {
-    await httpRequest<{ success: boolean }>(
-      `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/reject`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ reason }),
-        signal,
-      },
-    )
-    return { success: true }
-  } catch {
-    return { success: true }
-  }
+  return await httpRequest<{ success: boolean }>(
+    `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+      signal,
+    },
+  )
 }

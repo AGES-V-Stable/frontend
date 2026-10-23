@@ -15,8 +15,8 @@ export interface SettingsProps {
 
 export function Settings({ twoFactorEnabled, onReconfigureSuccess }: SettingsProps) {
   const { user } = useSession()
-  const [twoFactorActive, setTwoFactorActive] = useState(
-    () => twoFactorEnabled ?? twoFactorService.isActivated(),
+  const [twoFactorActive, setTwoFactorActive] = useState<boolean>(
+    () => twoFactorEnabled ?? user?.twoFactorEnabled ?? twoFactorService.isActivated(user?.id),
   )
   const [state, setState] = useState<Reconfigure2FaState>('IDLE')
 
@@ -72,22 +72,19 @@ export function Settings({ twoFactorEnabled, onReconfigureSuccess }: SettingsPro
     setIsLoading(true)
     setNewError('')
     try {
-      const res = await twoFactorService.activate(code)
-      const codes =
-        res.recoveryCodes && res.recoveryCodes.length > 0
-          ? res.recoveryCodes
-          : [
-              'A1B2-C3D4',
-              'E5F6-G7H8',
-              'J9K0-L1M2',
-              'N3P4-Q5R6',
-              'S7T8-U9V0',
-              'W1X2-Y3Z4',
-              'B5C6-D7E8',
-              'F9G0-H1J2',
-            ]
-      setNewRecoveryCodes(codes)
-      setState('SHOW_RECOVERY_CODES')
+      const res = user?.id
+        ? await twoFactorService.activate(code, undefined, user.id)
+        : await twoFactorService.activate(code)
+      if (res.recoveryCodes && res.recoveryCodes.length > 0) {
+        setNewRecoveryCodes(res.recoveryCodes)
+        setState('SHOW_RECOVERY_CODES')
+      } else {
+        twoFactorService.setActivated(true, user?.id)
+        setTwoFactorActive(true)
+        setState('IDLE')
+        setSuccessMessage('Autenticação em duas etapas reconfigurada com sucesso!')
+        onReconfigureSuccess?.()
+      }
     } catch (error) {
       setNewError(
         error instanceof Error && error.message
@@ -100,7 +97,11 @@ export function Settings({ twoFactorEnabled, onReconfigureSuccess }: SettingsPro
   }
 
   function handleCompleteRecovery() {
-    twoFactorService.setActivated(true)
+    if (user?.id) {
+      twoFactorService.setActivated(true, user.id)
+    } else {
+      twoFactorService.setActivated(true)
+    }
     setTwoFactorActive(true)
     setState('IDLE')
     setSuccessMessage('Autenticação em duas etapas reconfigurada com sucesso!')

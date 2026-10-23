@@ -10,25 +10,13 @@ export interface TwoFactorStepProps {
   onSkip: () => void
 }
 
-const DEFAULT_FALLBACK_CODES = [
-  'A1B2-C3D4',
-  'E5F6-G7H8',
-  'J9K0-L1M2',
-  'N3P4-Q5R6',
-  'S7T8-U9V0',
-  'W1X2-Y3Z4',
-  'B5C6-D7E8',
-  'F9G0-H1J2',
-]
-
 export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
-  const [otpauthUri, setOtpauthUri] = useState<string>(
-    'otpauth://totp/V-Stable:cliente@empresa.com?secret=JBSWY3DPEHPK3PXP&issuer=V-Stable',
-  )
+  const [otpauthUri, setOtpauthUri] = useState<string>('')
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null)
   const [totpCode, setTotpCode] = useState('')
   const [totpError, setTotpError] = useState('')
   const [isActivating, setIsActivating] = useState(false)
+  const [setupAttempt, setSetupAttempt] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -39,23 +27,29 @@ export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
           setOtpauthUri(res.otpauthUri)
         }
       })
-      .catch(() => {
-        // Fallback mantido pelo service
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) {
+          setTotpError(
+            err instanceof Error && err.message
+              ? err.message
+              : 'Não foi possível carregar a configuração do 2FA. Tente novamente.',
+          )
+        }
       })
     return () => controller.abort()
-  }, [])
+  }, [setupAttempt])
 
   async function handleActivate2fa(code: string) {
-    if (code.length !== 6 || isActivating) return
+    if (!otpauthUri || code.length !== 6 || isActivating) return
     setIsActivating(true)
     setTotpError('')
     try {
       const result = await twoFactorService.activate(code)
-      const codes =
-        result.recoveryCodes && result.recoveryCodes.length > 0
-          ? result.recoveryCodes
-          : DEFAULT_FALLBACK_CODES
-      setRecoveryCodes(codes)
+      if (result.recoveryCodes && result.recoveryCodes.length > 0) {
+        setRecoveryCodes(result.recoveryCodes)
+      } else {
+        onContinue()
+      }
     } catch (error) {
       setTotpError(
         error instanceof Error && error.message
@@ -88,6 +82,8 @@ export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
             <div className="flex flex-col gap-6">
               <TwoFactorAuthContainer
                 otpauthUri={otpauthUri}
+                disabled={!otpauthUri}
+                allowRecovery={false}
                 title="Configuração de Segurança em Duas Etapas (2FA)"
                 description="Abra seu aplicativo autenticador no celular (Google Authenticator, Microsoft Authenticator, etc.) e escaneie o QR Code abaixo:"
                 value={totpCode}
@@ -100,6 +96,16 @@ export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
                 loading={isActivating}
                 submitLabel="Ativar 2FA"
               />
+              {!otpauthUri && totpError && (
+                <Button
+                  label="Tentar novamente"
+                  variant="secondary"
+                  onClick={() => {
+                    setTotpError('')
+                    setSetupAttempt((attempt) => attempt + 1)
+                  }}
+                />
+              )}
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 border-t border-slate-100">
                 <Button

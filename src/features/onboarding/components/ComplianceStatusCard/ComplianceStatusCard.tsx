@@ -20,13 +20,12 @@ export function ComplianceStatusCard({
   const [twoFactorActive, setTwoFactorActive] = useState(
     () => initialTwoFactorActive ?? twoFactorService.isActivated(),
   )
-  const [otpauthUri, setOtpauthUri] = useState<string>(
-    'otpauth://totp/V-Stable:cliente@empresa.com?secret=JBSWY3DPEHPK3PXP&issuer=V-Stable',
-  )
+  const [otpauthUri, setOtpauthUri] = useState('')
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null)
   const [totpCode, setTotpCode] = useState('')
   const [totpError, setTotpError] = useState('')
   const [isActivating, setIsActivating] = useState(false)
+  const [setupAttempt, setSetupAttempt] = useState(0)
 
   useEffect(() => {
     if (twoFactorActive) return
@@ -39,14 +38,18 @@ export function ComplianceStatusCard({
           setOtpauthUri(res.otpauthUri)
         }
       })
-      .catch(() => {
-        // Fallback mantido pelo service
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setTotpError(
+            error instanceof Error ? error.message : 'Não foi possível configurar o 2FA.',
+          )
+        }
       })
     return () => controller.abort()
-  }, [status, twoFactorActive])
+  }, [status, twoFactorActive, setupAttempt])
 
   async function handleActivate2fa(code: string) {
-    if (code.length !== 6 || isActivating) return
+    if (!otpauthUri || code.length !== 6 || isActivating) return
     setIsActivating(true)
     setTotpError('')
     try {
@@ -107,6 +110,8 @@ export function ComplianceStatusCard({
             <div className="w-full text-left mt-2">
               <TwoFactorAuthContainer
                 otpauthUri={otpauthUri}
+                disabled={!otpauthUri}
+                allowRecovery={false}
                 title="Configuração de Segurança em Duas Etapas (2FA)"
                 description="Abra seu aplicativo autenticador no celular e escaneie o QR Code para gerar seu código de acesso:"
                 value={totpCode}
@@ -119,6 +124,16 @@ export function ComplianceStatusCard({
                 loading={isActivating}
                 submitLabel="Ativar 2FA"
               />
+              {!otpauthUri && totpError && (
+                <Button
+                  label="Tentar novamente"
+                  variant="secondary"
+                  onClick={() => {
+                    setTotpError('')
+                    setSetupAttempt((attempt) => attempt + 1)
+                  }}
+                />
+              )}
             </div>
           </div>
         )
@@ -167,6 +182,8 @@ export function ComplianceStatusCard({
             <div className="w-full text-left mt-2">
               <TwoFactorAuthContainer
                 otpauthUri={otpauthUri}
+                disabled={!otpauthUri}
+                allowRecovery={false}
                 title="Configuração de Segurança em Duas Etapas (2FA)"
                 description="Abra seu aplicativo autenticador no celular e escaneie o QR Code para gerar seu código de acesso:"
                 value={totpCode}
@@ -179,6 +196,16 @@ export function ComplianceStatusCard({
                 loading={isActivating}
                 submitLabel="Ativar 2FA e Acessar Plataforma"
               />
+              {!otpauthUri && totpError && (
+                <Button
+                  label="Tentar novamente"
+                  variant="secondary"
+                  onClick={() => {
+                    setTotpError('')
+                    setSetupAttempt((attempt) => attempt + 1)
+                  }}
+                />
+              )}
             </div>
           </div>
         )

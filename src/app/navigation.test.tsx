@@ -95,7 +95,7 @@ it('renders the company menu with real company identity and disabled unavailable
   expect(within(nav).queryByText('Clientes PME')).not.toBeInTheDocument()
   expect(screen.getByText('Empresa de Teste')).toBeInTheDocument()
   expect(screen.getByText('CNPJ: 12.345.678/0001-90')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Configurações' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Configurações' })).toBeEnabled()
   expect(screen.getByRole('button', { name: 'Suporte' })).toBeDisabled()
 })
 it('keeps the shell and identity across company pages', async () => {
@@ -242,4 +242,30 @@ it('uses the company navigation when the stored token is not an admin despite /m
   await screen.findByText('Atlas')
   expect(screen.queryByText('Painel administrativo')).not.toBeInTheDocument()
   expect(screen.getByTestId('location')).toHaveTextContent('/app/beneficiarios')
+})
+
+it('allows an administrator to access settings without being redirected away', async () => {
+  role = 'ADMIN'
+  saveLoginToken(
+    `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
+  )
+  renderRoute('/app/configuracoes')
+  await screen.findByRole('heading', { name: 'Configurações da Conta' })
+  expect(screen.getByRole('button', { name: 'Configurações' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/configuracoes')
+})
+
+it('opens settings from the company menu', async () => {
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  const nav = await screen.findByRole('navigation')
+  await userEvent.click(within(nav).getByRole('button', { name: 'Configurações' }))
+  expect(await screen.findByRole('heading', { name: 'Configurações da Conta' })).toBeInTheDocument()
+  expect(within(nav).getByRole('button', { name: 'Configurações' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
 })

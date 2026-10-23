@@ -77,11 +77,20 @@ const createErrorMessage = (error: unknown) => {
   if (!(error instanceof HttpError)) return fallback
   if (error.status === 400 || error.status === 401)
     return backendMessage(error) ?? 'Código de autenticação inválido ou expirado.'
-  if (error.status === 403)
-    return (
-      backendMessage(error) ??
-      'Por medidas de segurança, transferências estão temporariamente bloqueadas por 48 horas devido à redefinição recente do seu 2FA.'
-    )
+  if (error.status === 403) {
+    const body =
+      typeof error.body === 'object' && error.body !== null
+        ? (error.body as Record<string, unknown>)
+        : null
+    const hasLock = body && ('withdrawalLockedUntil' in body || body.code === 'WITHDRAWAL_LOCKED')
+    if (hasLock) {
+      return (
+        backendMessage(error) ??
+        'Por medidas de segurança, transferências estão temporariamente bloqueadas por 48 horas devido à redefinição recente do seu 2FA.'
+      )
+    }
+    return backendMessage(error) ?? 'Você não tem permissão para realizar esta transferência.'
+  }
   if (error.status === 404) return 'Beneficiário não encontrado. Selecione outro beneficiário.'
   if (error.status === 422) return backendMessage(error) ?? fallback
   return fallback
@@ -302,19 +311,22 @@ export function useTransferCreate() {
       })
       .catch((error: unknown) => {
         if (error instanceof HttpError) {
-          if (
-            error.status === 403 ||
-            (typeof error.body === 'object' &&
-              error.body !== null &&
-              'withdrawalLockedUntil' in error.body)
-          ) {
+          const body =
+            typeof error.body === 'object' && error.body !== null
+              ? (error.body as Record<string, unknown>)
+              : null
+          const lockedUntilFromBody =
+            body && typeof body.withdrawalLockedUntil === 'string'
+              ? body.withdrawalLockedUntil
+              : null
+          const isWithdrawalLockError =
+            Boolean(lockedUntilFromBody) ||
+            (body !== null &&
+              (body?.code === 'WITHDRAWAL_LOCKED' || body?.code === '2FA_RESET_LOCK'))
+
+          if (isWithdrawalLockError) {
             const lockedUntil =
-              typeof error.body === 'object' &&
-              error.body !== null &&
-              'withdrawalLockedUntil' in error.body &&
-              typeof (error.body as Record<string, unknown>).withdrawalLockedUntil === 'string'
-                ? ((error.body as Record<string, unknown>).withdrawalLockedUntil as string)
-                : new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+              lockedUntilFromBody ?? new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
             setApiLockedUntil(lockedUntil)
             try {
               localStorage.setItem('vstable_withdrawal_locked_until', lockedUntil)

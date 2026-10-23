@@ -151,3 +151,21 @@ describe('ComplianceStatusCard Component', () => {
     expect(completeBtn).toBeEnabled()
   })
 })
+
+it('shows a setup failure without a QR code and lets the user retry', async () => {
+  vi.clearAllMocks()
+  vi.mocked(twoFactorService.isActivated).mockReturnValue(false)
+  vi.mocked(twoFactorService.setup).mockRejectedValueOnce(new Error('Setup indispon?vel'))
+  renderCard(ComplianceStatus.APPROVED)
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Setup indispon?vel')
+  expect(screen.queryByText('Chave de configura' + '\u00e7\u00e3o manual')).not.toBeInTheDocument()
+  expect(screen.getByTestId('two-factor-auth-container').querySelector('svg')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Ativar 2FA e Acessar Plataforma' })).toBeDisabled()
+  expect(twoFactorService.activate).not.toHaveBeenCalled()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+
+  expect(await screen.findByText('TESTSECRET123')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})

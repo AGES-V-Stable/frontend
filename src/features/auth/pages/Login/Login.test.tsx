@@ -14,6 +14,16 @@ vi.mock('@/features/auth/api/login', () => ({
   },
 }))
 
+vi.mock('@/features/auth/api/twoFactor', async () => {
+  const actual = await vi.importActual<typeof import('@/features/auth/api/twoFactor')>(
+    '@/features/auth/api/twoFactor',
+  )
+  return {
+    ...actual,
+    request2faRecovery: vi.fn().mockResolvedValue({ success: true, id: 'req-test-123' }),
+  }
+})
+
 function renderLogin() {
   return render(
     <MemoryRouter initialEntries={[PATHS.LOGIN]}>

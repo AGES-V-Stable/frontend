@@ -17,7 +17,8 @@
     "audit": "npm audit --audit-level=high",
     "audit:fix": "npm audit fix --audit-level=high",
     "preview": "vite preview",
-    "prepare": "husky"
+    "prepare": "husky",
+    "mock:server": "node scripts/mock-backend.cjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",
