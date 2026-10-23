@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
 import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
+import { TwoFactorRecoveryRequest } from './TwoFactorRecoveryRequest'
 import { PATHS } from '@/shared/navigation/paths'
 import { saveLoginToken } from '@/shared/http/authToken'
 import { authService } from '@/features/auth/api/login'
@@ -28,7 +29,7 @@ function validate(data: LoginFormData): LoginErrors {
 }
 
 function Login() {
-  const [step, setStep] = useState<'CREDENTIALS' | '2FA'>('CREDENTIALS')
+  const [step, setStep] = useState<'CREDENTIALS' | '2FA' | 'RECOVERY_REQUEST'>('CREDENTIALS')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [challengeToken, setChallengeToken] = useState<string | undefined>()
@@ -136,20 +137,24 @@ function Login() {
         </div>
       </div>
       <div className="bg-white flex flex-col items-center justify-center min-h-screen w-full gap-y-[20px]">
-        <div className="flex flex-col gap-y-[10px] text-center">
-          <h1 className="text-slate-900 text-[32px] font-bold">
-            {step === '2FA' ? 'Verificação de Segurança' : 'Bem-vindo à V-Stable!'}
-          </h1>
-          {!(step === '2FA' && isRecoveryMode) && (
-            <p className="text-slate-500 text-[18px] font-semibold">
-              {step === '2FA'
-                ? 'Confirme o acesso com o código de 6 dígitos'
-                : 'Acesse sua conta com suas credenciais'}
-            </p>
-          )}
-        </div>
+        {step !== 'RECOVERY_REQUEST' && (
+          <div className="flex flex-col gap-y-[10px] text-center">
+            <h1 className="text-slate-900 text-[32px] font-bold">
+              {step === '2FA' ? 'Verificação de Segurança' : 'Bem-vindo à V-Stable!'}
+            </h1>
+            {!(step === '2FA' && isRecoveryMode) && (
+              <p className="text-slate-500 text-[18px] font-semibold">
+                {step === '2FA'
+                  ? 'Confirme o acesso com o código de 6 dígitos'
+                  : 'Acesse sua conta com suas credenciais'}
+              </p>
+            )}
+          </div>
+        )}
 
-        {step === '2FA' ? (
+        {step === 'RECOVERY_REQUEST' ? (
+          <TwoFactorRecoveryRequest initialEmail={email} onCancel={() => setStep('CREDENTIALS')} />
+        ) : step === '2FA' ? (
           <div className="flex flex-col w-[560px] gap-y-4">
             <TwoFactorAuthContainer
               otpauthUri={otpauthUri}
@@ -171,6 +176,13 @@ function Login() {
               loading={submitting}
               submitLabel="Verificar e Entrar"
             />
+            <button
+              type="button"
+              onClick={() => setStep('RECOVERY_REQUEST')}
+              className="text-sm font-medium text-slate-600 hover:text-primary transition-colors text-center underline cursor-pointer py-1"
+            >
+              Não tenho acesso ao autenticador nem aos códigos de recuperação
+            </button>
             <Button
               type="button"
               label="Voltar para o login"

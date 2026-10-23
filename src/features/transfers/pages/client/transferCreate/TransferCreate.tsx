@@ -52,6 +52,8 @@ export function TransferCreate() {
     canContinue,
     amountError,
     quote,
+    isWithdrawalLocked,
+    withdrawalLockedUntil,
     handleAmountChange,
     handleBeneficiaryChange,
     handleRetryQuote,
@@ -134,6 +136,40 @@ export function TransferCreate() {
         <h1 className="text-xl font-bold text-slate-900">Realizar transferência</h1>
         <p className="text-xs text-slate-500">Informe os dados do pagamento internacional.</p>
       </header>
+
+      {isWithdrawalLocked && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-xs md:flex-row md:items-center md:justify-between"
+        >
+          <div className="flex items-start gap-3">
+            <span
+              className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-950 font-bold text-sm"
+              aria-hidden="true"
+            >
+              !
+            </span>
+            <div>
+              <p className="font-semibold text-amber-950">
+                Transferências temporariamente bloqueadas
+              </p>
+              <p className="text-sm text-amber-900">
+                Por medidas de segurança, transferências estão temporariamente bloqueadas por 48
+                horas devido à redefinição recente do seu 2FA.
+              </p>
+            </div>
+          </div>
+          {withdrawalLockedUntil && (
+            <div className="text-xs font-medium text-amber-800 md:text-right">
+              Bloqueio ativo até:{' '}
+              <span className="font-bold">
+                {new Date(withdrawalLockedUntil).toLocaleString('pt-BR')}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <Stepper steps={TRANSFER_STEPS} activeStep={activeStep} className="max-w-[1038px]" />
 
@@ -285,7 +321,7 @@ export function TransferCreate() {
                 <Button
                   type="submit"
                   label="Continuar"
-                  disabled={!canContinue}
+                  disabled={!canContinue || isWithdrawalLocked}
                   className="h-12 font-medium"
                 />
               </div>
@@ -397,6 +433,7 @@ export function TransferCreate() {
                   variant="primary"
                   label="Confirmar e Autenticar"
                   onClick={handleNextStep}
+                  disabled={isWithdrawalLocked}
                   className="h-12 font-medium"
                 />
               </div>
@@ -424,6 +461,7 @@ export function TransferCreate() {
             backLabel="Voltar"
             allowRecovery
             autoFocus
+            disabled={isWithdrawalLocked}
           />
         </div>
       )}

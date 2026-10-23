@@ -26,6 +26,7 @@ describe('PATHS configuration', () => {
       FORGOT_PASSWORD: '/esqueci-senha',
       ADMIN_TRANSFERS: '/admin/transferencias',
       ADMIN_BENEFICIARIES: '/admin/beneficiarios',
+      ADMIN_SECURITY: '/admin/solicitacoes-seguranca',
       BENEFICIARIES: '/app/beneficiarios',
       BENEFICIARIES_NEW: '/app/beneficiarios/novo',
       TRANSFERS: '/app/transferencias/nova',

@@ -536,4 +536,66 @@ describe('TransferCreate', () => {
     )
     expect(beneficiarySelect()).toBeDisabled()
   })
+
+  it('displays the 48h withdrawal lock alert banner and disables Continuar when withdrawalLockedUntil is active', async () => {
+    const futureDate = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+    vi.mocked(useSession).mockReturnValue({
+      status: 'authenticated',
+      user: {
+        id: 'u1',
+        name: 'Marina Costa',
+        email: 'marina@example.com',
+        companyId: 'c1',
+        accountType: 'USER',
+        roles: ['ROLE_USER'],
+        withdrawalLockedUntil: futureDate,
+      },
+      company: null,
+      error: null,
+      retry: vi.fn(),
+    })
+
+    await renderPage()
+
+    const banner = screen.getByRole('alert')
+    expect(banner).toHaveTextContent(
+      'Por medidas de segurança, transferências estão temporariamente bloqueadas por 48 horas devido à redefinição recente do seu 2FA',
+    )
+    expect(banner).toHaveTextContent('Bloqueio ativo até:')
+
+    await fillStep0()
+    expect(continueButton()).toBeDisabled()
+
+    fireEvent.click(continueButton())
+    await advance()
+    expect(screen.queryByText('Revisão da transferência')).not.toBeInTheDocument()
+  })
+
+  it('does not display 48h withdrawal lock banner when withdrawalLockedUntil is expired in the past', async () => {
+    const pastDate = new Date(Date.now() - 3600000).toISOString()
+    vi.mocked(useSession).mockReturnValue({
+      status: 'authenticated',
+      user: {
+        id: 'u1',
+        name: 'Marina Costa',
+        email: 'marina@example.com',
+        companyId: 'c1',
+        accountType: 'USER',
+        roles: ['ROLE_USER'],
+        withdrawalLockedUntil: pastDate,
+      },
+      company: null,
+      error: null,
+      retry: vi.fn(),
+    })
+
+    await renderPage()
+
+    expect(
+      screen.queryByText(/transferências estão temporariamente bloqueadas/i),
+    ).not.toBeInTheDocument()
+
+    await fillStep0()
+    expect(continueButton()).toBeEnabled()
+  })
 })

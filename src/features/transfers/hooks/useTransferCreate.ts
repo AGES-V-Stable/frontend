@@ -77,16 +77,29 @@ const createErrorMessage = (error: unknown) => {
   if (!(error instanceof HttpError)) return fallback
   if (error.status === 400 || error.status === 401)
     return backendMessage(error) ?? 'Código de autenticação inválido ou expirado.'
+  if (error.status === 403)
+    return (
+      backendMessage(error) ??
+      'Por medidas de segurança, transferências estão temporariamente bloqueadas por 48 horas devido à redefinição recente do seu 2FA.'
+    )
   if (error.status === 404) return 'Beneficiário não encontrado. Selecione outro beneficiário.'
   if (error.status === 422) return backendMessage(error) ?? fallback
   return fallback
+}
+
+const isFutureIsoDate = (isoString: string | null | undefined): boolean => {
+  if (!isoString) return false
+  const time = new Date(isoString).getTime()
+  return !Number.isNaN(time) && time > Date.now()
 }
 
 const isValidAmount = (amount: number | null): amount is number =>
   amount !== null && TransferAmountSchema.safeParse(amount).success
 
 export function useTransferCreate() {
-  const companyId = useSession().user?.companyId
+  const session = useSession()
+  const user = session.user
+  const companyId = user?.companyId
   const [activeStep, setActiveStep] = useState<number>(0)
   const [totpCode, setTotpCode] = useState('')
   const [values, setValues] = useState<FormValues>(initialValues)
@@ -97,6 +110,21 @@ export function useTransferCreate() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | undefined>(undefined)
   const [createdStatus, setCreatedStatus] = useState<TransactionStatus | undefined>(undefined)
+  const [apiLockedUntil, setApiLockedUntil] = useState<string | null>(null)
+
+  const rawLockedUntil =
+    apiLockedUntil ||
+    user?.withdrawalLockedUntil ||
+    (() => {
+      try {
+        return localStorage.getItem('vstable_withdrawal_locked_until')
+      } catch {
+        return null
+      }
+    })()
+
+  const isWithdrawalLocked = isFutureIsoDate(rawLockedUntil)
+  const withdrawalLockedUntil = isWithdrawalLocked ? rawLockedUntil : null
 
   const editedAmountText = amountType === 'SOURCE' ? values.sourceAmount : values.destinationAmount
   const editedAmount = parseDecimalInput(editedAmountText)
@@ -205,6 +233,7 @@ export function useTransferCreate() {
   }
 
   function handleNextStep() {
+    if (isWithdrawalLocked) return
     if (activeStep === 0) {
       if (!canContinue || !form.success) return
       setSubmitError(undefined)
@@ -238,7 +267,8 @@ export function useTransferCreate() {
     beneficiaryId: values.beneficiaryId,
     description: values.description,
   })
-  const canContinue = form.success && quoteState.status === 'ready' && !submitting
+  const canContinue =
+    form.success && quoteState.status === 'ready' && !submitting && !isWithdrawalLocked
 
   function handleSubmit(eventOrCode?: React.FormEvent<HTMLFormElement> | string) {
     if (
@@ -248,6 +278,7 @@ export function useTransferCreate() {
     ) {
       eventOrCode.preventDefault()
     }
+    if (isWithdrawalLocked) return
     if (activeStep !== 2) return
     if (!canContinue || !form.success || submitting) return
 
@@ -269,7 +300,31 @@ export function useTransferCreate() {
         setQuoteState({ status: 'idle' })
         setActiveStep(0)
       })
-      .catch((error: unknown) => setSubmitError(createErrorMessage(error)))
+      .catch((error: unknown) => {
+        if (error instanceof HttpError) {
+          if (
+            error.status === 403 ||
+            (typeof error.body === 'object' &&
+              error.body !== null &&
+              'withdrawalLockedUntil' in error.body)
+          ) {
+            const lockedUntil =
+              typeof error.body === 'object' &&
+              error.body !== null &&
+              'withdrawalLockedUntil' in error.body &&
+              typeof (error.body as Record<string, unknown>).withdrawalLockedUntil === 'string'
+                ? ((error.body as Record<string, unknown>).withdrawalLockedUntil as string)
+                : new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+            setApiLockedUntil(lockedUntil)
+            try {
+              localStorage.setItem('vstable_withdrawal_locked_until', lockedUntil)
+            } catch {
+              // ignore
+            }
+          }
+        }
+        setSubmitError(createErrorMessage(error))
+      })
       .finally(() => setSubmitting(false))
   }
 
@@ -299,6 +354,8 @@ export function useTransferCreate() {
     canContinue,
     amountError,
     quote,
+    isWithdrawalLocked,
+    withdrawalLockedUntil,
     handleAmountChange,
     handleBeneficiaryChange,
     handleRetryQuote,

@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
-import { isStoredAdmin, useSession, Settings } from '@/features/auth'
+import { isStoredAdmin, useSession, Settings, AdminSecurityRequests } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import AdminClients from '@/features/clients/pages/AdminClients'
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
@@ -110,6 +110,7 @@ function RoutedApplication() {
     ? [
         item('home', 'Início', PATHS.HOME, homeIcon),
         item('clients', 'Clientes PME', PATHS.ADMIN_CLIENTS, clientsIcon),
+        item('security-requests', 'Solicitações de Segurança', PATHS.ADMIN_SECURITY, supportIcon),
         {
           id: 'audit',
           label: 'Auditoria',
@@ -136,7 +137,9 @@ function RoutedApplication() {
       ? 'admin-transfers'
       : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
         ? 'admin-beneficiaries'
-        : 'clients'
+        : pathname.startsWith(PATHS.ADMIN_SECURITY)
+          ? 'security-requests'
+          : 'clients'
     : pathname.startsWith('/app/transferencias')
       ? 'transfers'
       : pathname.startsWith(PATHS.SETTINGS)
@@ -180,6 +183,7 @@ export default function AppRoutes() {
           <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
           <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
           <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
+          <Route path={PATHS.ADMIN_SECURITY} element={<AdminSecurityRequests />} />
         </Route>
       </Route>
       <Route element={<RoleGuard role="USER" />}>
@@ -194,6 +198,7 @@ export default function AppRoutes() {
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
       <Route path="/beneficiarios/novo" element={<LegacyRedirect to={PATHS.BENEFICIARIES_NEW} />} />
       <Route path="/transferencias" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
+      <Route path="/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
       <Route path="/transferencias/:id" element={<LegacyRedirect details />} />
       <Route path="/configuracoes" element={<LegacyRedirect to={PATHS.SETTINGS} />} />
       <Route path={PATHS.LOGIN} element={<Login />} />

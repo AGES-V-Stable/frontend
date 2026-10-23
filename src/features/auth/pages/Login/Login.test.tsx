@@ -342,4 +342,41 @@ describe('Login Page Component', () => {
     expect(await screen.findByText('Home page')).toBeInTheDocument()
     expect(localStorage.getItem('token')).toBe('jwt-via-recovery')
   })
+
+  it('permite solicitar recuperação de 2FA quando o usuário não tem acesso ao celular nem aos códigos de emergência', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockResolvedValueOnce({
+      requires2fa: true,
+      challengeToken: 'challenge-token-123',
+    })
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'perdi@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    // Na etapa 2FA, clica na opção
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Não tenho acesso ao autenticador nem aos códigos de recuperação',
+      }),
+    )
+
+    // Exibe o formulário de recuperação
+    expect(screen.getByText('Recuperação de Acesso (2FA)')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('perdi@empresa.com')).toBeInTheDocument()
+
+    // Preenche dados
+    await user.type(screen.getByLabelText('Nome completo do titular*'), 'Marina Costa')
+    await user.type(screen.getByLabelText('CPF ou Documento de Identificação*'), '123.456.789-00')
+
+    await user.click(screen.getByRole('button', { name: 'Enviar solicitação para análise' }))
+
+    // Exibe tela de status com o aviso de 48h
+    expect(await screen.findByText('Solicitação enviada com sucesso')).toBeInTheDocument()
+    expect(screen.getByText('Solicitação em análise')).toBeInTheDocument()
+    expect(
+      screen.getByText(/saques e transferências ficarão bloqueados por 48 horas/i),
+    ).toBeInTheDocument()
+  })
 })

@@ -9,6 +9,7 @@ export const UserSchema = z.object({
   companyId: z.string().nullable(),
   accountType: z.enum(['ADMIN', 'USER']),
   roles: z.array(z.string()),
+  withdrawalLockedUntil: z.string().nullable().optional(),
 })
 export type User = z.infer<typeof UserSchema>
 export const CompanySchema = z.object({

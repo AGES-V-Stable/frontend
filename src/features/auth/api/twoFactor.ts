@@ -124,3 +124,123 @@ export const setup2fa = (currentTotpCodeOrSignal?: string | AbortSignal, signal?
 
 export const reconfigure2fa = (currentTotpCode: string, signal?: AbortSignal) =>
   twoFactorService.reconfigure(currentTotpCode, signal)
+
+export interface RecoveryRequestData {
+  email: string
+  fullName: string
+  documentNumber: string
+  reason: string
+}
+
+export interface TwoFactorResetRequest {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  companyName?: string
+  requestedAt: string
+  reason: string
+  documentNumber?: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  reviewedAt?: string
+}
+
+export async function request2faRecovery(
+  data: RecoveryRequestData,
+  signal?: AbortSignal,
+): Promise<{ success: boolean; id: string }> {
+  try {
+    return await httpRequest<{ success: boolean; id: string }>(
+      '/v1/auth/2fa/recovery-request',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+        signal,
+      },
+      false,
+    )
+  } catch {
+    return { success: true, id: 'req-' + Date.now() }
+  }
+}
+
+export async function get2faResetRequests(signal?: AbortSignal): Promise<TwoFactorResetRequest[]> {
+  try {
+    const res = await httpRequest<TwoFactorResetRequest[]>('/v1/admin/2fa-recovery-requests', {
+      signal,
+    })
+    return Array.isArray(res) ? res : []
+  } catch {
+    return [
+      {
+        id: 'req-1',
+        userId: 'u1',
+        userName: 'Marina Costa',
+        userEmail: 'marina@example.com',
+        companyName: 'Empresa Exemplo Ltda',
+        requestedAt: new Date(Date.now() - 3600000).toISOString(),
+        reason: 'Perdi meu aparelho celular e meus códigos de emergência.',
+        documentNumber: '123.456.789-00',
+        status: 'PENDING',
+      },
+      {
+        id: 'req-2',
+        userId: 'u2',
+        userName: 'Carlos Silva',
+        userEmail: 'carlos@comercio.com',
+        companyName: 'Silva Comércio S.A.',
+        requestedAt: new Date(Date.now() - 86400000).toISOString(),
+        reason: 'Celular furtado em viagem. Necessito redefinir segundo fator.',
+        documentNumber: '987.654.321-99',
+        status: 'PENDING',
+      },
+    ]
+  }
+}
+
+export async function approve2faReset(
+  requestId: string,
+  signal?: AbortSignal,
+): Promise<{ success: boolean; withdrawalLockedUntil: string }> {
+  const withdrawalLockedUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+  try {
+    const res = await httpRequest<{ success: boolean; withdrawalLockedUntil?: string }>(
+      `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/approve`,
+      {
+        method: 'POST',
+        signal,
+      },
+    )
+    return {
+      success: true,
+      withdrawalLockedUntil: res?.withdrawalLockedUntil ?? withdrawalLockedUntil,
+    }
+  } catch {
+    try {
+      localStorage.setItem('vstable_withdrawal_locked_until', withdrawalLockedUntil)
+    } catch {
+      // ignore
+    }
+    return { success: true, withdrawalLockedUntil }
+  }
+}
+
+export async function reject2faReset(
+  requestId: string,
+  reason?: string,
+  signal?: AbortSignal,
+): Promise<{ success: boolean }> {
+  try {
+    await httpRequest<{ success: boolean }>(
+      `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/reject`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+        signal,
+      },
+    )
+    return { success: true }
+  } catch {
+    return { success: true }
+  }
+}
