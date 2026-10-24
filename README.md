@@ -76,3 +76,18 @@ npm run build
 ```
 
 A cobertura agregada mínima é 80% para statements, branches, funções e linhas. Testes usam Vitest e React Testing Library, sem rede real nem providers financeiros reais. Alterações de comportamento devem incluir seus testes.
+
+## Deploy na AWS
+
+O workflow [deploy.yml](.github/workflows/deploy.yml) publica `main` em **staging** e uma GitHub Release estável em **production**, desde que o commit da release pertença a `main`. Ele executa as verificações do CI, constrói a SPA com a origem da API do ambiente e publica em S3/CloudFront.
+
+Crie os GitHub Environments `staging` e `production` e configure, em cada um, as seguintes **variables** com os outputs do Terraform correspondente:
+
+| Variable                   | Output do Terraform        |
+| -------------------------- | -------------------------- |
+| `AWS_ROLE_ARN`             | `frontend_deploy_role_arn` |
+| `FRONTEND_BUCKET`          | `frontend_bucket_name`     |
+| `FRONTEND_DISTRIBUTION_ID` | `frontend_distribution_id` |
+| `VITE_API_URL`             | `api_url`                  |
+
+O role é assumido por OIDC na região `us-east-2`. O deploy preserva assets antigos com nomes versionados, publica `index.html` por último e aguarda a invalidação do CloudFront. O `VITE_API_URL` é incorporado ao build e deve ser apenas a origem do backend.
