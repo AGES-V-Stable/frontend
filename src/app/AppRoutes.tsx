@@ -1,5 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
-import { isStoredAdmin, useSession } from '@/features/auth'
+import { clearLoginToken, isStoredAdmin, useSession } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import AdminClients from '@/features/clients/pages/AdminClients'
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
@@ -29,6 +29,7 @@ import clientsIcon from '@/shared/assets/navigation/clients.svg'
 import transfersIcon from '@/shared/assets/navigation/transfers.svg'
 import settingsIcon from '@/shared/assets/navigation/settings.svg'
 import supportIcon from '@/shared/assets/navigation/support.svg'
+import logoutIcon from '@/shared/assets/navigation/logout.svg'
 
 function SessionState() {
   const { status, retry } = useSession()
@@ -130,6 +131,10 @@ function RoutedApplication() {
         item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
       ]
   items.push({ id: 'settings', label: 'Configurações', icon: icon(settingsIcon), disabled: true })
+  const footerItems: NavigationItem[] = [
+    { id: 'support', label: 'Suporte', icon: icon(supportIcon), disabled: true },
+    { id: 'logout', label: 'Sair', icon: icon(logoutIcon), onClick: clearLoginToken },
+  ]
   const activeId = admin
     ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
       ? 'admin-transfers'
@@ -159,7 +164,7 @@ function RoutedApplication() {
           items={items}
           activeId={activeId}
           account={account}
-          supportIcon={icon(supportIcon)}
+          footerItems={footerItems}
         />
       }
     >
