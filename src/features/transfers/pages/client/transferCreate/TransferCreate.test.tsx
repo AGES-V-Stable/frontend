@@ -571,6 +571,20 @@ describe('TransferCreate', () => {
     expect(screen.queryByText('Revisão da transferência')).not.toBeInTheDocument()
   })
 
+  it('ignores a withdrawal lock left in the browser by another account', async () => {
+    const futureDate = new Date(Date.now() + 3600000).toISOString()
+    localStorage.setItem('vstable_withdrawal_locked_until', futureDate)
+
+    await renderPage()
+
+    expect(
+      screen.queryByText(/transferências estão temporariamente bloqueadas/i),
+    ).not.toBeInTheDocument()
+    await fillStep0()
+    expect(continueButton()).toBeEnabled()
+    localStorage.removeItem('vstable_withdrawal_locked_until')
+  })
+
   it('does not display 48h withdrawal lock banner when withdrawalLockedUntil is expired in the past', async () => {
     const pastDate = new Date(Date.now() - 3600000).toISOString()
     vi.mocked(useSession).mockReturnValue({

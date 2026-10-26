@@ -121,16 +121,8 @@ export function useTransferCreate() {
   const [createdStatus, setCreatedStatus] = useState<TransactionStatus | undefined>(undefined)
   const [apiLockedUntil, setApiLockedUntil] = useState<string | null>(null)
 
-  const rawLockedUntil =
-    apiLockedUntil ||
-    user?.withdrawalLockedUntil ||
-    (() => {
-      try {
-        return localStorage.getItem('vstable_withdrawal_locked_until')
-      } catch {
-        return null
-      }
-    })()
+  // O backend é a fonte da trava: o perfil do usuário ou a resposta de erro desta sessão.
+  const rawLockedUntil = apiLockedUntil || user?.withdrawalLockedUntil
 
   const isWithdrawalLocked = isFutureIsoDate(rawLockedUntil)
   const withdrawalLockedUntil = isWithdrawalLocked ? rawLockedUntil : null
@@ -322,11 +314,6 @@ export function useTransferCreate() {
             const lockedUntil =
               lockedUntilFromBody ?? new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
             setApiLockedUntil(lockedUntil)
-            try {
-              localStorage.setItem('vstable_withdrawal_locked_until', lockedUntil)
-            } catch {
-              // ignore
-            }
           }
         }
         setSubmitError(createErrorMessage(error))
