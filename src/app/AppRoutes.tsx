@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
 import {
   AdminSecurityRequests,
@@ -8,7 +9,6 @@ import {
 } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import AdminClients from '@/features/clients/pages/AdminClients'
-import { Dashboard } from '@/features/dashboard/pages/Dashboard'
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
 import { BeneficiaryView } from '@/features/beneficiaries/pages/admin/beneficiaryView'
 import { BeneficiariesLanding } from '@/features/beneficiaries/pages/client/beneficiaries/BeneficiariesLanding'
@@ -191,13 +191,31 @@ function RoutedApplication() {
   )
 }
 
+// Carregado sob demanda: os gráficos (Recharts) ficam fora do pacote inicial da aplicação.
+const Dashboard = lazy(() =>
+  import('@/features/dashboard/pages/Dashboard').then((module) => ({ default: module.Dashboard })),
+)
+function DashboardRoute({ admin = false }: { admin?: boolean }) {
+  return (
+    <Suspense
+      fallback={
+        <p role="status" className="p-8">
+          Carregando dashboard...
+        </p>
+      }
+    >
+      <Dashboard admin={admin} />
+    </Suspense>
+  )
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path={PATHS.HOME} element={<RoleLanding />} />
       <Route element={<RoleGuard role="ADMIN" />}>
         <Route element={<RoutedApplication />}>
-          <Route path={PATHS.ADMIN_DASHBOARD} element={<Dashboard admin />} />
+          <Route path={PATHS.ADMIN_DASHBOARD} element={<DashboardRoute admin />} />
           <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
           <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
           <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
@@ -206,7 +224,7 @@ export default function AppRoutes() {
       </Route>
       <Route element={<RoleGuard role="USER" />}>
         <Route element={<RoutedApplication />}>
-          <Route path={PATHS.DASHBOARD} element={<Dashboard />} />
+          <Route path={PATHS.DASHBOARD} element={<DashboardRoute />} />
           <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
           <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
           <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />
