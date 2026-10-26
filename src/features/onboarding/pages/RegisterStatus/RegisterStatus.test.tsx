@@ -3,9 +3,24 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useSession } from '@/features/auth'
+import type { Session } from '@/features/auth/model/useSession'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import { saveAccessToken } from '@/shared/http/authToken'
 import { PATHS } from '@/shared/navigation/paths'
+
+vi.mock('@/features/auth', async () => ({
+  ...(await vi.importActual<typeof import('@/features/auth')>('@/features/auth')),
+  useSession: vi.fn(),
+}))
+
+const anonymous: Session = {
+  status: 'anonymous',
+  user: null,
+  company: null,
+  error: null,
+  retry: vi.fn(),
+}
 
 const onboarding = {
   kycVerificationId: 'kyc-1',
@@ -53,6 +68,7 @@ describe('RegisterStatus Page Component', () => {
     localStorage.clear()
     sessionStorage.clear()
     // Representante com 2FA já ativo: o card mostra a situação do cadastro.
+    vi.mocked(useSession).mockReturnValue(anonymous)
     saveAccessToken(`header.${btoa(JSON.stringify({ sub: 'u1' }))}.signature`)
     localStorage.setItem('vstable_2fa_active_u1', 'true')
   })
@@ -165,5 +181,41 @@ describe('RegisterStatus Page Component', () => {
       await screen.findByRole('heading', { name: 'Ativação de Segurança Obrigatória' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Em análise')).toBeInTheDocument()
+  })
+
+  it('given a logged user with 2FA active in the backend, when rendered, then it shows the status without asking for activation', async () => {
+    localStorage.removeItem('vstable_2fa_active_u1')
+    vi.mocked(useSession).mockReturnValue({
+      ...anonymous,
+      status: 'authenticated',
+      user: {
+        id: 'u1',
+        name: 'Marina Costa',
+        email: 'marina@empresa.com',
+        companyId: 'c1',
+        accountType: 'USER',
+        roles: ['ROLE_USER'],
+        twoFactorEnabled: true,
+      },
+    })
+    stubApi(json(onboarding))
+
+    renderPage()
+
+    expect(await screen.findByText('Seu cadastro está em análise')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Ativação de Segurança Obrigatória' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('given the session still loading, when the status arrives, then it waits before showing the card', async () => {
+    vi.mocked(useSession).mockReturnValue({ ...anonymous, status: 'loading' })
+    const fetcher = stubApi(json(onboarding))
+
+    renderPage()
+
+    await waitFor(() => expect(fetcher).toHaveBeenCalled())
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando a situação do cadastro...')
+    expect(screen.queryByText('Seu cadastro está em análise')).not.toBeInTheDocument()
   })
 })
