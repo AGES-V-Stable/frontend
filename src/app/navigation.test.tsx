@@ -25,6 +25,7 @@ const beneficiary = {
 }
 let role: 'ADMIN' | 'USER'
 let mock: ReturnType<typeof vi.fn>
+let backend: (url: string) => Promise<Response>
 function Location() {
   return <p data-testid="location">{useLocation().pathname + useLocation().search}</p>
 }
@@ -39,7 +40,7 @@ function renderRoute(path = '/') {
 beforeEach(() => {
   role = 'USER'
   sessionStorage.clear()
-  mock = vi.fn(async (url: string) => {
+  backend = async (url: string) => {
     if (url === '/v1/users/me')
       return new Response(
         JSON.stringify({
@@ -65,7 +66,8 @@ beforeEach(() => {
       )
     if (url.endsWith('/beneficiaries/b1')) return new Response(JSON.stringify(beneficiary))
     throw new Error(`Unexpected test request: ${url}`)
-  })
+  }
+  mock = vi.fn(backend)
   vi.stubGlobal('fetch', mock)
 })
 afterEach(() => {
@@ -217,7 +219,6 @@ it('warns about an expired session and returns to the protected page after loggi
     await httpRequest('/v1/expired').catch(() => undefined)
   })
   expect(await screen.findByText(/Sua sessão expirou/)).toBeInTheDocument()
-  const backend = mock.getMockImplementation()!
   mock.mockImplementation(async (url: string) => {
     if (url === '/v1/auth/login')
       return new Response(null, { headers: { Authorization: 'Bearer renewed' } })
