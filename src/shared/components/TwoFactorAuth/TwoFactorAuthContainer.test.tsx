@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TwoFactorAuthContainer } from './TwoFactorAuthContainer'
@@ -33,29 +34,6 @@ describe('TwoFactorAuthContainer', () => {
     expect(screen.getByLabelText('QR Code para configuração de dois fatores')).toBeInTheDocument()
     expect(screen.getByText('JBSWY3DPEHPK3PXP')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copiar chave secreta' })).toBeInTheDocument()
-  })
-
-  it('oculta o QR Code e a chave manual quando showQrCode é falso mesmo com otpauthUri fornecido', () => {
-    render(
-      <TwoFactorAuthContainer
-        otpauthUri={sampleUri}
-        showQrCode={false}
-        description="Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca"
-      />,
-    )
-
-    expect(
-      screen.queryByRole('region', { name: 'Configuração do aplicativo autenticador' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByLabelText('QR Code para configuração de dois fatores'),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca',
-      ),
-    ).toBeInTheDocument()
-    expect(screen.getByLabelText('Código de autenticação')).toBeInTheDocument()
   })
 
   it('oculta o QR Code e a chave manual quando showQrCode é falso mesmo com otpauthUri fornecido', () => {
@@ -157,6 +135,34 @@ describe('TwoFactorAuthContainer', () => {
 
     expect(handleChange).toHaveBeenCalledWith('123456')
     expect(input).toHaveValue('123456')
+  })
+
+  it('aceita colar o código completo, inclusive com o espaço dos apps autenticadores', async () => {
+    vi.useRealTimers()
+    const user = userEvent.setup()
+    const handleVerify = vi.fn()
+    render(<TwoFactorAuthContainer onVerify={handleVerify} />)
+
+    await user.click(screen.getByPlaceholderText('000000'))
+    await user.paste('123 456')
+
+    expect(screen.getByPlaceholderText('000000')).toHaveValue('123456')
+    await user.click(screen.getByRole('button', { name: 'Verificar código' }))
+    expect(handleVerify).toHaveBeenCalledWith('123456')
+  })
+
+  it('apaga dígitos com Backspace e volta a bloquear o envio', async () => {
+    vi.useRealTimers()
+    const user = userEvent.setup()
+    render(<TwoFactorAuthContainer />)
+    const input = screen.getByPlaceholderText('000000')
+
+    await user.type(input, '123456')
+    expect(screen.getByRole('button', { name: 'Verificar código' })).toBeEnabled()
+    await user.keyboard('{Backspace}')
+
+    expect(input).toHaveValue('12345')
+    expect(screen.getByRole('button', { name: 'Verificar código' })).toBeDisabled()
   })
 
   it('mantém o botão de submit desabilitado até que 6 dígitos sejam digitados', () => {
