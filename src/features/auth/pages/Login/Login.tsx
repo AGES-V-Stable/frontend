@@ -70,8 +70,8 @@ function Login() {
         password,
       })
 
-      if (result.requires2fa || result.twoFactorRequired) {
-        setChallengeToken(result.challengeToken ?? result.tempToken)
+      if (result.requires2fa) {
+        setChallengeToken(result.challengeToken)
         setOtpauthUri(result.otpauthUri)
         setStep('2FA')
         return
