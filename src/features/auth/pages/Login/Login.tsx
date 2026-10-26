@@ -1,18 +1,27 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { z } from 'zod'
 
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
 import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
 import { TwoFactorRecoveryRequest } from './TwoFactorRecoveryRequest'
 import { PATHS } from '@/shared/navigation/paths'
-import { saveLoginToken } from '@/shared/http/authToken'
+import { clearSessionExpired, saveLoginToken, wasSessionExpired } from '@/shared/http/authToken'
 import { authService } from '@/features/auth/api/login'
 import { isStoredAdmin } from '@/features/auth/model/storedAccount'
 
 import { LoginSchema, type LoginFormData } from '@/features/auth/schemas/auth'
 
 type LoginErrors = Partial<Record<keyof LoginFormData, string>>
+
+/** Rota interna que o usuário tentava acessar quando foi enviado ao login. */
+const RedirectState = z.object({ from: z.string().regex(/^\/(?!\/)/) })
+
+interface LoginProps {
+  /** Escolhe o destino após autenticar; sem ela, volta à rota de origem ou ao início. */
+  resolveDestination?: (from: string | null) => Promise<string>
+}
 
 function validate(data: LoginFormData): LoginErrors {
   const result = LoginSchema.safeParse(data)
@@ -28,7 +37,7 @@ function validate(data: LoginFormData): LoginErrors {
   return errors
 }
 
-function Login() {
+function Login({ resolveDestination }: LoginProps) {
   const [step, setStep] = useState<'CREDENTIALS' | '2FA' | 'RECOVERY_REQUEST'>('CREDENTIALS')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -39,8 +48,13 @@ function Login() {
   const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<LoginErrors>({})
+  const [sessionExpired] = useState(wasSessionExpired)
 
   const navigate = useNavigate()
+  const redirect = RedirectState.safeParse(useLocation().state)
+  const from = redirect.success ? redirect.data.from : null
+
+  useEffect(() => clearSessionExpired(), [])
 
   function handleEmailChange(value: string) {
     setEmail(value)
@@ -64,23 +78,9 @@ function Login() {
     }
 
     setSubmitting(true)
+    let result: Awaited<ReturnType<typeof authService.login>>
     try {
-      const result = await authService.login({
-        email,
-        password,
-      })
-
-      if (result.requires2fa) {
-        setChallengeToken(result.challengeToken)
-        setOtpauthUri(result.otpauthUri)
-        setStep('2FA')
-        return
-      }
-
-      if (result.token) {
-        saveLoginToken(result.token)
-        void navigate(isStoredAdmin() ? PATHS.ADMIN_CLIENTS : PATHS.HOME, { replace: true })
-      }
+      result = await authService.login({ email, password })
     } catch (error) {
       setErrors({
         email:
@@ -89,9 +89,28 @@ function Login() {
             : 'E-mail ou senha inválidos',
         password: 'E-mail ou senha inválidos',
       })
-    } finally {
       setSubmitting(false)
+      return
     }
+
+    if (result.requires2fa) {
+      setChallengeToken(result.challengeToken)
+      setOtpauthUri(result.otpauthUri)
+      setStep('2FA')
+      setSubmitting(false)
+      return
+    }
+    if (result.token) await completeLogin(result.token)
+  }
+
+  /** Salva a sessão e segue para o destino escolhido pelo app ou, sem ele, pela origem e perfil. */
+  async function completeLogin(token: string) {
+    saveLoginToken(token)
+    const fallback = from ?? (isStoredAdmin() ? PATHS.ADMIN_CLIENTS : PATHS.HOME)
+    const destination = resolveDestination
+      ? await resolveDestination(from).catch(() => fallback)
+      : fallback
+    void navigate(destination, { replace: true })
   }
 
   async function handleVerify2FA(code: string) {
@@ -109,8 +128,7 @@ function Login() {
         return
       }
 
-      saveLoginToken(result.token)
-      void navigate(isStoredAdmin() ? PATHS.ADMIN_CLIENTS : PATHS.HOME, { replace: true })
+      await completeLogin(result.token)
     } catch (error) {
       setTotpError(
         error instanceof Error && error.message
@@ -150,6 +168,11 @@ function Login() {
               </p>
             )}
           </div>
+        )}
+        {sessionExpired && step === 'CREDENTIALS' && (
+          <p role="status" className="w-[560px] text-sm text-amber-700">
+            Sua sessão expirou. Entre novamente para continuar.
+          </p>
         )}
 
         {step === 'RECOVERY_REQUEST' ? (

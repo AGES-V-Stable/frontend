@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ApiError } from '@/shared/http/httpClient'
-import { clearLoginToken, getLoginToken, SESSION_CHANGED } from '@/shared/http/authToken'
+import { getLoginToken, invalidateToken, SESSION_CHANGED } from '@/shared/http/authToken'
 import { getCompanyProfile, getCurrentUser } from '../api/user'
 
 import { isStoredAdmin } from './storedAccount'
@@ -58,7 +58,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         if (controller.signal.aborted || getLoginToken() !== token) return
         if (error instanceof ApiError && error.status === 401) {
-          clearLoginToken()
+          invalidateToken(token)
           return
         }
         setSession({

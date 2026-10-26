@@ -26,6 +26,7 @@ import {
 } from '@/features/onboarding/pages/WizardRoutes'
 import { PATHS, transferDetailsPath } from '@/shared/navigation/paths'
 import { maskCNPJ } from '@/shared/utils/masks'
+import { postLoginDestination } from './postLoginDestination'
 import { ApplicationShell } from './components/ApplicationShell'
 import { NavBar } from './components/NavBar'
 import type { NavigationItem } from './components/NavBar'
@@ -71,8 +72,10 @@ function RoleLanding() {
 }
 function RoleGuard({ role }: { role?: 'ADMIN' | 'USER' }) {
   const { status, user } = useSession()
+  const { pathname, search } = useLocation()
   if (status === 'loading' || status === 'error') return <SessionState />
-  if (status === 'anonymous') return <Navigate to={PATHS.LOGIN} replace />
+  if (status === 'anonymous')
+    return <Navigate to={PATHS.LOGIN} replace state={{ from: pathname + search }} />
   if (role && (isStoredAdmin() ? 'ADMIN' : 'USER') !== role) return <RoleLanding />
   if (role === 'USER' && !user?.companyId)
     return (
@@ -216,7 +219,7 @@ export default function AppRoutes() {
       <Route path="/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
       <Route path="/transferencias/:id" element={<LegacyRedirect details />} />
       <Route path="/configuracoes" element={<LegacyRedirect to={PATHS.SETTINGS} />} />
-      <Route path={PATHS.LOGIN} element={<Login />} />
+      <Route path={PATHS.LOGIN} element={<Login resolveDestination={postLoginDestination} />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRoute />} />
       <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeRoute />} />

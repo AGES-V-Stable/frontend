@@ -47,6 +47,15 @@ export interface KycPersonalPayload {
 
 export type KycStatus = 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED'
 
+/** Verificação de KYC mais recente do representante autenticado (GET /v1/onboarding/me). */
+export interface CurrentOnboarding {
+  kycVerificationId: string
+  companyId: string | null
+  status: KycStatus
+  documentSubmitted: boolean
+  livenessSubmitted: boolean
+}
+
 export interface KycSubmitResult {
   aveniaProcessId: string
   status: KycStatus

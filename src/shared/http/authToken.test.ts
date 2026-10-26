@@ -2,10 +2,14 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import {
   clearAccessToken,
+  clearSessionExpired,
   getAccessToken,
+  getLoginToken,
+  invalidateToken,
   getStoredUserId,
   saveAccessToken,
   saveLoginToken,
+  wasSessionExpired,
 } from '@/shared/http/authToken'
 
 describe('authToken service', () => {
@@ -61,6 +65,36 @@ describe('authToken service', () => {
     clearAccessToken()
 
     expect(getAccessToken()).toBe('login-token')
+  })
+
+  it('marks the session as expired when the backend rejects the login token', () => {
+    saveLoginToken('login-token')
+
+    invalidateToken('login-token')
+
+    expect(getLoginToken()).toBeNull()
+    expect(wasSessionExpired()).toBe(true)
+  })
+
+  it('does not mark the session as expired when only the onboarding token is rejected', () => {
+    saveAccessToken('onboarding-token')
+
+    invalidateToken('onboarding-token')
+
+    expect(getAccessToken()).toBeNull()
+    expect(wasSessionExpired()).toBe(false)
+  })
+
+  it('clears the expired mark on a new login or when consumed', () => {
+    saveLoginToken('old-token')
+    invalidateToken('old-token')
+
+    saveLoginToken('new-token')
+    expect(wasSessionExpired()).toBe(false)
+
+    invalidateToken('new-token')
+    clearSessionExpired()
+    expect(wasSessionExpired()).toBe(false)
   })
 })
 

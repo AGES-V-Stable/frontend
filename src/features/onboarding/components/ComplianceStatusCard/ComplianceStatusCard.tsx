@@ -11,9 +11,11 @@ import { twoFactorService } from '@/features/auth'
 
 export function ComplianceStatusCard({
   status,
+  onRefresh,
   initialTwoFactorActive,
 }: {
   status: ComplianceStatus
+  onRefresh?: () => void
   initialTwoFactorActive?: boolean
 }) {
   const navigate = useNavigate()
@@ -159,7 +161,7 @@ export function ComplianceStatusCard({
             </p>
           </div>
           <div className="max-w-[220px] w-[220px]">
-            <Button label="Atualizar status" variant="secondary" onClick={() => {}} />
+            <Button label="Atualizar status" variant="secondary" onClick={onRefresh} />
           </div>
         </div>
       )

@@ -25,6 +25,7 @@ const beneficiary = {
 }
 let role: 'ADMIN' | 'USER'
 let mock: ReturnType<typeof vi.fn>
+let backend: (url: string) => Promise<Response>
 function Location() {
   return <p data-testid="location">{useLocation().pathname + useLocation().search}</p>
 }
@@ -39,7 +40,7 @@ function renderRoute(path = '/') {
 beforeEach(() => {
   role = 'USER'
   sessionStorage.clear()
-  mock = vi.fn(async (url: string) => {
+  backend = async (url: string) => {
     if (url === '/v1/users/me')
       return new Response(
         JSON.stringify({
@@ -65,7 +66,8 @@ beforeEach(() => {
       )
     if (url.endsWith('/beneficiaries/b1')) return new Response(JSON.stringify(beneficiary))
     throw new Error(`Unexpected test request: ${url}`)
-  })
+  }
+  mock = vi.fn(backend)
   vi.stubGlobal('fetch', mock)
 })
 afterEach(() => {
@@ -207,6 +209,49 @@ it('clears the shell when an authenticated request expires', async () => {
   await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
   expect(getLoginToken()).toBeNull()
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+})
+it('warns about an expired session and returns to the protected page after logging in again', async () => {
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  await screen.findByText('Atlas')
+  mock.mockResolvedValueOnce(new Response('{"code":"TOKEN_EXPIRED"}', { status: 401 }))
+  await act(async () => {
+    await httpRequest('/v1/expired').catch(() => undefined)
+  })
+  expect(await screen.findByText(/Sua sessão expirou/)).toBeInTheDocument()
+  mock.mockImplementation(async (url: string) => {
+    if (url === '/v1/auth/login')
+      return new Response(null, { headers: { Authorization: 'Bearer renewed' } })
+    if (url === '/v1/onboarding/me') return new Response('{}', { status: 404 })
+    return backend(url)
+  })
+
+  await userEvent.type(screen.getByLabelText('E-mail'), 'marina@example.com')
+  await userEvent.type(screen.getByLabelText('Senha'), 'senha-valida')
+  await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+
+  await screen.findByText('Atlas')
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/beneficiarios')
+  expect(getLoginToken()).toBe('renewed')
+})
+it('warns about an expired session when the backend rejects the token while loading the account', async () => {
+  saveLoginToken('expired')
+  mock.mockResolvedValueOnce(new Response('{"code":"TOKEN_INVALID"}', { status: 401 }))
+
+  renderRoute('/app/beneficiarios')
+
+  expect(await screen.findByText(/Sua sessão expirou/)).toBeInTheDocument()
+  expect(getLoginToken()).toBeNull()
+})
+it('does not warn about an expired session after a manual logout', async () => {
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  await screen.findByText('Atlas')
+
+  act(() => clearLoginToken())
+
+  await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
+  expect(screen.queryByText(/Sua sessão expirou/)).not.toBeInTheDocument()
 })
 it('provides a retry when identity loading fails', async () => {
   saveLoginToken('login')
