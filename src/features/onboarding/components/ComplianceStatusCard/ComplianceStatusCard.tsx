@@ -59,7 +59,7 @@ export function ComplianceStatusCard({
       } else {
         setTwoFactorActive(true)
         if (status === ComplianceStatus.APPROVED) {
-          navigate('/')
+          void navigate('/')
         }
       }
     } catch (error) {
@@ -82,7 +82,7 @@ export function ComplianceStatusCard({
             setTwoFactorActive(true)
             setRecoveryCodes(null)
             if (status === ComplianceStatus.APPROVED) {
-              navigate('/')
+              void navigate('/')
             }
           }}
         />
