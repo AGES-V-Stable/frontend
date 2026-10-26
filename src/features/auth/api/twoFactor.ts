@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { httpRequest } from '@/shared/http/httpClient'
+import { ApiError, httpRequest } from '@/shared/http/httpClient'
 import { getStoredUserId } from '@/shared/http/authToken'
 
 const TwoFactorSetupSchema = z.object({
@@ -17,6 +17,26 @@ const TwoFactorActivateSchema = z.object({
 export interface TwoFactorActivateResponse {
   success: boolean
   recoveryCodes?: string[]
+}
+
+/** O backend descreve em inglês as recusas de código; a interface usa as próprias mensagens. */
+function twoFactorError(error: unknown): unknown {
+  if (!(error instanceof ApiError)) return error
+  if (error.status === 401)
+    return new ApiError(401, 'Código de autenticação inválido ou expirado.', error.code)
+  if (error.status === 422)
+    return new ApiError(
+      422,
+      'A configuração do 2FA não foi iniciada. Gere um novo QR Code e tente novamente.',
+      error.code,
+    )
+  if (error.status === 423)
+    return new ApiError(
+      423,
+      'Muitas tentativas com código inválido. Aguarde alguns minutos e tente novamente.',
+      error.code,
+    )
+  return error
 }
 
 const getStorageKey = (userId?: string) => (userId ? `vstable_2fa_active_${userId}` : undefined)
@@ -72,6 +92,8 @@ export const twoFactorService = {
       headers: Object.keys(headers).length > 0 ? headers : undefined,
       body,
       signal: effectiveSignal,
+    }).catch((error: unknown) => {
+      throw twoFactorError(error)
     })
     return TwoFactorSetupSchema.parse(response)
   },
@@ -92,6 +114,8 @@ export const twoFactorService = {
       method: 'POST',
       body: JSON.stringify({ code }),
       signal,
+    }).catch((error: unknown) => {
+      throw twoFactorError(error)
     })
     const parsed = TwoFactorActivateSchema.safeParse(response)
     if (!parsed.success || !parsed.data.success) {

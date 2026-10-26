@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { httpRequest } from '@/shared/http/httpClient'
+import { ApiError, httpRequest } from '@/shared/http/httpClient'
 import { getStoredUserId } from '@/shared/http/authToken'
 import {
   approve2faReset,
@@ -9,7 +9,10 @@ import {
   twoFactorService,
 } from './twoFactor'
 
-vi.mock('@/shared/http/httpClient', () => ({
+vi.mock('@/shared/http/httpClient', async () => ({
+  ApiError: (
+    await vi.importActual<typeof import('@/shared/http/httpClient')>('@/shared/http/httpClient')
+  ).ApiError,
   httpRequest: vi.fn(),
 }))
 
@@ -232,5 +235,56 @@ describe('recuperação de 2FA e revisão administrativa', () => {
     vi.mocked(httpRequest).mockResolvedValueOnce({ success: true })
 
     await expect(approve2faReset('req-1')).rejects.toThrow()
+  })
+})
+
+describe('mensagens das recusas de código 2FA', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it.each([
+    [
+      401,
+      'INVALID_2FA_CODE',
+      'Invalid 2FA verification code',
+      'Código de autenticação inválido ou expirado.',
+    ],
+    [
+      422,
+      'UNPROCESSABLE_ENTITY',
+      '2FA setup has not been initiated for this account',
+      'A configuração do 2FA não foi iniciada. Gere um novo QR Code e tente novamente.',
+    ],
+    [
+      423,
+      'ACCOUNT_LOCKED',
+      'Too many failed 2FA attempts. Try again later.',
+      'Muitas tentativas com código inválido. Aguarde alguns minutos e tente novamente.',
+    ],
+  ])('traduz o %s (%s) da ativação', async (status, code, backendMessage, expected) => {
+    vi.mocked(httpRequest).mockRejectedValueOnce(new ApiError(status, backendMessage, code))
+
+    await expect(twoFactorService.activate('000000', undefined, 'u1')).rejects.toMatchObject({
+      status,
+      code,
+      message: expected,
+    })
+    expect(twoFactorService.isActivated('u1')).toBe(false)
+  })
+
+  it('traduz o código atual recusado na reconfiguração', async () => {
+    vi.mocked(httpRequest).mockRejectedValueOnce(
+      new ApiError(401, 'Invalid 2FA verification code', 'INVALID_CREDENTIALS'),
+    )
+
+    await expect(twoFactorService.reconfigure('000000')).rejects.toThrow(
+      'Código de autenticação inválido ou expirado.',
+    )
+  })
+
+  it('mantém os demais erros como vieram', async () => {
+    const failure = new ApiError(500, 'Internal error', 'INTERNAL_ERROR')
+    vi.mocked(httpRequest).mockRejectedValueOnce(failure)
+
+    await expect(twoFactorService.setup()).rejects.toBe(failure)
   })
 })
