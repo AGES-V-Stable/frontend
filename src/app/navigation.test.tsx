@@ -208,6 +208,31 @@ it('clears the shell when an authenticated request expires', async () => {
   expect(getLoginToken()).toBeNull()
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
 })
+it('warns about an expired session and returns to the protected page after logging in again', async () => {
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  await screen.findByText('Atlas')
+  mock.mockResolvedValueOnce(new Response('{"code":"TOKEN_EXPIRED"}', { status: 401 }))
+  await act(async () => {
+    await httpRequest('/v1/expired').catch(() => undefined)
+  })
+  expect(await screen.findByText(/Sua sessão expirou/)).toBeInTheDocument()
+  const backend = mock.getMockImplementation()!
+  mock.mockImplementation(async (url: string) => {
+    if (url === '/v1/auth/login')
+      return new Response(null, { headers: { Authorization: 'Bearer renewed' } })
+    if (url === '/v1/onboarding/me') return new Response('{}', { status: 404 })
+    return backend(url)
+  })
+
+  await userEvent.type(screen.getByLabelText('E-mail'), 'marina@example.com')
+  await userEvent.type(screen.getByLabelText('Senha'), 'senha-valida')
+  await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+
+  await screen.findByText('Atlas')
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/beneficiarios')
+  expect(getLoginToken()).toBe('renewed')
+})
 it('provides a retry when identity loading fails', async () => {
   saveLoginToken('login')
   mock.mockRejectedValueOnce(new TypeError('offline'))

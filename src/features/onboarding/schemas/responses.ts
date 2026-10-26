@@ -1,4 +1,5 @@
 import { z } from 'zod'
+const ComplianceStatusSchema = z.enum(['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED'])
 export const OnboardingResultSchema = z.object({
   userId: z.string().min(1),
   companyId: z.string().min(1),
@@ -7,8 +8,18 @@ export const OnboardingResultSchema = z.object({
 })
 export const KycResultSchema = z.object({
   aveniaProcessId: z.string(),
-  status: z.enum(['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED']),
+  status: ComplianceStatusSchema,
   resultMessage: z.string().nullish(),
+})
+export const CurrentOnboardingSchema = z.object({
+  kycVerificationId: z.string().min(1),
+  companyId: z.string().min(1).nullable(),
+  status: ComplianceStatusSchema,
+  documentSubmitted: z.boolean(),
+  livenessSubmitted: z.boolean(),
+})
+export const CompanyComplianceStatusSchema = z.object({
+  overallStatus: ComplianceStatusSchema.nullable(),
 })
 export const DocumentUploadSchema = z.object({
   id: z.string().min(1),

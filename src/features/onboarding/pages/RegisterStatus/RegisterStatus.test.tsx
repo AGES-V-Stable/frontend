@@ -1,29 +1,152 @@
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
+import { PATHS } from '@/shared/navigation/paths'
+
+const onboarding = {
+  kycVerificationId: 'kyc-1',
+  companyId: 'c1',
+  status: 'UNDER_REVIEW',
+  documentSubmitted: true,
+  livenessSubmitted: true,
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status })
+}
+
+function LoginProbe() {
+  const state = useLocation().state as { from?: string } | null
+  return <p>Login page from {state?.from}</p>
+}
 
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <RegisterStatus />
+    <MemoryRouter initialEntries={[PATHS.REGISTER_STATUS]}>
+      <Routes>
+        <Route path={PATHS.REGISTER_STATUS} element={<RegisterStatus />} />
+        <Route path={PATHS.LOGIN} element={<LoginProbe />} />
+        <Route path={PATHS.REGISTER} element={<p>Register page</p>} />
+        <Route path="/register/:id/compliance" element={<p>Compliance page</p>} />
+      </Routes>
     </MemoryRouter>,
   )
 }
 
-describe('RegisterStatus Page Component', () => {
-  it('given the RegisterStatus page, when rendered, then it should display the ComplianceStatusCard', () => {
-    renderPage()
+function stubApi(onboardingResponse: Response, companyStatus: string | null = 'UNDER_REVIEW') {
+  const fetcher = vi.fn(async (url: string) =>
+    url.endsWith('/v1/onboarding/me')
+      ? onboardingResponse.clone()
+      : json({ overallStatus: companyStatus }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  return fetcher
+}
 
-    expect(screen.getByText('Seu cadastro está em análise')).toBeInTheDocument()
+describe('RegisterStatus Page Component', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
   })
 
-  it('given the RegisterStatus page, when rendered, then it should display the support text', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('given a registration under review, when rendered, then it shows the review card and the support text', async () => {
+    stubApi(json(onboarding))
+
     renderPage()
 
+    expect(await screen.findByText('Seu cadastro está em análise')).toBeInTheDocument()
     expect(
       screen.getByText('Precisa de ajuda? Entre em contato com o suporte da V-Stable.'),
     ).toBeInTheDocument()
+  })
+
+  it('given KYC and company approved, when rendered, then it shows the approved card', async () => {
+    stubApi(json({ ...onboarding, status: 'APPROVED' }), 'APPROVED')
+
+    renderPage()
+
+    expect(await screen.findByText('Cadastro aprovado')).toBeInTheDocument()
+  })
+
+  it('given a rejected company, when rendered, then it shows the not approved card', async () => {
+    stubApi(json({ ...onboarding, status: 'APPROVED' }), 'REJECTED')
+
+    renderPage()
+
+    expect(await screen.findByText('Cadastro não aprovado')).toBeInTheDocument()
+  })
+
+  it('given a company status failure, when rendered, then the registration stays under review', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.endsWith('/v1/onboarding/me')
+          ? json({ ...onboarding, status: 'APPROVED' })
+          : json({}, 500),
+      ),
+    )
+
+    renderPage()
+
+    expect(await screen.findByText('Seu cadastro está em análise')).toBeInTheDocument()
+  })
+
+  it('given a pending document, when rendered, then it resumes the registration', async () => {
+    stubApi(json({ ...onboarding, status: 'PENDING', documentSubmitted: false }))
+
+    renderPage()
+
+    expect(await screen.findByText('Compliance page')).toBeInTheDocument()
+  })
+
+  it('given no authenticated session, when rendered, then it sends the user to login and back', async () => {
+    stubApi(json({}, 401))
+
+    renderPage()
+
+    expect(await screen.findByText(`Login page from ${PATHS.REGISTER_STATUS}`)).toBeInTheDocument()
+  })
+
+  it('given an account without registration, when rendered, then it offers to start one', async () => {
+    const user = userEvent.setup()
+    stubApi(json({}, 404))
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Nenhum cadastro foi encontrado')
+    await user.click(screen.getByRole('button', { name: 'Iniciar cadastro' }))
+
+    expect(await screen.findByText('Register page')).toBeInTheDocument()
+  })
+
+  it('given a server failure, when retrying, then it loads the status again', async () => {
+    const user = userEvent.setup()
+    const fetcher = stubApi(json({}, 500))
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar')
+    fetcher.mockImplementation(async (url: string) =>
+      url.endsWith('/v1/onboarding/me') ? json(onboarding) : json({ overallStatus: null }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+
+    expect(await screen.findByText('Seu cadastro está em análise')).toBeInTheDocument()
+  })
+
+  it('given the review card, when "Atualizar status" is clicked, then it queries the backend again', async () => {
+    const user = userEvent.setup()
+    const fetcher = stubApi(json(onboarding))
+    renderPage()
+    await screen.findByText('Seu cadastro está em análise')
+    const callsBefore = fetcher.mock.calls.length
+
+    await user.click(screen.getByRole('button', { name: 'Atualizar status' }))
+
+    await waitFor(() => expect(fetcher.mock.calls.length).toBeGreaterThan(callsBefore))
+    expect(await screen.findByText('Seu cadastro está em análise')).toBeInTheDocument()
   })
 })

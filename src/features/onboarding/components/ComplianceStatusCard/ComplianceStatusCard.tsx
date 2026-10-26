@@ -6,7 +6,13 @@ import { useNavigate } from 'react-router'
 
 import { Button } from '@/shared/components/Button'
 
-export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
+export function ComplianceStatusCard({
+  status,
+  onRefresh,
+}: {
+  status: ComplianceStatus
+  onRefresh?: () => void
+}) {
   const navigate = useNavigate()
 
   switch (status) {
@@ -31,7 +37,7 @@ export function ComplianceStatusCard({ status }: { status: ComplianceStatus }) {
             </p>
           </div>
           <div className="max-w-[220px] w-[220px]">
-            <Button label="Atualizar status" variant="secondary" onClick={() => {}} />
+            <Button label="Atualizar status" variant="secondary" onClick={onRefresh} />
           </div>
         </div>
       )

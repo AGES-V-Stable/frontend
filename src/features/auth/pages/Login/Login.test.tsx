@@ -164,3 +164,87 @@ describe('Login Page Component', () => {
     expect(await screen.findByText('Register page')).toBeInTheDocument()
   })
 })
+
+describe('Login destination and expired session', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+
+  function renderFrom(
+    state: unknown,
+    resolveDestination?: (from: string | null) => Promise<string>,
+  ) {
+    return render(
+      <MemoryRouter initialEntries={[{ pathname: PATHS.LOGIN, state }]}>
+        <Routes>
+          <Route path={PATHS.HOME} element={<p>Home page</p>} />
+          <Route path={PATHS.TRANSFERS} element={<p>Transfers page</p>} />
+          <Route path="/register/kyc-1/compliance" element={<p>Compliance page</p>} />
+          <Route path={PATHS.LOGIN} element={<Login resolveDestination={resolveDestination} />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+  }
+
+  async function submit() {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: 'login-token' })
+    await user.type(screen.getByLabelText('E-mail'), 'cliente@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+  }
+
+  it('given a protected origin, when the login succeeds, then it returns to that route', async () => {
+    renderFrom({ from: PATHS.TRANSFERS })
+
+    await submit()
+
+    expect(await screen.findByText('Transfers page')).toBeInTheDocument()
+  })
+
+  it('given an injected resolver, when the login succeeds, then it follows the resolved destination', async () => {
+    const resolveDestination = vi.fn().mockResolvedValue('/register/kyc-1/compliance')
+    renderFrom({ from: PATHS.TRANSFERS }, resolveDestination)
+
+    await submit()
+
+    expect(await screen.findByText('Compliance page')).toBeInTheDocument()
+    expect(resolveDestination).toHaveBeenCalledWith(PATHS.TRANSFERS)
+  })
+
+  it('given a failing resolver, when the login succeeds, then it falls back to the origin', async () => {
+    renderFrom({ from: PATHS.TRANSFERS }, vi.fn().mockRejectedValue(new Error('offline')))
+
+    await submit()
+
+    expect(await screen.findByText('Transfers page')).toBeInTheDocument()
+  })
+
+  it.each(['https://malicioso.example', '//malicioso.example'])(
+    'given the external origin %s, when the login succeeds, then it ignores it and goes home',
+    async (from) => {
+      renderFrom({ from })
+
+      await submit()
+
+      expect(await screen.findByText('Home page')).toBeInTheDocument()
+    },
+  )
+
+  it('given an expired session, when the page opens, then it warns once and clears the mark', () => {
+    sessionStorage.setItem('vstable:session-expired', 'true')
+
+    renderFrom(null)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Sua sessão expirou')
+    expect(sessionStorage.getItem('vstable:session-expired')).toBeNull()
+  })
+
+  it('given no expired session, when the page opens, then it shows no warning', () => {
+    renderFrom(null)
+
+    expect(screen.queryByText(/Sua sessão expirou/)).not.toBeInTheDocument()
+  })
+})

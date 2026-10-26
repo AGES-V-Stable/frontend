@@ -1,15 +1,24 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { z } from 'zod'
 
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
 import { PATHS } from '@/shared/navigation/paths'
-import { saveLoginToken } from '@/shared/http/authToken'
+import { clearSessionExpired, saveLoginToken, wasSessionExpired } from '@/shared/http/authToken'
 import { authService } from '@/features/auth/api/login'
 
 import { LoginSchema, type LoginFormData } from '@/features/auth/schemas/auth'
 
 type LoginErrors = Partial<Record<keyof LoginFormData, string>>
+
+/** Rota interna que o usuário tentava acessar quando foi enviado ao login. */
+const RedirectState = z.object({ from: z.string().regex(/^\/(?!\/)/) })
+
+interface LoginProps {
+  /** Escolhe o destino após autenticar; sem ela, volta à rota de origem ou ao início. */
+  resolveDestination?: (from: string | null) => Promise<string>
+}
 
 function validate(data: LoginFormData): LoginErrors {
   const result = LoginSchema.safeParse(data)
@@ -25,13 +34,18 @@ function validate(data: LoginFormData): LoginErrors {
   return errors
 }
 
-function Login() {
+function Login({ resolveDestination }: LoginProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<LoginErrors>({})
+  const [sessionExpired] = useState(wasSessionExpired)
 
   const navigate = useNavigate()
+  const redirect = RedirectState.safeParse(useLocation().state)
+  const from = redirect.success ? redirect.data.from : null
+
+  useEffect(() => clearSessionExpired(), [])
 
   function handleEmailChange(value: string) {
     setEmail(value)
@@ -62,8 +76,6 @@ function Login() {
       })
 
       saveLoginToken(token)
-
-      void navigate(PATHS.HOME, { replace: true })
     } catch (error) {
       setErrors({
         email:
@@ -72,9 +84,15 @@ function Login() {
             : 'E-mail ou senha inválidos',
         password: 'E-mail ou senha inválidos',
       })
-    } finally {
       setSubmitting(false)
+      return
     }
+
+    const fallback = from ?? PATHS.HOME
+    const destination = resolveDestination
+      ? await resolveDestination(from).catch(() => fallback)
+      : fallback
+    void navigate(destination, { replace: true })
   }
 
   return (
@@ -98,6 +116,11 @@ function Login() {
             Acesse sua conta com suas credenciais
           </p>
         </div>
+        {sessionExpired && (
+          <p role="status" className="w-[560px] text-sm text-amber-700">
+            Sua sessão expirou. Entre novamente para continuar.
+          </p>
+        )}
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-y-[50px]">
           <div className="flex flex-col w-[560px] gap-y-[10px]">
             <Input
