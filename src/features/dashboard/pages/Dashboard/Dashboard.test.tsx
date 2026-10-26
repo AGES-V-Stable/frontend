@@ -3,17 +3,28 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { Dashboard } from './Dashboard'
 import { settlementsSchema } from '@/features/dashboard/api/dashboard'
 
-vi.mock('recharts', () => ({
-  ResponsiveContainer: () => null,
-  Bar: () => null,
-  BarChart: () => null,
-  CartesianGrid: () => null,
-  Area: () => null,
-  AreaChart: () => null,
-  Tooltip: () => null,
-  XAxis: () => null,
-  YAxis: () => null,
-}))
+// Recharts não desenha no jsdom; o mock repassa os filhos e guarda as props de cada série e eixo.
+const chartProps = vi.hoisted(() => ({}) as Record<string, Record<string, unknown>[]>)
+vi.mock('recharts', async () => {
+  const { createElement, Fragment } = await import('react')
+  const capture =
+    (name: string, withChildren = false) =>
+    (props: Record<string, unknown>) => {
+      ;(chartProps[name] ??= []).push(props)
+      return withChildren ? createElement(Fragment, null, props.children as never) : null
+    }
+  return {
+    ResponsiveContainer: capture('ResponsiveContainer', true),
+    BarChart: capture('BarChart', true),
+    AreaChart: capture('AreaChart', true),
+    Bar: capture('Bar'),
+    Area: capture('Area'),
+    CartesianGrid: capture('CartesianGrid'),
+    Tooltip: capture('Tooltip'),
+    XAxis: capture('XAxis'),
+    YAxis: capture('YAxis'),
+  }
+})
 function responses(url: string) {
   if (url === '/v1/balance') return { availableBalanceBrl: '25000.00' }
   if (url.startsWith('/v1/dashboard/transaction-volume')) return { transactedVolumeBrl: '5022.50' }
@@ -205,7 +216,7 @@ it('lists the latest settlements with counterparty, date, type, amount and statu
   expect(screen.getByText('Recebimento')).toBeInTheDocument()
   expect(screen.getByText('Não registrado')).toBeInTheDocument()
   expect(screen.getByText('Não registrada')).toBeInTheDocument()
-  expect(screen.getAllByText('Liquidado')).toHaveLength(2)
+  expect(screen.getAllByText('Concluída')).toHaveLength(2)
 })
 
 it('requests the next settlements page from the backend', async () => {
@@ -265,4 +276,43 @@ it('generates the full statement and warns when the download fails', async () =>
     await screen.findByText('Não foi possível gerar o extrato. Tente novamente.'),
   ).toBeInTheDocument()
   click.mockRestore()
+})
+
+it('shows the real status of each settlement', async () => {
+  vi.stubGlobal(
+    'fetch',
+    withSettlements([
+      settlement,
+      { ...settlement, id: 's2', status: 'PROCESSING' },
+      { ...settlement, id: 's3', status: 'FAILED' },
+    ]),
+  )
+  render(<Dashboard />)
+
+  expect(await screen.findByText('Concluída')).toBeInTheDocument()
+  expect(screen.getByText('Processando')).toBeInTheDocument()
+  expect(screen.getByText('Com falha')).toBeInTheDocument()
+})
+
+it('names the chart series and formats the value axis in compact reais', async () => {
+  for (const key of Object.keys(chartProps)) delete chartProps[key]
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => new Response(JSON.stringify(responses(url)))),
+  )
+  render(<Dashboard />)
+  await screen.findByText('R$ 25.000,00')
+  await waitFor(() => expect(chartProps.Bar?.length).toBeTruthy())
+
+  expect(chartProps.Bar.at(-1)).toMatchObject({ name: 'Volume', dataKey: 'value' })
+  expect(chartProps.Area.at(-1)).toMatchObject({ name: 'Economia', dataKey: 'value' })
+  const tickFormatter = chartProps.YAxis.at(-1)!.tickFormatter as (value: number) => string
+  expect(tickFormatter(340000).replace(/\s/g, ' ')).toBe('R$ 340 mil')
+  expect(tickFormatter(2500000).replace(/\s/g, ' ')).toBe('R$ 2,5 mi')
+  const formatter = chartProps.Tooltip.at(-1)!.formatter as (
+    value: unknown,
+    name: unknown,
+    item: { payload: { amount: string | null } },
+  ) => string
+  expect(formatter(1640, 'Economia', { payload: { amount: '1640.00' } })).toMatch(/R\$\s*1\.640,00/)
 })

@@ -30,7 +30,16 @@ const settlementSchema = z.object({
   feeBrl: decimal.nullable(),
   rate: decimal.nullable(),
   savings: decimal.nullable(),
-  status: z.literal('SETTLED'),
+  status: z.enum([
+    'AWAITING_PAYMENT',
+    'PROCESSING',
+    'HELD',
+    'SETTLED',
+    'FAILED',
+    'PARTIAL_FAILURE',
+    'CANCELED',
+    'EXPIRED',
+  ]),
 })
 export const settlementsSchema = z.object({
   content: z.array(settlementSchema),

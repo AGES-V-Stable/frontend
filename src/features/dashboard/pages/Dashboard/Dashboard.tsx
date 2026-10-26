@@ -15,7 +15,7 @@ import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
 import { TransactionVolumeCard } from '@/features/dashboard/components/TransactionVolumeCard'
 import { useBalance } from '@/features/dashboard/hooks/useBalance'
 import { useTransactionVolume } from '@/features/dashboard/hooks/useTransactionVolume'
-import { Table } from '@/shared/components/Table'
+import { StatusBadge, Table, type StatusVariant } from '@/shared/components/Table'
 import { Button } from '@/shared/components/Button'
 import { formatMoneyString, formatDateTime } from '@/shared/utils/formatters'
 import {
@@ -49,6 +49,27 @@ function useDashboard<T>(admin: boolean, suffix: string, schema: ZodType<T>) {
     retry: () => setAttempt((v) => v + 1),
   }
 }
+// Eixo dos gráficos em reais, de forma compacta (R$ 340 mil); o valor exato fica no tooltip.
+const compactBrl = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+  notation: 'compact',
+  maximumFractionDigits: 1,
+})
+const axisMoney = (value: number) => compactBrl.format(value)
+
+// Mesmos rótulos da tela de detalhes de transferência.
+const STATUS: Record<Settlement['status'], { label: string; variant: StatusVariant }> = {
+  SETTLED: { label: 'Concluída', variant: 'success' },
+  PROCESSING: { label: 'Processando', variant: 'warning' },
+  AWAITING_PAYMENT: { label: 'Aguardando pagamento', variant: 'warning' },
+  HELD: { label: 'Retida para análise', variant: 'warning' },
+  FAILED: { label: 'Com falha', variant: 'error' },
+  PARTIAL_FAILURE: { label: 'Falha parcial', variant: 'error' },
+  CANCELED: { label: 'Cancelada', variant: 'error' },
+  EXPIRED: { label: 'Expirada', variant: 'error' },
+}
+
 const money = (amount: string | null, currency = 'BRL') =>
   formatMoneyString(amount, currency) ?? 'Indisponível'
 const card = 'rounded-xl border border-sage-300 bg-white p-6'
@@ -97,7 +118,7 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
     <>
       <CartesianGrid strokeDasharray="3 3" vertical={false} />
       <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-      <YAxis width={70} tick={{ fontSize: 12 }} />
+      <YAxis width={80} tick={{ fontSize: 12 }} tickFormatter={axisMoney} />
       <Tooltip
         formatter={(_, __, item) => money((item.payload as { amount: string | null }).amount)}
       />
@@ -138,6 +159,7 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
                   <Area
                     type="linear"
                     dataKey="value"
+                    name="Economia"
                     stroke="var(--color-primary)"
                     fill="var(--color-emerald-50)"
                     connectNulls={false}
@@ -147,7 +169,12 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
               ) : (
                 <BarChart data={points} accessibilityLayer>
                   {axes}
-                  <Bar dataKey="value" fill="var(--color-primary)" isAnimationActive={false} />
+                  <Bar
+                    dataKey="value"
+                    name="Volume"
+                    fill="var(--color-primary)"
+                    isAnimationActive={false}
+                  />
                 </BarChart>
               )}
             </ResponsiveContainer>
@@ -219,7 +246,9 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
     {
       key: 'status',
       label: 'Status da ordem',
-      render: () => <span className="rounded bg-emerald-50 px-2 py-1 text-primary">Liquidado</span>,
+      render: (r: Settlement) => (
+        <StatusBadge label={STATUS[r.status].label} variant={STATUS[r.status].variant} />
+      ),
     },
   ]
   return (
