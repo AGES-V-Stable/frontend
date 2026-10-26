@@ -224,6 +224,16 @@ it('reacts to logout and clears cached account identity', async () => {
   await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
   expect(screen.queryByText('Empresa de Teste')).not.toBeInTheDocument()
 })
+it('logs out from the account menu and returns to the login page', async () => {
+  saveLoginToken('login')
+  renderRoute()
+  await screen.findByText('Atlas')
+  await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
+  await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
+  expect(getLoginToken()).toBeNull()
+  expect(screen.getByTestId('location')).toHaveTextContent('/login')
+  expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+})
 
 it('selects the administrator menu from localStorage even when /me reports a user profile', async () => {
   saveLoginToken(
