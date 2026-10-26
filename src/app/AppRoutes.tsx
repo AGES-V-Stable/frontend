@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
 import {
   AdminSecurityRequests,
@@ -64,8 +65,8 @@ function RoleLanding() {
         status === 'anonymous'
           ? PATHS.LOGIN
           : isStoredAdmin()
-            ? PATHS.ADMIN_CLIENTS
-            : PATHS.BENEFICIARIES
+            ? PATHS.ADMIN_DASHBOARD
+            : PATHS.DASHBOARD
       }
     />
   )
@@ -118,7 +119,7 @@ function RoutedApplication() {
   })
   const items: NavigationItem[] = admin
     ? [
-        item('home', 'Início', PATHS.HOME, homeIcon),
+        item('dashboard', 'Dashboard', PATHS.ADMIN_DASHBOARD, homeIcon),
         item('clients', 'Clientes PME', PATHS.ADMIN_CLIENTS, clientsIcon),
         item('security-requests', 'Solicitações de Segurança', PATHS.ADMIN_SECURITY, supportIcon),
         {
@@ -137,7 +138,7 @@ function RoutedApplication() {
         },
       ]
     : [
-        item('home', 'Início', PATHS.HOME, homeIcon),
+        item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
         item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
         item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
       ]
@@ -148,17 +149,19 @@ function RoutedApplication() {
   ]
   const activeId = pathname.startsWith(PATHS.SETTINGS)
     ? 'settings'
-    : admin
-      ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
-        ? 'admin-transfers'
-        : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
-          ? 'admin-beneficiaries'
-          : pathname.startsWith(PATHS.ADMIN_SECURITY)
-            ? 'security-requests'
-            : 'clients'
-      : pathname.startsWith('/app/transferencias')
-        ? 'transfers'
-        : 'beneficiaries'
+    : pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
+      ? 'dashboard'
+      : admin
+        ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
+          ? 'admin-transfers'
+          : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
+            ? 'admin-beneficiaries'
+            : pathname.startsWith(PATHS.ADMIN_SECURITY)
+              ? 'security-requests'
+              : 'clients'
+        : pathname.startsWith('/app/transferencias')
+          ? 'transfers'
+          : 'beneficiaries'
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -188,12 +191,31 @@ function RoutedApplication() {
   )
 }
 
+// Carregado sob demanda: os gráficos (Recharts) ficam fora do pacote inicial da aplicação.
+const Dashboard = lazy(() =>
+  import('@/features/dashboard/pages/Dashboard').then((module) => ({ default: module.Dashboard })),
+)
+function DashboardRoute({ admin = false }: { admin?: boolean }) {
+  return (
+    <Suspense
+      fallback={
+        <p role="status" className="p-8">
+          Carregando dashboard...
+        </p>
+      }
+    >
+      <Dashboard admin={admin} />
+    </Suspense>
+  )
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path={PATHS.HOME} element={<RoleLanding />} />
       <Route element={<RoleGuard role="ADMIN" />}>
         <Route element={<RoutedApplication />}>
+          <Route path={PATHS.ADMIN_DASHBOARD} element={<DashboardRoute admin />} />
           <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
           <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
           <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
@@ -202,6 +224,7 @@ export default function AppRoutes() {
       </Route>
       <Route element={<RoleGuard role="USER" />}>
         <Route element={<RoutedApplication />}>
+          <Route path={PATHS.DASHBOARD} element={<DashboardRoute />} />
           <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
           <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
           <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />

@@ -20,6 +20,7 @@ export interface TableAction<T> {
 }
 
 export interface PaginationProps {
+  compact?: boolean
   currentPage: number
   totalPages: number
   displayedRecords: number
@@ -30,6 +31,7 @@ export interface PaginationProps {
 }
 
 export interface TableProps<T> {
+  compact?: boolean
   title?: string
   totalRecords?: number // Total number of records (used in header if provided)
   columns: ColumnDefinition<T>[]
