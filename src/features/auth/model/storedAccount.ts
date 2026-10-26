@@ -17,7 +17,7 @@ export function isStoredAdmin(): boolean {
     const claims = ClaimsSchema.parse(JSON.parse(new TextDecoder().decode(bytes)))
     return claims.account_type
       ? claims.account_type === 'ADMIN'
-      : (claims.role?.includes('ROLE_ADMIN') ?? false)
+      : (claims.role?.some((r) => r === 'ROLE_ADMIN' || r === 'ADMIN') ?? false)
   } catch {
     return false
   }

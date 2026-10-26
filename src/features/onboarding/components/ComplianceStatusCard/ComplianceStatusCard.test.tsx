@@ -1,20 +1,39 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ComplianceStatusCard } from '@/features/onboarding/components/ComplianceStatusCard/ComplianceStatusCard'
 import { ComplianceStatus } from '@/features/onboarding/components/ComplianceStatusCard/ComplianceStatusType'
+import { twoFactorService } from '@/features/auth'
 
-function renderCard(status: ComplianceStatus) {
+vi.mock('@/features/auth', () => ({
+  twoFactorService: {
+    isActivated: vi.fn(),
+    setActivated: vi.fn(),
+    setup: vi.fn().mockResolvedValue({
+      otpauthUri: 'otpauth://totp/V-Stable:test@empresa.com?secret=TESTSECRET123',
+      secret: 'TESTSECRET123',
+    }),
+    activate: vi.fn().mockResolvedValue({ success: true }),
+  },
+}))
+
+function renderCard(status: ComplianceStatus, initialTwoFactorActive?: boolean) {
   return render(
     <MemoryRouter>
-      <ComplianceStatusCard status={status} />
+      <ComplianceStatusCard status={status} initialTwoFactorActive={initialTwoFactorActive} />
     </MemoryRouter>,
   )
 }
 
 describe('ComplianceStatusCard Component', () => {
-  it('given status IN_REVIEW, when rendered, then it should display the analysis content', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('given status IN_REVIEW and 2FA active, when rendered, then it should display the analysis content', () => {
+    vi.mocked(twoFactorService.isActivated).mockReturnValue(true)
     renderCard(ComplianceStatus.IN_REVIEW)
 
     expect(screen.getByText('Em análise')).toBeInTheDocument()
@@ -24,7 +43,68 @@ describe('ComplianceStatusCard Component', () => {
     expect(screen.getByAltText('Em análise')).toBeInTheDocument()
   })
 
-  it('given status APPROVED, when rendered, then it should display the approved content', () => {
+  it('given status IN_REVIEW and 2FA not active, then it should display the mandatory 2FA setup container', async () => {
+    vi.mocked(twoFactorService.isActivated).mockReturnValue(false)
+    renderCard(ComplianceStatus.IN_REVIEW)
+
+    expect(screen.getByText('Em análise')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Ativação de Segurança Obrigatória' }),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByText('Configuração de Segurança em Duas Etapas (2FA)'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ativar 2FA' })).toBeInTheDocument()
+  })
+
+  it('given status IN_REVIEW and 2FA not active, when activated, displays recovery codes container before transitioning to in review status', async () => {
+    const user = userEvent.setup()
+    vi.mocked(twoFactorService.isActivated).mockReturnValue(false)
+    vi.mocked(twoFactorService.activate).mockResolvedValueOnce({
+      success: true,
+      recoveryCodes: ['ABCD-1234', 'EFGH-5678'],
+    })
+    renderCard(ComplianceStatus.IN_REVIEW)
+
+    const input = await screen.findByLabelText('Código de autenticação')
+    await user.type(input, '123456')
+    await user.click(screen.getByRole('button', { name: 'Ativar 2FA' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Códigos de recuperação de emergência' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('ABCD-1234')).toBeInTheDocument()
+
+    const completeBtn = screen.getByRole('button', { name: 'Concluir Configuração' })
+    expect(completeBtn).toBeDisabled()
+
+    await user.click(
+      screen.getByLabelText('Confirmo que anotei ou salvei meus códigos em local seguro'),
+    )
+    expect(completeBtn).toBeEnabled()
+
+    await user.click(completeBtn)
+    expect(await screen.findByText('Seu cadastro está em análise')).toBeInTheDocument()
+  })
+
+  it('given status APPROVED and 2FA not active, then it should display the mandatory 2FA setup container', async () => {
+    vi.mocked(twoFactorService.isActivated).mockReturnValue(false)
+    renderCard(ComplianceStatus.APPROVED)
+
+    expect(screen.getByText('Cadastro Aprovado')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Ativação de Segurança Obrigatória' }),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByText('Configuração de Segurança em Duas Etapas (2FA)'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Ativar 2FA e Acessar Plataforma' }),
+    ).toBeInTheDocument()
+  })
+
+  it('given status APPROVED and 2FA already active, then it should display the account unlocked content and access button', () => {
+    vi.mocked(twoFactorService.isActivated).mockReturnValue(true)
     renderCard(ComplianceStatus.APPROVED)
 
     expect(screen.getByText('Aprovado')).toBeInTheDocument()
@@ -43,4 +123,49 @@ describe('ComplianceStatusCard Component', () => {
     expect(screen.getByRole('button', { name: 'Revisar dados' })).toBeInTheDocument()
     expect(screen.getByAltText('Não aprovado')).toBeInTheDocument()
   })
+
+  it('given status APPROVED and 2FA not active, when activated, displays recovery codes container before unlocking account', async () => {
+    const user = userEvent.setup()
+    vi.mocked(twoFactorService.isActivated).mockReturnValue(false)
+    vi.mocked(twoFactorService.activate).mockResolvedValueOnce({
+      success: true,
+      recoveryCodes: ['ABCD-1234', 'EFGH-5678'],
+    })
+    renderCard(ComplianceStatus.APPROVED)
+
+    const input = await screen.findByLabelText('Código de autenticação')
+    await user.type(input, '123456')
+    await user.click(screen.getByRole('button', { name: 'Ativar 2FA e Acessar Plataforma' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Códigos de recuperação de emergência' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('ABCD-1234')).toBeInTheDocument()
+
+    const completeBtn = screen.getByRole('button', { name: 'Concluir Configuração' })
+    expect(completeBtn).toBeDisabled()
+
+    await user.click(
+      screen.getByLabelText('Confirmo que anotei ou salvei meus códigos em local seguro'),
+    )
+    expect(completeBtn).toBeEnabled()
+  })
+})
+
+it('shows a setup failure without a QR code and lets the user retry', async () => {
+  vi.clearAllMocks()
+  vi.mocked(twoFactorService.isActivated).mockReturnValue(false)
+  vi.mocked(twoFactorService.setup).mockRejectedValueOnce(new Error('Setup indispon?vel'))
+  renderCard(ComplianceStatus.APPROVED)
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Setup indispon?vel')
+  expect(screen.queryByText('Chave de configura' + '\u00e7\u00e3o manual')).not.toBeInTheDocument()
+  expect(screen.getByTestId('two-factor-auth-container').querySelector('svg')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Ativar 2FA e Acessar Plataforma' })).toBeDisabled()
+  expect(twoFactorService.activate).not.toHaveBeenCalled()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+
+  expect(await screen.findByText('TESTSECRET123')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })

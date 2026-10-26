@@ -4,6 +4,7 @@ export const PATHS = {
   REGISTER: '/register',
   REGISTER_COMPANY: '/register/empresa',
   REGISTER_REPRESENTATIVE: '/register/representante',
+  REGISTER_2FA: '/register/:kycVerificationId/2fa',
   REGISTER_COMPLIANCE: '/register/:kycVerificationId/compliance',
   COMPLIANCE_LIVENESS: '/register/:kycVerificationId/compliance/liveness',
   REGISTER_COMPLETE: '/register/:kycVerificationId/concluido',
@@ -12,14 +13,17 @@ export const PATHS = {
   FORGOT_PASSWORD: '/esqueci-senha',
   ADMIN_TRANSFERS: '/admin/transferencias',
   ADMIN_BENEFICIARIES: '/admin/beneficiarios',
+  ADMIN_SECURITY: '/admin/solicitacoes-seguranca',
   BENEFICIARIES: '/app/beneficiarios',
   BENEFICIARIES_NEW: '/app/beneficiarios/novo',
   TRANSFERS: '/app/transferencias/nova',
   TRANSFER_DETAILS: '/app/transferencias/:id',
+  SETTINGS: '/app/configuracoes',
 } as const
 
 export type Path = (typeof PATHS)[keyof typeof PATHS]
 
+export const twoFactorSetupPath = (id: string) => `/register/${encodeURIComponent(id)}/2fa`
 export const compliancePath = (id: string) => `/register/${encodeURIComponent(id)}/compliance`
 export const livenessPath = (id: string) =>
   `/register/${encodeURIComponent(id)}/compliance/liveness`

@@ -21,6 +21,14 @@ export class HttpError extends ApiError {
   }
 }
 
+/**
+ * Um 401 só encerra a sessão quando o backend recusa o token. Um 401 de regra de negócio,
+ * como um código 2FA inválido (INVALID_2FA_CODE), mantém o usuário autenticado.
+ */
+const TOKEN_REJECTION_CODES = new Set(['TOKEN_EXPIRED', 'TOKEN_INVALID', 'UNAUTHENTICATED'])
+const isRejectedToken = (code: unknown) =>
+  typeof code !== 'string' || TOKEN_REJECTION_CODES.has(code)
+
 export function apiUrl(path: string): string {
   return `${env.VITE_API_URL}${path}`
 }
@@ -74,7 +82,7 @@ export async function httpResponse(
     }
     const record =
       typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
-    if (response.status === 401 && token) invalidateToken(token)
+    if (response.status === 401 && token && isRejectedToken(record.code)) invalidateToken(token)
     throw new HttpError(
       typeof record.message === 'string'
         ? record.message
