@@ -125,7 +125,7 @@ function Login() {
   return (
     <div className="flex items-center min-h-screen">
       <div className="bg-slate-900 min-h-screen w-[760px] flex flex-col items-center justify-center px-18">
-        <img src="/favicon.png" alt="logo" />
+        <img src="/favicon.svg" alt="logo" className="w-32 h-32" />
         <div className="flex flex-col gap-y-[18px]">
           <p className="text-white text-[32px] font-bold">
             Infraestrutura financeira para operações globais.
