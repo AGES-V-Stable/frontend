@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import type { AccessData, CompanyData, RepresentativeData } from '../types/registration'
 import { ApiError, saveRepresentativePersonalData, submitOnboarding } from '../api/onboarding'
-import { compliancePath } from '@/shared/navigation/paths'
+import { twoFactorSetupPath } from '@/shared/navigation/paths'
 
 export function useRepresentativeSubmission(access?: AccessData, company?: CompanyData) {
   const navigate = useNavigate()
@@ -46,7 +46,7 @@ export function useRepresentativeSubmission(access?: AccessData, company?: Compa
         zipCode: isBrazil ? representative.cep.replace(/\D/g, '') : representative.cep.trim(),
         streetAddress: representative.linha_endereco.trim(),
       })
-      void navigate(compliancePath(result.kycVerificationId))
+      void navigate(twoFactorSetupPath(result.kycVerificationId))
     } catch (error) {
       setServerError(
         error instanceof ApiError && error.status < 500

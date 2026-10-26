@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
+import { saveAccessToken } from '@/shared/http/authToken'
 import { PATHS } from '@/shared/navigation/paths'
 
 const onboarding = {
@@ -37,11 +38,12 @@ function renderPage() {
 }
 
 function stubApi(onboardingResponse: Response, companyStatus: string | null = 'UNDER_REVIEW') {
-  const fetcher = vi.fn(async (url: string) =>
-    url.endsWith('/v1/onboarding/me')
-      ? onboardingResponse.clone()
-      : json({ overallStatus: companyStatus }),
-  )
+  const fetcher = vi.fn(async (url: string) => {
+    if (url.endsWith('/v1/onboarding/me')) return onboardingResponse.clone()
+    if (url.endsWith('/v1/auth/2fa/setup'))
+      return json({ otpauthUri: 'otpauth://totp/V-Stable:u1?secret=JBSWY3DPEHPK3PXP' })
+    return json({ overallStatus: companyStatus })
+  })
   vi.stubGlobal('fetch', fetcher)
   return fetcher
 }
@@ -50,6 +52,9 @@ describe('RegisterStatus Page Component', () => {
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
+    // Representante com 2FA já ativo: o card mostra a situação do cadastro.
+    saveAccessToken(`header.${btoa(JSON.stringify({ sub: 'u1' }))}.signature`)
+    localStorage.setItem('vstable_2fa_active_u1', 'true')
   })
 
   afterEach(() => vi.unstubAllGlobals())
@@ -148,5 +153,17 @@ describe('RegisterStatus Page Component', () => {
 
     await waitFor(() => expect(fetcher.mock.calls.length).toBeGreaterThan(callsBefore))
     expect(await screen.findByText('Seu cadastro está em análise')).toBeInTheDocument()
+  })
+
+  it('given a registration under review without 2FA, when rendered, then it asks to activate 2FA first', async () => {
+    localStorage.removeItem('vstable_2fa_active_u1')
+    stubApi(json(onboarding))
+
+    renderPage()
+
+    expect(
+      await screen.findByRole('heading', { name: 'Ativação de Segurança Obrigatória' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Em análise')).toBeInTheDocument()
   })
 })

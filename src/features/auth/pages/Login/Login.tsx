@@ -4,9 +4,12 @@ import { z } from 'zod'
 
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
+import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
+import { TwoFactorRecoveryRequest } from './TwoFactorRecoveryRequest'
 import { PATHS } from '@/shared/navigation/paths'
 import { clearSessionExpired, saveLoginToken, wasSessionExpired } from '@/shared/http/authToken'
 import { authService } from '@/features/auth/api/login'
+import { isStoredAdmin } from '@/features/auth/model/storedAccount'
 
 import { LoginSchema, type LoginFormData } from '@/features/auth/schemas/auth'
 
@@ -35,8 +38,14 @@ function validate(data: LoginFormData): LoginErrors {
 }
 
 function Login({ resolveDestination }: LoginProps) {
+  const [step, setStep] = useState<'CREDENTIALS' | '2FA' | 'RECOVERY_REQUEST'>('CREDENTIALS')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [challengeToken, setChallengeToken] = useState<string | undefined>()
+  const [otpauthUri, setOtpauthUri] = useState<string | undefined>()
+  const [totpCode, setTotpCode] = useState('')
+  const [totpError, setTotpError] = useState('')
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<LoginErrors>({})
   const [sessionExpired] = useState(wasSessionExpired)
@@ -69,13 +78,9 @@ function Login({ resolveDestination }: LoginProps) {
     }
 
     setSubmitting(true)
+    let result: Awaited<ReturnType<typeof authService.login>>
     try {
-      const { token } = await authService.login({
-        email,
-        password,
-      })
-
-      saveLoginToken(token)
+      result = await authService.login({ email, password })
     } catch (error) {
       setErrors({
         email:
@@ -88,17 +93,57 @@ function Login({ resolveDestination }: LoginProps) {
       return
     }
 
-    const fallback = from ?? PATHS.HOME
+    if (result.requires2fa) {
+      setChallengeToken(result.challengeToken)
+      setOtpauthUri(result.otpauthUri)
+      setStep('2FA')
+      setSubmitting(false)
+      return
+    }
+    if (result.token) await completeLogin(result.token)
+  }
+
+  /** Salva a sessão e segue para o destino escolhido pelo app ou, sem ele, pela origem e perfil. */
+  async function completeLogin(token: string) {
+    saveLoginToken(token)
+    const fallback = from ?? (isStoredAdmin() ? PATHS.ADMIN_CLIENTS : PATHS.HOME)
     const destination = resolveDestination
       ? await resolveDestination(from).catch(() => fallback)
       : fallback
     void navigate(destination, { replace: true })
   }
 
+  async function handleVerify2FA(code: string) {
+    if ((code.length !== 6 && code.length < 8) || submitting) return
+    setSubmitting(true)
+    setTotpError('')
+    try {
+      const result = await authService.verify2fa({
+        challengeToken: challengeToken ?? '',
+        code,
+      })
+
+      if (!result.token) {
+        setTotpError('Código de autenticação inválido ou expirado.')
+        return
+      }
+
+      await completeLogin(result.token)
+    } catch (error) {
+      setTotpError(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Código de autenticação inválido ou expirado.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div className="flex items-center min-h-screen">
       <div className="bg-slate-900 min-h-screen w-[760px] flex flex-col items-center justify-center px-18">
-        <img src="/favicon.png" alt="logo" />
+        <img src="/favicon.svg" alt="logo" className="w-32 h-32" />
         <div className="flex flex-col gap-y-[18px]">
           <p className="text-white text-[32px] font-bold">
             Infraestrutura financeira para operações globais.
@@ -110,56 +155,118 @@ function Login({ resolveDestination }: LoginProps) {
         </div>
       </div>
       <div className="bg-white flex flex-col items-center justify-center min-h-screen w-full gap-y-[20px]">
-        <div className="flex flex-col gap-y-[10px]">
-          <h1 className="text-slate-900 text-[32px] font-bold">Bem-vindo à V-Stable!</h1>
-          <p className="text-slate-500 text-[18px] font-semibold">
-            Acesse sua conta com suas credenciais
-          </p>
-        </div>
-        {sessionExpired && (
+        {step !== 'RECOVERY_REQUEST' && (
+          <div className="flex flex-col gap-y-[10px] text-center">
+            <h1 className="text-slate-900 text-[32px] font-bold">
+              {step === '2FA' ? 'Verificação de Segurança' : 'Bem-vindo à V-Stable!'}
+            </h1>
+            {!(step === '2FA' && isRecoveryMode) && (
+              <p className="text-slate-500 text-[18px] font-semibold">
+                {step === '2FA'
+                  ? 'Confirme o acesso com o código de 6 dígitos'
+                  : 'Acesse sua conta com suas credenciais'}
+              </p>
+            )}
+          </div>
+        )}
+        {sessionExpired && step === 'CREDENTIALS' && (
           <p role="status" className="w-[560px] text-sm text-amber-700">
             Sua sessão expirou. Entre novamente para continuar.
           </p>
         )}
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-y-[50px]">
-          <div className="flex flex-col w-[560px] gap-y-[10px]">
-            <Input
-              id="email"
-              type="email"
-              label="E-mail"
-              placeholder="nome@empresa.com.br"
-              value={email}
-              onChange={(e) => handleEmailChange(e.target.value)}
-              error={errors.email}
+
+        {step === 'RECOVERY_REQUEST' ? (
+          <TwoFactorRecoveryRequest initialEmail={email} onCancel={() => setStep('CREDENTIALS')} />
+        ) : step === '2FA' ? (
+          <div className="flex flex-col w-[560px] gap-y-4">
+            <TwoFactorAuthContainer
+              otpauthUri={otpauthUri}
+              title="Autenticação em duas etapas"
+              description={
+                otpauthUri
+                  ? 'Escaneie o QR Code abaixo com seu aplicativo autenticador ou insira o código de 6 dígitos gerado:'
+                  : 'Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta.'
+              }
+              value={totpCode}
+              onChange={(value) => {
+                setTotpCode(value)
+                if (totpError) setTotpError('')
+              }}
+              onVerify={handleVerify2FA}
+              onVerifyRecovery={handleVerify2FA}
+              onRecoveryModeChange={setIsRecoveryMode}
+              error={totpError}
+              loading={submitting}
+              submitLabel="Verificar e Entrar"
             />
-            <Input
-              id="password"
-              type="password"
-              label="Senha"
-              placeholder="Digite sua senha"
-              value={password}
-              onChange={(e) => handlePasswordChange(e.target.value)}
-              error={errors.password}
-            />
-          </div>
-          <div className="flex flex-col w-[560px] gap-y-[10px]">
-            <Button type="submit" label="Entrar" variant="primary" disabled={submitting} />
+            <button
+              type="button"
+              onClick={() => setStep('RECOVERY_REQUEST')}
+              className="text-sm font-medium text-slate-600 hover:text-primary transition-colors text-center underline cursor-pointer py-1"
+            >
+              Não tenho acesso ao autenticador nem aos códigos de recuperação
+            </button>
             <Button
               type="button"
-              label="Cadastrar PME"
+              label="Voltar para o login"
               variant="secondary"
-              onClick={() => navigate(PATHS.REGISTER)}
+              disabled={submitting}
+              onClick={() => {
+                setStep('CREDENTIALS')
+                setTotpCode('')
+                setTotpError('')
+                setChallengeToken(undefined)
+                setOtpauthUri(undefined)
+                setIsRecoveryMode(false)
+              }}
             />
           </div>
-          <div className="flex justify-center -mt-7">
-            <Link
-              to={PATHS.FORGOT_PASSWORD}
-              className="text-[16px] font-medium text-primary hover:text-primary-hover hover:underline transition-colors"
-            >
-              Esqueci minha senha
-            </Link>
-          </div>
-        </form>
+        ) : (
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-y-[50px]">
+            <div className="flex flex-col w-[560px] gap-y-[10px]">
+              <Input
+                id="email"
+                type="email"
+                label="E-mail"
+                placeholder="nome@empresa.com.br"
+                value={email}
+                error={errors.email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+              />
+              <Input
+                id="password"
+                type="password"
+                label="Senha"
+                placeholder="Digite sua senha"
+                value={password}
+                error={errors.password}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col w-[560px] gap-y-[10px]">
+              <Button
+                type="submit"
+                label={submitting ? 'Entrando...' : 'Entrar'}
+                variant="primary"
+                disabled={submitting}
+              />
+              <Button
+                type="button"
+                label="Cadastrar PME"
+                variant="secondary"
+                onClick={() => navigate(PATHS.REGISTER)}
+              />
+            </div>
+            <div className="flex justify-center -mt-7">
+              <Link
+                to={PATHS.FORGOT_PASSWORD}
+                className="text-[16px] font-medium text-primary hover:text-primary-hover hover:underline transition-colors"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )

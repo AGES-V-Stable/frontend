@@ -213,6 +213,16 @@ describe('createTransfer service', () => {
     expect(result).toEqual({ status: 'PROCESSING' })
   })
 
+  it('envia o totpCode no payload quando informado', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ status: 'PROCESSING' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await createTransfer({ ...createRequest, totpCode: '123456' })
+
+    const { body } = sentRequest(fetchMock)
+    expect(body).toEqual({ ...createRequest, totpCode: '123456' })
+  })
+
   it('não envia nenhum dado de cotação, mesmo que o objeto recebido tenha campos extras', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ status: 'PROCESSING' }))
     vi.stubGlobal('fetch', fetchMock)

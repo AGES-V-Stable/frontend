@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 
-import { TransferAmountSchema, TransferFormSchema } from '@/features/transfers/schemas/transfer'
+import {
+  TotpCodeSchema,
+  TransferAmountSchema,
+  TransferFormSchema,
+} from '@/features/transfers/schemas/transfer'
 import { getCompanyBeneficiaries } from '@/features/beneficiaries'
 import { HttpError } from '@/shared/http/httpClient'
 import { createTransfer, getTransferQuote } from '@/features/transfers/api/transfers'
@@ -71,16 +75,46 @@ const quoteErrorMessage = (error: unknown) => {
 const createErrorMessage = (error: unknown) => {
   const fallback = 'Não foi possível criar a transferência. Tente novamente.'
   if (!(error instanceof HttpError)) return fallback
+  // O backend descreve o código 2FA rejeitado em inglês; a interface usa a própria mensagem.
+  if (error.status === 401) return 'Código de autenticação inválido ou expirado.'
+  if (error.status === 423)
+    return 'Muitas tentativas com código inválido. Aguarde alguns minutos e tente novamente.'
+  if (error.status === 400)
+    return backendMessage(error) ?? 'Código de autenticação inválido ou expirado.'
+  if (error.status === 403) {
+    const body =
+      typeof error.body === 'object' && error.body !== null
+        ? (error.body as Record<string, unknown>)
+        : null
+    const hasLock = body && ('withdrawalLockedUntil' in body || body.code === 'WITHDRAWAL_LOCKED')
+    if (hasLock) {
+      return (
+        backendMessage(error) ??
+        'Por medidas de segurança, transferências estão temporariamente bloqueadas por 48 horas devido à redefinição recente do seu 2FA.'
+      )
+    }
+    return backendMessage(error) ?? 'Você não tem permissão para realizar esta transferência.'
+  }
   if (error.status === 404) return 'Beneficiário não encontrado. Selecione outro beneficiário.'
   if (error.status === 422) return backendMessage(error) ?? fallback
   return fallback
+}
+
+const isFutureIsoDate = (isoString: string | null | undefined): boolean => {
+  if (!isoString) return false
+  const time = new Date(isoString).getTime()
+  return !Number.isNaN(time) && time > Date.now()
 }
 
 const isValidAmount = (amount: number | null): amount is number =>
   amount !== null && TransferAmountSchema.safeParse(amount).success
 
 export function useTransferCreate() {
-  const companyId = useSession().user?.companyId
+  const session = useSession()
+  const user = session.user
+  const companyId = user?.companyId
+  const [activeStep, setActiveStep] = useState<number>(0)
+  const [totpCode, setTotpCode] = useState('')
   const [values, setValues] = useState<FormValues>(initialValues)
   const [amountType, setAmountType] = useState<TransferAmountType>('SOURCE')
   const [quoteState, setQuoteState] = useState<QuoteState>({ status: 'idle' })
@@ -89,6 +123,13 @@ export function useTransferCreate() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | undefined>(undefined)
   const [createdStatus, setCreatedStatus] = useState<TransactionStatus | undefined>(undefined)
+  const [apiLockedUntil, setApiLockedUntil] = useState<string | null>(null)
+
+  // O backend é a fonte da trava: o perfil do usuário ou a resposta de erro desta sessão.
+  const rawLockedUntil = apiLockedUntil || user?.withdrawalLockedUntil
+
+  const isWithdrawalLocked = isFutureIsoDate(rawLockedUntil)
+  const withdrawalLockedUntil = isWithdrawalLocked ? rawLockedUntil : null
 
   const editedAmountText = amountType === 'SOURCE' ? values.sourceAmount : values.destinationAmount
   const editedAmount = parseDecimalInput(editedAmountText)
@@ -188,10 +229,38 @@ export function useTransferCreate() {
 
   function handleCancel() {
     setValues(initialValues)
+    setTotpCode('')
     setAmountType('SOURCE')
     setQuoteState({ status: 'idle' })
     setSubmitError(undefined)
     setCreatedStatus(undefined)
+    setActiveStep(0)
+  }
+
+  function handleNextStep() {
+    if (isWithdrawalLocked) return
+    if (activeStep === 0) {
+      if (!canContinue || !form.success) return
+      setSubmitError(undefined)
+      setActiveStep(1)
+    } else if (activeStep === 1) {
+      setSubmitError(undefined)
+      setActiveStep(2)
+    }
+  }
+
+  function handlePreviousStep() {
+    setSubmitError(undefined)
+    if (activeStep === 2) {
+      setActiveStep(1)
+    } else if (activeStep === 1) {
+      setActiveStep(0)
+    }
+  }
+
+  function handleTotpChange(code: string) {
+    setTotpCode(code)
+    if (submitError) setSubmitError(undefined)
   }
 
   const form = TransferFormSchema.safeParse({
@@ -203,22 +272,56 @@ export function useTransferCreate() {
     beneficiaryId: values.beneficiaryId,
     description: values.description,
   })
-  const canContinue = form.success && quoteState.status === 'ready' && !submitting
+  const canContinue =
+    form.success && quoteState.status === 'ready' && !submitting && !isWithdrawalLocked
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!canContinue || !form.success) return
+  function handleSubmit(eventOrCode?: React.FormEvent<HTMLFormElement> | string) {
+    if (typeof eventOrCode === 'object') eventOrCode.preventDefault()
+    if (isWithdrawalLocked) return
+    if (activeStep !== 2) return
+    if (!canContinue || !form.success || submitting) return
+
+    const effectiveCode = typeof eventOrCode === 'string' ? eventOrCode : totpCode
+    const totpValidation = TotpCodeSchema.safeParse(effectiveCode)
+    if (!totpValidation.success) {
+      setSubmitError(totpValidation.error.issues[0]?.message ?? 'Código de autenticação inválido.')
+      return
+    }
 
     setSubmitting(true)
     setSubmitError(undefined)
-    createTransfer(form.data)
+    createTransfer({ ...form.data, totpCode: effectiveCode })
       .then((result) => {
         setCreatedStatus(result.status)
         setValues(initialValues)
+        setTotpCode('')
         setAmountType('SOURCE')
         setQuoteState({ status: 'idle' })
+        setActiveStep(0)
       })
-      .catch((error: unknown) => setSubmitError(createErrorMessage(error)))
+      .catch((error: unknown) => {
+        if (error instanceof HttpError) {
+          const body =
+            typeof error.body === 'object' && error.body !== null
+              ? (error.body as Record<string, unknown>)
+              : null
+          const lockedUntilFromBody =
+            body && typeof body.withdrawalLockedUntil === 'string'
+              ? body.withdrawalLockedUntil
+              : null
+          const isWithdrawalLockError =
+            Boolean(lockedUntilFromBody) ||
+            (body !== null &&
+              (body?.code === 'WITHDRAWAL_LOCKED' || body?.code === '2FA_RESET_LOCK'))
+
+          if (isWithdrawalLockError) {
+            const lockedUntil =
+              lockedUntilFromBody ?? new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+            setApiLockedUntil(lockedUntil)
+          }
+        }
+        setSubmitError(createErrorMessage(error))
+      })
       .finally(() => setSubmitting(false))
   }
 
@@ -229,6 +332,11 @@ export function useTransferCreate() {
   const quote = quoteState.status === 'ready' ? quoteState.quote : undefined
 
   return {
+    activeStep,
+    setActiveStep,
+    totpCode,
+    setTotpCode,
+    selectedBeneficiary,
     values,
     setValues,
     amountType,
@@ -243,10 +351,15 @@ export function useTransferCreate() {
     canContinue,
     amountError,
     quote,
+    isWithdrawalLocked,
+    withdrawalLockedUntil,
     handleAmountChange,
     handleBeneficiaryChange,
     handleRetryQuote,
     handleCancel,
+    handleNextStep,
+    handlePreviousStep,
+    handleTotpChange,
     handleSubmit,
   }
 }

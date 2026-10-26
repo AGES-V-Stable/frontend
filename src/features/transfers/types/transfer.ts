@@ -55,6 +55,7 @@ export interface CreateTransferRequest extends TransferQuoteRequest {
   paymentMethod: TransferPaymentMethod
   beneficiaryId: string
   description?: string
+  totpCode?: string
 }
 
 export interface CreateTransferResponse {

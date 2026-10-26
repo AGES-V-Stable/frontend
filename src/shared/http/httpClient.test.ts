@@ -78,6 +78,43 @@ it('invalidates the failed login session on 401', async () => {
   await expect(httpRequest('/v1/example')).rejects.toBeInstanceOf(HttpError)
   expect(getLoginToken()).toBeNull()
 })
+it.each(['TOKEN_EXPIRED', 'TOKEN_INVALID', 'UNAUTHENTICATED'])(
+  'invalidates the login session when the backend rejects the token with %s',
+  async (code) => {
+    saveLoginToken('login')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ code }), { status: 401 })),
+    )
+    await expect(httpRequest('/v1/example')).rejects.toBeInstanceOf(HttpError)
+    expect(getLoginToken()).toBeNull()
+  },
+)
+it.each(['INVALID_2FA_CODE', 'INVALID_CREDENTIALS'])(
+  'keeps the session when a 401 carries the business error %s',
+  async (code) => {
+    saveLoginToken('login')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code, message: 'Invalid 2FA verification code' }), {
+          status: 401,
+        }),
+      ),
+    )
+    await expect(httpRequest('/v1/auth/2fa/activate')).rejects.toMatchObject({ status: 401, code })
+    expect(getLoginToken()).toBe('login')
+  },
+)
+it('keeps the onboarding session when the 2FA activation code is rejected', async () => {
+  saveAccessToken('onboarding')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(new Response('{"code":"INVALID_2FA_CODE"}', { status: 401 })),
+  )
+  await expect(httpRequest('/v1/auth/2fa/activate')).rejects.toThrow()
+  expect(getAccessToken()).toBe('onboarding')
+})
 it('onboarding failures do not clear the separate login', async () => {
   saveLoginToken('login')
   saveAccessToken('onboarding')

@@ -11,6 +11,22 @@ export const TransferAmountSchema = z
   .number({ error: 'Informe o valor da transferência' })
   .min(0.01, 'Informe um valor maior que zero')
 
+/** Valida o código TOTP de 6 dígitos numéricos ou código de recuperação de 8 caracteres alfanuméricos. */
+export const TotpCodeSchema = z
+  .string({ error: 'Informe o código de autenticação' })
+  .trim()
+  .refine(
+    (code) => {
+      const isSixDigits = /^\d{6}$/.test(code)
+      const cleanRecovery = code.replace(/[^A-Za-z0-9]/g, '')
+      const isEightAlphanumeric = cleanRecovery.length === 8
+      return isSixDigits || isEightAlphanumeric
+    },
+    {
+      message: 'O código deve conter 6 dígitos numéricos ou código de recuperação de 8 caracteres',
+    },
+  )
+
 /** Valida o formulário antes do POST /v1/transfers. Descrição vazia não é enviada. */
 export const TransferFormSchema = z.object({
   amount: TransferAmountSchema,
@@ -26,7 +42,12 @@ export const TransferFormSchema = z.object({
     .trim()
     .optional()
     .transform((value) => value || undefined),
+  totpCode: TotpCodeSchema.optional(),
 }) satisfies z.ZodType<CreateTransferRequest>
+
+export const CreateTransferSchema = TransferFormSchema.extend({
+  totpCode: TotpCodeSchema,
+})
 
 const MoneyAmountSchema = z.object({
   amount: z.number(),

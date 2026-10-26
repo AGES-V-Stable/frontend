@@ -33,7 +33,7 @@ describe('postLoginDestination', () => {
     const fetcher = stubOnboarding(new Response('{}'))
 
     expect(await postLoginDestination(PATHS.ADMIN_TRANSFERS)).toBe(PATHS.ADMIN_TRANSFERS)
-    expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.HOME)
+    expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.ADMIN_CLIENTS)
     expect(fetcher).not.toHaveBeenCalled()
   })
 
