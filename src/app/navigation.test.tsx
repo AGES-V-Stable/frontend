@@ -234,6 +234,25 @@ it('warns about an expired session and returns to the protected page after loggi
   expect(screen.getByTestId('location')).toHaveTextContent('/app/beneficiarios')
   expect(getLoginToken()).toBe('renewed')
 })
+it('warns about an expired session when the backend rejects the token while loading the account', async () => {
+  saveLoginToken('expired')
+  mock.mockResolvedValueOnce(new Response('{"code":"TOKEN_INVALID"}', { status: 401 }))
+
+  renderRoute('/app/beneficiarios')
+
+  expect(await screen.findByText(/Sua sessão expirou/)).toBeInTheDocument()
+  expect(getLoginToken()).toBeNull()
+})
+it('does not warn about an expired session after a manual logout', async () => {
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  await screen.findByText('Atlas')
+
+  act(() => clearLoginToken())
+
+  await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
+  expect(screen.queryByText(/Sua sessão expirou/)).not.toBeInTheDocument()
+})
 it('provides a retry when identity loading fails', async () => {
   saveLoginToken('login')
   mock.mockRejectedValueOnce(new TypeError('offline'))
