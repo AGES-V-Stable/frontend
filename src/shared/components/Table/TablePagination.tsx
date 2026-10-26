@@ -2,6 +2,7 @@ import type { PaginationProps } from '@/shared/components/Table/types'
 import { Button } from '@/shared/components/Button'
 
 export function TablePagination({
+  compact = false,
   currentPage,
   totalPages,
   displayedRecords,
@@ -30,12 +31,14 @@ export function TablePagination({
     totalRecords === 0 ? 0 : Math.min(startRecord + displayedRecords - 1, totalRecords)
 
   return (
-    <div className="w-full flex items-center justify-between py-6">
+    <div
+      className={`w-full flex items-center justify-between py-6 ${compact ? 'flex-wrap gap-4' : ''}`}
+    >
       <div className="font-['IBM_Plex_Sans'] text-[14px] text-slate-500">
         Mostrando {startRecord}-{endRecord} de {totalRecords} {entityLabel}
       </div>
 
-      <div className="flex items-center gap-[8px]">
+      <div className={`flex items-center gap-[8px] ${compact ? 'flex-wrap' : ''}`}>
         <Button
           label="Anterior"
           variant="secondary"

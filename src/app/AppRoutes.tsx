@@ -8,7 +8,6 @@ import {
 } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import AdminClients from '@/features/clients/pages/AdminClients'
-import { AdminDashboard } from '@/features/dashboard/pages/AdminDashboard'
 import { Dashboard } from '@/features/dashboard/pages/Dashboard'
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
 import { BeneficiaryView } from '@/features/beneficiaries/pages/admin/beneficiaryView'
@@ -198,7 +197,7 @@ export default function AppRoutes() {
       <Route path={PATHS.HOME} element={<RoleLanding />} />
       <Route element={<RoleGuard role="ADMIN" />}>
         <Route element={<RoutedApplication />}>
-          <Route path={PATHS.ADMIN_DASHBOARD} element={<AdminDashboard />} />
+          <Route path={PATHS.ADMIN_DASHBOARD} element={<Dashboard admin />} />
           <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
           <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
           <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
