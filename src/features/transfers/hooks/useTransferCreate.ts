@@ -280,13 +280,7 @@ export function useTransferCreate() {
     form.success && quoteState.status === 'ready' && !submitting && !isWithdrawalLocked
 
   function handleSubmit(eventOrCode?: React.FormEvent<HTMLFormElement> | string) {
-    if (
-      typeof eventOrCode === 'object' &&
-      eventOrCode !== null &&
-      'preventDefault' in eventOrCode
-    ) {
-      eventOrCode.preventDefault()
-    }
+    if (typeof eventOrCode === 'object') eventOrCode.preventDefault()
     if (isWithdrawalLocked) return
     if (activeStep !== 2) return
     if (!canContinue || !form.success || submitting) return
