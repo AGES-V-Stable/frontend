@@ -1,8 +1,11 @@
 # Dashboard
 
-Início direciona para `/app/dashboard` ou `/admin/dashboard`, segundo o perfil.
-AppRoutes mantém a composição do shell e dos menus; em telas estreitas o dashboard
-usa um seletor de navegação. Outras páginas preservam sua navegação existente.
+O item "Dashboard" do menu e a raiz (`/`) levam a `/app/dashboard` ou `/admin/dashboard`,
+segundo o perfil. AppRoutes mantém a composição do shell e dos menus.
+
+Na linha de métricas, o cliente vê Saldo Disponível (`GET /v1/balance`), Economia
+Acumulada e Volume Transacionado (`GET /v1/dashboard/transaction-volume`). O
+administrador vê só a Economia Acumulada: saldo e volume pertencem à empresa do cliente.
 
 `src/features/dashboard` contém os adapters Zod, consulta cancelável e apresentação.
 Gráficos Recharts usam valores calculados pelo backend. Strings decimais são
@@ -16,7 +19,10 @@ sem depender dos registros da tela. Não existe exportação administrativa.
 Todos os usuários ROLE_ADMIN acessam o mesmo dashboard consolidado e campos.
 
 A economia é explicitamente estimada com spread fixo de 4%, autorizado para esta
-entrega. Regras e contratos estão em `backend/docs/dashboard.md`.
+entrega. Os contratos de economia, gráficos, liquidações e extrato
+(`/v1/dashboard/{summary,remittance-volume,savings-history,settlements,statement.pdf}` e
+os equivalentes em `/v1/admin/dashboard/`) estão definidos pelos schemas de
+`api/dashboard.ts` e ainda não existem no backend.
 
 Validação com Node 24: npm run audit, npm run format:check, npm run lint,
 npm run test:coverage e npm run build. Em máquinas com poucos recursos, usar
