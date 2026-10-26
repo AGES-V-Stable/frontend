@@ -460,7 +460,6 @@ export function TransferCreate() {
             onBack={handlePreviousStep}
             backLabel="Voltar"
             allowRecovery
-            autoFocus
             disabled={isWithdrawalLocked}
           />
         </div>

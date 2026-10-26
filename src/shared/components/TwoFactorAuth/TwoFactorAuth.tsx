@@ -5,7 +5,6 @@ export interface TwoFactorAuthProps {
   onChange: (value: string) => void
   error?: string
   disabled?: boolean
-  autoFocus?: boolean
   id?: string
   label?: string
   description?: string
@@ -18,7 +17,6 @@ export function TwoFactorAuth({
   onChange,
   error,
   disabled = false,
-  autoFocus = true,
   id,
   label = 'Código de autenticação',
   description = 'Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador.',
@@ -67,7 +65,6 @@ export function TwoFactorAuth({
           pattern="[0-9]*"
           maxLength={6}
           autoComplete="one-time-code"
-          autoFocus={autoFocus}
           disabled={disabled}
           value={value}
           onChange={handleChange}

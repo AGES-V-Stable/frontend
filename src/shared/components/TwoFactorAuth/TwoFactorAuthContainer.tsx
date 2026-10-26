@@ -41,8 +41,6 @@ export interface TwoFactorAuthContainerProps {
   title?: string
   /** Descrição introdutória */
   description?: string
-  /** Se deve focar automaticamente no input de código */
-  autoFocus?: boolean
   /** Classes CSS adicionais */
   className?: string
 }
@@ -90,7 +88,6 @@ export function TwoFactorAuthContainer({
   backLabel = 'Voltar',
   title,
   description,
-  autoFocus = true,
   className = '',
 }: TwoFactorAuthContainerProps) {
   const [internalCode, setInternalCode] = useState('')
@@ -308,7 +305,6 @@ export function TwoFactorAuthContainer({
                   autoComplete="off"
                   spellCheck={false}
                   maxLength={9}
-                  autoFocus={autoFocus}
                   disabled={isBusy}
                   value={recoveryCode}
                   onChange={handleRecoveryChange}
@@ -406,7 +402,6 @@ export function TwoFactorAuthContainer({
                   inputMode="numeric"
                   pattern="[0-9]*"
                   autoComplete="one-time-code"
-                  autoFocus={autoFocus}
                   disabled={isBusy}
                   value={currentCode}
                   onChange={handleCodeChange}
