@@ -5,7 +5,9 @@ Instruções para agentes que alteram o frontend V-Stable. Use este arquivo como
 ## Projeto e arquitetura
 
 - Stack: React, TypeScript, Vite, React Router, Tailwind CSS e Zod. Node.js 24 é a versão usada no CI.
-- `src/pages/` compõe telas; `src/components/` contém componentes reutilizáveis; `src/services/` concentra chamadas à API; `src/routes/` define rotas; `src/schemas/` e `src/types/` descrevem validações e contratos; `src/utils/` contém funções compartilhadas.
+- `src/app/` compõe providers, guards, shell e rotas. `AppRoutes` controla exclusivamente menus, destinos, seleção por URL e conteúdo conforme o perfil. Páginas não importam shell/NavBar nem configuram navegação. `src/features/{auth,onboarding,clients,beneficiaries,transfers}/` mantém páginas, componentes de negócio, hooks, APIs, schemas, tipos e testes locais. `src/shared/` mantém UI de apresentação e infraestrutura; fixtures ficam em `src/test/fixtures/` e nunca são importadas por código de produção.
+- Respeite as fronteiras verificadas pelo ESLint. Imports públicos de auth e, em transfers, de beneficiaries são permitidos; imports privados entre features não são. A sessão compartilhada carrega usuário/empresa uma vez por ciclo de autenticação. Use-a em vez de consultar identidade em cada página.
+- `VITE_API_URL` é somente a origem opcional do backend. Adapters usam paths completos e validam respostas com Zod. Não reintroduza fallback para mocks, URLs localhost fixas, menus por página ou cálculos monetários a partir de strings decimais com perda de precisão.
 - Preserve essas responsabilidades e siga o padrão mais próximo já usado. Não mova regras de negócio para componentes de apresentação nem crie uma camada nova para uso único.
 - Antes de alterar contratos ou fluxos, localize seus consumidores e testes. Mantenha compatibilidade com a API existente, salvo quando a tarefa pedir uma mudança de contrato.
 

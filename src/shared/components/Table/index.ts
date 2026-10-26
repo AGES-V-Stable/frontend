@@ -1,0 +1,5 @@
+export * from '@/shared/components/Table/Table'
+export * from '@/shared/components/Table/StatusBadge'
+export * from '@/shared/components/Table/TableActionButton'
+export * from '@/shared/components/Table/TablePagination'
+export * from '@/shared/components/Table/types'

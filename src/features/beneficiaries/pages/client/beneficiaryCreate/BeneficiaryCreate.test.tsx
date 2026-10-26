@@ -1,0 +1,231 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useSession } from '@/features/auth'
+import { createBeneficiary } from '@/features/beneficiaries/api/beneficiary'
+import { BeneficiaryCreate } from '@/features/beneficiaries/pages/client/beneficiaryCreate/BeneficiaryCreate'
+
+vi.mock('@/features/auth', () => ({
+  useSession: vi.fn(),
+}))
+vi.mock('@/features/beneficiaries/api/beneficiary', () => ({
+  createBeneficiary: vi.fn(),
+}))
+
+const currentUser = {
+  id: 'user-1',
+  name: 'Marina Costa',
+  email: 'marina@vstable.com',
+  companyId: 'company-1',
+}
+
+async function fillIdentification(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(
+    screen.getByLabelText('Razão social / Nome completo *'),
+    'Fornecedor Global Ltda.',
+  )
+  await user.type(screen.getByLabelText('Documento fiscal *'), '12345678900')
+  await user.type(screen.getByLabelText('País *'), 'Brasil')
+  await user.type(screen.getByLabelText('Endereço *'), 'Av. Paulista, 1000')
+}
+
+async function fillBankFields(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Banco *'), 'Banco XYZ')
+  await user.type(screen.getByLabelText('SWIFT / BIC *'), 'BOFAUS3N')
+  await user.type(
+    screen.getByLabelText('IBAN / número da conta *'),
+    'BR1800000000141455970000123456',
+  )
+  await user.type(screen.getByLabelText('Moeda de recebimento *'), 'USD')
+  await user.type(screen.getByLabelText('Apelido do beneficiário *'), 'Fornecedor principal')
+}
+
+async function waitForCompanyLoaded() {
+  await waitFor(() => expect(useSession).toHaveBeenCalled())
+}
+
+describe('BeneficiaryCreate', () => {
+  beforeEach(() => {
+    vi.mocked(useSession).mockReturnValue({
+      status: 'authenticated',
+      user: { ...currentUser, accountType: 'USER', roles: ['ROLE_USER'] },
+      company: null,
+      error: null,
+      retry: vi.fn(),
+    })
+    vi.mocked(createBeneficiary).mockResolvedValue({ id: 'beneficiary-1' })
+  })
+
+  it('shows the bank account fields by default and switches to wallet fields on toggle', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+
+    expect(screen.getByRole('tab', { name: 'Conta bancária' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByLabelText('Banco *')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Endereço da wallet *')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Wallet cripto' }))
+
+    expect(screen.getByLabelText('Endereço da wallet *')).toBeInTheDocument()
+    expect(screen.getByLabelText('Rede blockchain *')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Banco *')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Conta bancária' }))
+    expect(screen.getByLabelText('Banco *')).toBeInTheDocument()
+  })
+
+  it('preserves values typed in the inactive group when toggling', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+
+    await user.type(screen.getByLabelText('Banco *'), 'Banco XYZ')
+    await user.click(screen.getByRole('tab', { name: 'Wallet cripto' }))
+    await user.type(screen.getByLabelText('Endereço da wallet *'), '0xabc')
+    await user.click(screen.getByRole('tab', { name: 'Conta bancária' }))
+
+    expect(screen.getByLabelText('Banco *')).toHaveValue('Banco XYZ')
+  })
+
+  it('blocks submit and shows required-field errors when the form is empty', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    expect(await screen.findAllByText('Campo obrigatório.')).not.toHaveLength(0)
+    expect(createBeneficiary).not.toHaveBeenCalled()
+  })
+
+  it('flags the blockchain network field when the wallet form is submitted empty', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+
+    await user.click(screen.getByRole('tab', { name: 'Wallet cripto' }))
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    expect(await screen.findAllByText('Campo obrigatório.')).not.toHaveLength(0)
+    expect(screen.getByLabelText('Rede blockchain *')).toHaveAttribute('aria-invalid', 'true')
+    expect(createBeneficiary).not.toHaveBeenCalled()
+  })
+
+  it('blocks submit when the confirmation checkbox is not checked', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+
+    await fillIdentification(user)
+    await fillBankFields(user)
+
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    expect(await screen.findByText('Confirme a revisão dos dados.')).toBeInTheDocument()
+    expect(createBeneficiary).not.toHaveBeenCalled()
+  })
+
+  it('submits a bank account beneficiary and shows the success banner', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+    await waitForCompanyLoaded()
+
+    await fillIdentification(user)
+    await fillBankFields(user)
+    await user.click(screen.getByLabelText(/confirmo que os dados/i))
+
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    await waitFor(() =>
+      expect(createBeneficiary).toHaveBeenCalledWith('company-1', {
+        beneficiaryType: 'Pessoa jurídica',
+        legalName: 'Fornecedor Global Ltda.',
+        identificationDocument: '12345678900',
+        country: 'Brasil',
+        address: 'Av. Paulista, 1000',
+        confirmed: true,
+        receivingMethod: 'BANK_ACCOUNT',
+        bankName: 'Banco XYZ',
+        swiftBic: 'BOFAUS3N',
+        accountNumber: 'BR1800000000141455970000123456',
+        currency: 'USD',
+        nickname: 'Fornecedor principal',
+      }),
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Beneficiário cadastrado com sucesso',
+    )
+  })
+
+  it('submits a wallet beneficiary with the right shape', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+    await waitForCompanyLoaded()
+
+    await fillIdentification(user)
+    await user.click(screen.getByRole('tab', { name: 'Wallet cripto' }))
+    await user.type(
+      screen.getByLabelText('Endereço da wallet *'),
+      '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+    )
+    await user.selectOptions(screen.getByLabelText('Rede blockchain *'), 'Polygon')
+    await user.type(screen.getByLabelText('Apelido do beneficiário *'), 'Fornecedor cripto')
+    await user.click(screen.getByLabelText(/confirmo que os dados/i))
+
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    await waitFor(() =>
+      expect(createBeneficiary).toHaveBeenCalledWith('company-1', {
+        beneficiaryType: 'Pessoa jurídica',
+        legalName: 'Fornecedor Global Ltda.',
+        identificationDocument: '12345678900',
+        country: 'Brasil',
+        address: 'Av. Paulista, 1000',
+        confirmed: true,
+        receivingMethod: 'CRYPTO_WALLET',
+        walletAddress: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+        blockchainNetwork: 'polygon',
+        nickname: 'Fornecedor cripto',
+      }),
+    )
+  })
+
+  it('shows a server error message when the request fails', async () => {
+    vi.mocked(createBeneficiary).mockRejectedValue(new Error('network down'))
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+    await waitForCompanyLoaded()
+
+    await fillIdentification(user)
+    await fillBankFields(user)
+    await user.click(screen.getByLabelText(/confirmo que os dados/i))
+
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível concluir a solicitação. Tente novamente.',
+    )
+  })
+
+  it('disables the submit button while saving', async () => {
+    let resolveCreate!: (value: { id: string }) => void
+    vi.mocked(createBeneficiary).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve
+        }),
+    )
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+    await waitForCompanyLoaded()
+
+    await fillIdentification(user)
+    await fillBankFields(user)
+    await user.click(screen.getByLabelText(/confirmo que os dados/i))
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    expect(screen.getByRole('button', { name: 'Salvando...' })).toBeDisabled()
+    resolveCreate({ id: 'beneficiary-1' })
+    expect(await screen.findByRole('button', { name: 'Salvar beneficiário' })).toBeEnabled()
+  })
+})
