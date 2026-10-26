@@ -148,3 +148,121 @@ it('omits balance and transacted volume for the administrator, without requestin
   expect(screen.queryByText('Volume Transacionado')).not.toBeInTheDocument()
   expect(fetcher.mock.calls.some(([url]) => url === '/v1/balance')).toBe(false)
 })
+
+const settlement = {
+  id: 's1',
+  date: '2026-10-20T15:30:00Z',
+  direction: 'PAYMENT',
+  counterparty: 'Shenzhen AeroCrop Tech',
+  destination: 'CN • Agricultural Bank of China',
+  amount: '10000.00',
+  currency: 'USD',
+  totalBrl: '54200.00',
+  feeBrl: '216.80',
+  rate: '5.42',
+  savings: '1951.20',
+  status: 'SETTLED',
+}
+
+function withSettlements(rows: unknown[], totalElements = rows.length) {
+  return vi.fn(async (url: string) =>
+    url.includes('/settlements')
+      ? new Response(
+          JSON.stringify({
+            content: rows,
+            number: 0,
+            size: 5,
+            totalElements,
+            totalPages: Math.ceil(totalElements / 5),
+          }),
+        )
+      : new Response(JSON.stringify(responses(url))),
+  )
+}
+
+it('lists the latest settlements with counterparty, date, type, amount and status', async () => {
+  vi.stubGlobal(
+    'fetch',
+    withSettlements([
+      settlement,
+      {
+        ...settlement,
+        id: 's2',
+        date: null,
+        direction: 'RECEIPT',
+        counterparty: null,
+        amount: '18420.00',
+        currency: 'BRL',
+      },
+    ]),
+  )
+  render(<Dashboard />)
+
+  expect(await screen.findByText('Shenzhen AeroCrop Tech')).toBeInTheDocument()
+  expect(screen.getAllByText('CN • Agricultural Bank of China')).toHaveLength(2)
+  expect(screen.getByText(/US\$\s*10\.000,00/)).toBeInTheDocument()
+  expect(screen.getByText('Pagamento')).toBeInTheDocument()
+  expect(screen.getByText('Recebimento')).toBeInTheDocument()
+  expect(screen.getByText('Não registrado')).toBeInTheDocument()
+  expect(screen.getByText('Não registrada')).toBeInTheDocument()
+  expect(screen.getAllByText('Liquidado')).toHaveLength(2)
+})
+
+it('requests the next settlements page from the backend', async () => {
+  const fetcher = withSettlements([settlement, settlement, settlement, settlement, settlement], 12)
+  vi.stubGlobal('fetch', fetcher)
+  render(<Dashboard />)
+
+  await screen.findAllByText('Shenzhen AeroCrop Tech')
+  fireEvent.click(screen.getByRole('button', { name: 'Próxima' }))
+
+  await waitFor(() =>
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining('/v1/dashboard/settlements?page=1&size=5'),
+      expect.anything(),
+    ),
+  )
+})
+
+it('shows the administrator settlements without the counterparty column', async () => {
+  vi.stubGlobal('fetch', withSettlements([settlement]))
+  render(<Dashboard admin />)
+
+  expect(await screen.findByText('Pagamento')).toBeInTheDocument()
+  expect(screen.queryByText('Shenzhen AeroCrop Tech')).not.toBeInTheDocument()
+})
+
+it('generates the full statement and warns when the download fails', async () => {
+  vi.stubGlobal('URL', {
+    ...URL,
+    createObjectURL: vi.fn(() => 'blob:extrato'),
+    revokeObjectURL: vi.fn(),
+  })
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+  let statementStatus = 200
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url.endsWith('/statement.pdf')
+        ? statementStatus === 200
+          ? new Response('%PDF-1.4', { headers: { 'Content-Type': 'application/pdf' } })
+          : new Response('{}', { status: statementStatus })
+        : new Response(JSON.stringify(responses(url))),
+    ),
+  )
+  render(<Dashboard />)
+  const button = await screen.findByRole('button', { name: 'Gerar extrato completo' })
+
+  fireEvent.click(button)
+  await waitFor(() => expect(click).toHaveBeenCalledTimes(1))
+  expect(
+    screen.queryByText('Não foi possível gerar o extrato. Tente novamente.'),
+  ).not.toBeInTheDocument()
+
+  statementStatus = 500
+  fireEvent.click(await screen.findByRole('button', { name: 'Gerar extrato completo' }))
+  expect(
+    await screen.findByText('Não foi possível gerar o extrato. Tente novamente.'),
+  ).toBeInTheDocument()
+  click.mockRestore()
+})
