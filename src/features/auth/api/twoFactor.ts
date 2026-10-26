@@ -122,51 +122,56 @@ export interface RecoveryRequestData {
   reason: string
 }
 
-export interface TwoFactorResetRequest {
-  id: string
-  userId: string
-  userName: string
-  userEmail: string
-  companyName?: string
-  requestedAt: string
-  reason: string
-  documentNumber?: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-  reviewedAt?: string
-}
+// Contratos de recuperação e de revisão administrativa: os endpoints ainda não existem no
+// backend; os schemas registram o formato esperado pelo frontend e rejeitam qualquer outro.
+const TwoFactorResetRequestSchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  userName: z.string(),
+  userEmail: z.string(),
+  companyName: z.string().optional(),
+  requestedAt: z.string(),
+  reason: z.string(),
+  documentNumber: z.string().optional(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  reviewedAt: z.string().optional(),
+})
+export type TwoFactorResetRequest = z.infer<typeof TwoFactorResetRequestSchema>
+const RecoveryRequestResultSchema = z.object({ success: z.boolean(), id: z.string().min(1) })
+const ApproveResetResultSchema = z.object({
+  success: z.boolean(),
+  withdrawalLockedUntil: z.string(),
+})
+const RejectResetResultSchema = z.object({ success: z.boolean() })
 
 export async function request2faRecovery(
   data: RecoveryRequestData,
   signal?: AbortSignal,
-): Promise<{ success: boolean; id: string }> {
-  return await httpRequest<{ success: boolean; id: string }>(
-    '/v1/auth/2fa/recovery-request',
-    {
-      method: 'POST',
-      body: JSON.stringify(data),
-      signal,
-    },
-    false,
+): Promise<z.infer<typeof RecoveryRequestResultSchema>> {
+  return RecoveryRequestResultSchema.parse(
+    await httpRequest<unknown>(
+      '/v1/auth/2fa/recovery-request',
+      { method: 'POST', body: JSON.stringify(data), signal },
+      false,
+    ),
   )
 }
 
 export async function get2faResetRequests(signal?: AbortSignal): Promise<TwoFactorResetRequest[]> {
-  const res = await httpRequest<TwoFactorResetRequest[]>('/v1/admin/2fa-recovery-requests', {
-    signal,
-  })
-  return Array.isArray(res) ? res : []
+  return z
+    .array(TwoFactorResetRequestSchema)
+    .parse(await httpRequest<unknown>('/v1/admin/2fa-recovery-requests', { signal }))
 }
 
 export async function approve2faReset(
   requestId: string,
   signal?: AbortSignal,
-): Promise<{ success: boolean; withdrawalLockedUntil: string }> {
-  return await httpRequest<{ success: boolean; withdrawalLockedUntil: string }>(
-    `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/approve`,
-    {
-      method: 'POST',
-      signal,
-    },
+): Promise<z.infer<typeof ApproveResetResultSchema>> {
+  return ApproveResetResultSchema.parse(
+    await httpRequest<unknown>(
+      `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/approve`,
+      { method: 'POST', signal },
+    ),
   )
 }
 
@@ -174,13 +179,11 @@ export async function reject2faReset(
   requestId: string,
   reason?: string,
   signal?: AbortSignal,
-): Promise<{ success: boolean }> {
-  return await httpRequest<{ success: boolean }>(
-    `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/reject`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
-      signal,
-    },
+): Promise<z.infer<typeof RejectResetResultSchema>> {
+  return RejectResetResultSchema.parse(
+    await httpRequest<unknown>(
+      `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/reject`,
+      { method: 'POST', body: JSON.stringify({ reason }), signal },
+    ),
   )
 }

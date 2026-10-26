@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { httpRequest } from '@/shared/http/httpClient'
 import { getStoredUserId } from '@/shared/http/authToken'
-import { twoFactorService } from './twoFactor'
+import {
+  approve2faReset,
+  get2faResetRequests,
+  reject2faReset,
+  request2faRecovery,
+  twoFactorService,
+} from './twoFactor'
 
 vi.mock('@/shared/http/httpClient', () => ({
   httpRequest: vi.fn(),
@@ -166,4 +172,65 @@ it('keeps activation tied to the user who started the request', async () => {
   await twoFactorService.activate('123456')
   expect(twoFactorService.isActivated('first-user')).toBe(true)
   expect(twoFactorService.isActivated()).toBe(false)
+})
+
+describe('recuperação de 2FA e revisão administrativa', () => {
+  const request = {
+    id: 'req-1',
+    userId: 'u1',
+    userName: 'Marina Costa',
+    userEmail: 'marina@empresa.com',
+    requestedAt: '2026-10-22T10:00:00Z',
+    reason: 'Perdi o celular.',
+    status: 'PENDING',
+  }
+
+  beforeEach(() => vi.clearAllMocks())
+
+  it('envia a solicitação de recuperação sem autenticação e valida a resposta', async () => {
+    vi.mocked(httpRequest).mockResolvedValueOnce({ success: true, id: 'req-1' })
+    const data = { email: 'a@b.com', fullName: 'A B', documentNumber: '1', reason: 'x' }
+
+    await expect(request2faRecovery(data)).resolves.toEqual({ success: true, id: 'req-1' })
+    expect(httpRequest).toHaveBeenCalledWith(
+      '/v1/auth/2fa/recovery-request',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify(data) }),
+      false,
+    )
+  })
+
+  it('lista as solicitações quando a resposta segue o contrato', async () => {
+    vi.mocked(httpRequest).mockResolvedValueOnce([request])
+
+    await expect(get2faResetRequests()).resolves.toEqual([request])
+  })
+
+  it.each([
+    ['um objeto no lugar da lista', { content: [] }],
+    ['um status desconhecido', [{ ...request, status: 'DONE' }]],
+    ['uma solicitação sem id', [{ ...request, id: undefined }]],
+  ])('rejeita a listagem com %s em vez de exibir uma lista vazia', async (_, body) => {
+    vi.mocked(httpRequest).mockResolvedValueOnce(body)
+
+    await expect(get2faResetRequests()).rejects.toThrow()
+  })
+
+  it('aprova e rejeita validando as respostas', async () => {
+    vi.mocked(httpRequest)
+      .mockResolvedValueOnce({ success: true, withdrawalLockedUntil: '2026-10-24T10:00:00Z' })
+      .mockResolvedValueOnce({ success: true })
+
+    await expect(approve2faReset('req-1')).resolves.toMatchObject({ success: true })
+    await expect(reject2faReset('req-1', 'Documento ilegível')).resolves.toEqual({ success: true })
+    expect(httpRequest).toHaveBeenLastCalledWith(
+      '/v1/admin/2fa-recovery-requests/req-1/reject',
+      expect.objectContaining({ body: JSON.stringify({ reason: 'Documento ilegível' }) }),
+    )
+  })
+
+  it('rejeita a aprovação sem a data da trava de saque', async () => {
+    vi.mocked(httpRequest).mockResolvedValueOnce({ success: true })
+
+    await expect(approve2faReset('req-1')).rejects.toThrow()
+  })
 })
