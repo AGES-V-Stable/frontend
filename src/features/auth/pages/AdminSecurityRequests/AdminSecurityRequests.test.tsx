@@ -105,4 +105,42 @@ describe('AdminSecurityRequests Component', () => {
     expect(await screen.findByText('Solicitação de reset rejeitada.')).toBeInTheDocument()
     expect(screen.getByText('Rejeitado')).toBeInTheDocument()
   })
+
+  it('mostra o erro quando a listagem falha, sem exibir uma lista vazia', async () => {
+    vi.mocked(twoFactorApi.get2faResetRequests).mockRejectedValueOnce(new Error('500'))
+    renderPage()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível carregar as solicitações de segurança.',
+    )
+    expect(screen.queryByText('Marina Costa')).not.toBeInTheDocument()
+  })
+
+  it('mantém a solicitação pendente e avisa quando a aprovação falha', async () => {
+    const user = userEvent.setup()
+    vi.mocked(twoFactorApi.approve2faReset).mockRejectedValueOnce(new Error('500'))
+    renderPage()
+    await screen.findByText('Marina Costa')
+
+    await user.click(screen.getAllByRole('button', { name: /aprovar reset/i })[0])
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Erro ao aprovar a solicitação. Tente novamente.',
+    )
+    expect(screen.getAllByRole('button', { name: /aprovar reset/i })).toHaveLength(2)
+  })
+
+  it('mantém a solicitação pendente e avisa quando a rejeição falha', async () => {
+    const user = userEvent.setup()
+    vi.mocked(twoFactorApi.reject2faReset).mockRejectedValueOnce(new Error('500'))
+    renderPage()
+    await screen.findByText('Marina Costa')
+
+    await user.click(screen.getAllByRole('button', { name: /rejeitar/i })[0])
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Erro ao rejeitar a solicitação. Tente novamente.',
+    )
+    expect(screen.getAllByRole('button', { name: /rejeitar/i })).toHaveLength(2)
+  })
 })

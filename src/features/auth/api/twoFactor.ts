@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { httpRequest } from '@/shared/http/httpClient'
+import { ApiError, httpRequest } from '@/shared/http/httpClient'
 import { getStoredUserId } from '@/shared/http/authToken'
 
 const TwoFactorSetupSchema = z.object({
@@ -19,7 +19,50 @@ export interface TwoFactorActivateResponse {
   recoveryCodes?: string[]
 }
 
+/** O backend descreve em inglês as recusas de código; a interface usa as próprias mensagens. */
+function twoFactorError(error: unknown): unknown {
+  if (!(error instanceof ApiError)) return error
+  if (error.status === 401)
+    return new ApiError(401, 'Código de autenticação inválido ou expirado.', error.code)
+  if (error.status === 422)
+    return new ApiError(
+      422,
+      'A configuração do 2FA não foi iniciada. Gere um novo QR Code e tente novamente.',
+      error.code,
+    )
+  if (error.status === 423)
+    return new ApiError(
+      423,
+      'Muitas tentativas com código inválido. Aguarde alguns minutos e tente novamente.',
+      error.code,
+    )
+  return error
+}
+
 const getStorageKey = (userId?: string) => (userId ? `vstable_2fa_active_${userId}` : undefined)
+
+/**
+ * O backend gera um segredo novo a cada setup. Uma segunda chamada enquanto a primeira não
+ * terminou (por exemplo, a tela montada duas vezes) deixaria o QR exibido diferente do
+ * segredo salvo, então ela reaproveita a requisição em andamento. A requisição compartilhada
+ * não é cancelada pelo sinal de quem a iniciou; as telas descartam o resultado se saíram.
+ */
+let initialSetupInFlight: Promise<TwoFactorSetupResponse> | null = null
+
+async function requestSetup(
+  currentTotpCode?: string,
+  signal?: AbortSignal,
+): Promise<TwoFactorSetupResponse> {
+  const response = await httpRequest<unknown>('/v1/auth/2fa/setup', {
+    method: 'POST',
+    headers: currentTotpCode ? { 'X-Current-Totp': currentTotpCode } : undefined,
+    body: currentTotpCode ? JSON.stringify({ currentTotpCode }) : undefined,
+    signal,
+  }).catch((error: unknown) => {
+    throw twoFactorError(error)
+  })
+  return TwoFactorSetupSchema.parse(response)
+}
 
 export const twoFactorService = {
   isActivated(userId = getStoredUserId()): boolean {
@@ -62,18 +105,13 @@ export const twoFactorService = {
       effectiveSignal = signal
     }
 
-    const body = currentTotpCode ? JSON.stringify({ currentTotpCode }) : undefined
-    const headers: Record<string, string> = {}
-    if (currentTotpCode) {
-      headers['X-Current-Totp'] = currentTotpCode
+    if (!currentTotpCode) {
+      initialSetupInFlight ??= requestSetup().finally(() => {
+        initialSetupInFlight = null
+      })
+      return initialSetupInFlight
     }
-    const response = await httpRequest<unknown>('/v1/auth/2fa/setup', {
-      method: 'POST',
-      headers: Object.keys(headers).length > 0 ? headers : undefined,
-      body,
-      signal: effectiveSignal,
-    })
-    return TwoFactorSetupSchema.parse(response)
+    return requestSetup(currentTotpCode, effectiveSignal)
   },
 
   async reconfigure(
@@ -92,6 +130,8 @@ export const twoFactorService = {
       method: 'POST',
       body: JSON.stringify({ code }),
       signal,
+    }).catch((error: unknown) => {
+      throw twoFactorError(error)
     })
     const parsed = TwoFactorActivateSchema.safeParse(response)
     if (!parsed.success || !parsed.data.success) {
@@ -122,51 +162,56 @@ export interface RecoveryRequestData {
   reason: string
 }
 
-export interface TwoFactorResetRequest {
-  id: string
-  userId: string
-  userName: string
-  userEmail: string
-  companyName?: string
-  requestedAt: string
-  reason: string
-  documentNumber?: string
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-  reviewedAt?: string
-}
+// Contratos de recuperação e de revisão administrativa: os endpoints ainda não existem no
+// backend; os schemas registram o formato esperado pelo frontend e rejeitam qualquer outro.
+const TwoFactorResetRequestSchema = z.object({
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  userName: z.string(),
+  userEmail: z.string(),
+  companyName: z.string().optional(),
+  requestedAt: z.string(),
+  reason: z.string(),
+  documentNumber: z.string().optional(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  reviewedAt: z.string().optional(),
+})
+export type TwoFactorResetRequest = z.infer<typeof TwoFactorResetRequestSchema>
+const RecoveryRequestResultSchema = z.object({ success: z.boolean(), id: z.string().min(1) })
+const ApproveResetResultSchema = z.object({
+  success: z.boolean(),
+  withdrawalLockedUntil: z.string(),
+})
+const RejectResetResultSchema = z.object({ success: z.boolean() })
 
 export async function request2faRecovery(
   data: RecoveryRequestData,
   signal?: AbortSignal,
-): Promise<{ success: boolean; id: string }> {
-  return await httpRequest<{ success: boolean; id: string }>(
-    '/v1/auth/2fa/recovery-request',
-    {
-      method: 'POST',
-      body: JSON.stringify(data),
-      signal,
-    },
-    false,
+): Promise<z.infer<typeof RecoveryRequestResultSchema>> {
+  return RecoveryRequestResultSchema.parse(
+    await httpRequest<unknown>(
+      '/v1/auth/2fa/recovery-request',
+      { method: 'POST', body: JSON.stringify(data), signal },
+      false,
+    ),
   )
 }
 
 export async function get2faResetRequests(signal?: AbortSignal): Promise<TwoFactorResetRequest[]> {
-  const res = await httpRequest<TwoFactorResetRequest[]>('/v1/admin/2fa-recovery-requests', {
-    signal,
-  })
-  return Array.isArray(res) ? res : []
+  return z
+    .array(TwoFactorResetRequestSchema)
+    .parse(await httpRequest<unknown>('/v1/admin/2fa-recovery-requests', { signal }))
 }
 
 export async function approve2faReset(
   requestId: string,
   signal?: AbortSignal,
-): Promise<{ success: boolean; withdrawalLockedUntil: string }> {
-  return await httpRequest<{ success: boolean; withdrawalLockedUntil: string }>(
-    `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/approve`,
-    {
-      method: 'POST',
-      signal,
-    },
+): Promise<z.infer<typeof ApproveResetResultSchema>> {
+  return ApproveResetResultSchema.parse(
+    await httpRequest<unknown>(
+      `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/approve`,
+      { method: 'POST', signal },
+    ),
   )
 }
 
@@ -174,13 +219,11 @@ export async function reject2faReset(
   requestId: string,
   reason?: string,
   signal?: AbortSignal,
-): Promise<{ success: boolean }> {
-  return await httpRequest<{ success: boolean }>(
-    `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/reject`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
-      signal,
-    },
+): Promise<z.infer<typeof RejectResetResultSchema>> {
+  return RejectResetResultSchema.parse(
+    await httpRequest<unknown>(
+      `/v1/admin/2fa-recovery-requests/${encodeURIComponent(requestId)}/reject`,
+      { method: 'POST', body: JSON.stringify({ reason }), signal },
+    ),
   )
 }

@@ -14,11 +14,11 @@ export interface NavBarProps {
   items: NavigationItem[]
   activeId: string
   account: { name: string; description: string; initials: string }
-  supportIcon: ReactNode
+  footerItems: NavigationItem[]
 }
 
 /** Presentation only: AppRoutes supplies every destination and selected item. */
-export function NavBar({ logo, items, activeId, account, supportIcon }: NavBarProps) {
+export function NavBar({ logo, items, activeId, account, footerItems }: NavBarProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const button = (item: NavigationItem, nested = false) => {
     const selected = item.id === activeId
@@ -69,13 +69,7 @@ export function NavBar({ logo, items, activeId, account, supportIcon }: NavBarPr
         <ul className="flex flex-col gap-3">{items.map((item) => button(item))}</ul>
       </nav>
       <div className="pb-[15px] pt-[15px]">
-        <button
-          type="button"
-          disabled
-          className="mb-4 flex h-10 w-full cursor-not-allowed items-center gap-3 px-4 text-base font-medium text-gray-500 opacity-60"
-        >
-          <span aria-hidden="true">{supportIcon}</span>Suporte
-        </button>
+        <ul className="mb-4 flex flex-col gap-3 pr-3">{footerItems.map((item) => button(item))}</ul>
         <div className="flex items-center gap-3 border-t border-sage-300 px-4 pb-2.5 pt-[11px]">
           <span
             aria-hidden="true"

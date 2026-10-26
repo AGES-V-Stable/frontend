@@ -1,5 +1,11 @@
 import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
-import { isStoredAdmin, useSession, Settings, AdminSecurityRequests } from '@/features/auth'
+import {
+  AdminSecurityRequests,
+  clearLoginToken,
+  isStoredAdmin,
+  Settings,
+  useSession,
+} from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import AdminClients from '@/features/clients/pages/AdminClients'
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
@@ -30,6 +36,7 @@ import clientsIcon from '@/shared/assets/navigation/clients.svg'
 import transfersIcon from '@/shared/assets/navigation/transfers.svg'
 import settingsIcon from '@/shared/assets/navigation/settings.svg'
 import supportIcon from '@/shared/assets/navigation/support.svg'
+import logoutIcon from '@/shared/assets/navigation/logout.svg'
 
 function SessionState() {
   const { status, retry } = useSession()
@@ -132,6 +139,10 @@ function RoutedApplication() {
         item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
       ]
   items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
+  const footerItems: NavigationItem[] = [
+    { id: 'support', label: 'Suporte', icon: icon(supportIcon), disabled: true },
+    { id: 'logout', label: 'Sair', icon: icon(logoutIcon), onClick: clearLoginToken },
+  ]
   const activeId = pathname.startsWith(PATHS.SETTINGS)
     ? 'settings'
     : admin
@@ -165,7 +176,7 @@ function RoutedApplication() {
           items={items}
           activeId={activeId}
           account={account}
-          supportIcon={icon(supportIcon)}
+          footerItems={footerItems}
         />
       }
     >

@@ -404,9 +404,8 @@ describe('TransferCreate', () => {
   })
 
   it('displays TOTP error clearly in Passo 2 and preserves form data when backend rejects the code', async () => {
-    vi.mocked(createTransfer).mockRejectedValueOnce(
-      httpError(401, 'Código de autenticação inválido ou expirado.'),
-    )
+    // Resposta real do backend (feat/61) para um TOTP inválido.
+    vi.mocked(createTransfer).mockRejectedValueOnce(httpError(401, 'Invalid 2FA verification code'))
 
     await renderPage()
     await goToAuth()
@@ -431,6 +430,24 @@ describe('TransferCreate', () => {
     expect(screen.getByText('Dados da transferência')).toBeInTheDocument()
     expect(sourceInput()).toHaveValue('125000')
     expect(beneficiarySelect()).toHaveValue(atlas.id)
+  })
+
+  it('explains the temporary block when the backend locks 2FA after too many invalid codes', async () => {
+    vi.mocked(createTransfer).mockRejectedValueOnce(
+      httpError(423, 'Too many failed 2FA attempts. Try again later.'),
+    )
+
+    await renderPage()
+    await goToAuth()
+
+    fireEvent.change(totpInput(), { target: { value: '000000' } })
+    fireEvent.click(confirmTransferButton())
+    await advance()
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Muitas tentativas com código inválido. Aguarde alguns minutos e tente novamente.',
+    )
+    expect(totpInput()).toBeInTheDocument()
   })
 
   it('shows generic creation error message when request fails with unexpected error', async () => {
@@ -569,6 +586,20 @@ describe('TransferCreate', () => {
     fireEvent.click(continueButton())
     await advance()
     expect(screen.queryByText('Revisão da transferência')).not.toBeInTheDocument()
+  })
+
+  it('ignores a withdrawal lock left in the browser by another account', async () => {
+    const futureDate = new Date(Date.now() + 3600000).toISOString()
+    localStorage.setItem('vstable_withdrawal_locked_until', futureDate)
+
+    await renderPage()
+
+    expect(
+      screen.queryByText(/transferências estão temporariamente bloqueadas/i),
+    ).not.toBeInTheDocument()
+    await fillStep0()
+    expect(continueButton()).toBeEnabled()
+    localStorage.removeItem('vstable_withdrawal_locked_until')
   })
 
   it('does not display 48h withdrawal lock banner when withdrawalLockedUntil is expired in the past', async () => {
