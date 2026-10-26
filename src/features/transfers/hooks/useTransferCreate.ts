@@ -75,7 +75,11 @@ const quoteErrorMessage = (error: unknown) => {
 const createErrorMessage = (error: unknown) => {
   const fallback = 'Não foi possível criar a transferência. Tente novamente.'
   if (!(error instanceof HttpError)) return fallback
-  if (error.status === 400 || error.status === 401)
+  // O backend descreve o código 2FA rejeitado em inglês; a interface usa a própria mensagem.
+  if (error.status === 401) return 'Código de autenticação inválido ou expirado.'
+  if (error.status === 423)
+    return 'Muitas tentativas com código inválido. Aguarde alguns minutos e tente novamente.'
+  if (error.status === 400)
     return backendMessage(error) ?? 'Código de autenticação inválido ou expirado.'
   if (error.status === 403) {
     const body =
