@@ -41,6 +41,29 @@ function twoFactorError(error: unknown): unknown {
 
 const getStorageKey = (userId?: string) => (userId ? `vstable_2fa_active_${userId}` : undefined)
 
+/**
+ * O backend gera um segredo novo a cada setup. Uma segunda chamada enquanto a primeira não
+ * terminou (por exemplo, a tela montada duas vezes) deixaria o QR exibido diferente do
+ * segredo salvo, então ela reaproveita a requisição em andamento. A requisição compartilhada
+ * não é cancelada pelo sinal de quem a iniciou; as telas descartam o resultado se saíram.
+ */
+let initialSetupInFlight: Promise<TwoFactorSetupResponse> | null = null
+
+async function requestSetup(
+  currentTotpCode?: string,
+  signal?: AbortSignal,
+): Promise<TwoFactorSetupResponse> {
+  const response = await httpRequest<unknown>('/v1/auth/2fa/setup', {
+    method: 'POST',
+    headers: currentTotpCode ? { 'X-Current-Totp': currentTotpCode } : undefined,
+    body: currentTotpCode ? JSON.stringify({ currentTotpCode }) : undefined,
+    signal,
+  }).catch((error: unknown) => {
+    throw twoFactorError(error)
+  })
+  return TwoFactorSetupSchema.parse(response)
+}
+
 export const twoFactorService = {
   isActivated(userId = getStoredUserId()): boolean {
     const key = getStorageKey(userId)
@@ -82,20 +105,13 @@ export const twoFactorService = {
       effectiveSignal = signal
     }
 
-    const body = currentTotpCode ? JSON.stringify({ currentTotpCode }) : undefined
-    const headers: Record<string, string> = {}
-    if (currentTotpCode) {
-      headers['X-Current-Totp'] = currentTotpCode
+    if (!currentTotpCode) {
+      initialSetupInFlight ??= requestSetup().finally(() => {
+        initialSetupInFlight = null
+      })
+      return initialSetupInFlight
     }
-    const response = await httpRequest<unknown>('/v1/auth/2fa/setup', {
-      method: 'POST',
-      headers: Object.keys(headers).length > 0 ? headers : undefined,
-      body,
-      signal: effectiveSignal,
-    }).catch((error: unknown) => {
-      throw twoFactorError(error)
-    })
-    return TwoFactorSetupSchema.parse(response)
+    return requestSetup(currentTotpCode, effectiveSignal)
   },
 
   async reconfigure(

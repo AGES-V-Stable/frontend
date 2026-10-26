@@ -288,3 +288,47 @@ describe('mensagens das recusas de código 2FA', () => {
     await expect(twoFactorService.setup()).rejects.toBe(failure)
   })
 })
+
+describe('setup inicial do 2FA', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('reaproveita a requisição em andamento em vez de gerar um segundo segredo', async () => {
+    let resolve!: (value: unknown) => void
+    vi.mocked(httpRequest).mockReturnValueOnce(new Promise((r) => (resolve = r)))
+    const first = new AbortController()
+
+    const firstCall = twoFactorService.setup(first.signal)
+    first.abort()
+    const secondCall = twoFactorService.setup(new AbortController().signal)
+    resolve({ otpauthUri: 'otpauth://totp/V-Stable:a?secret=ABC' })
+
+    await expect(secondCall).resolves.toEqual({
+      otpauthUri: 'otpauth://totp/V-Stable:a?secret=ABC',
+    })
+    await expect(firstCall).resolves.toEqual({ otpauthUri: 'otpauth://totp/V-Stable:a?secret=ABC' })
+    expect(httpRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('faz um novo setup depois que o anterior terminou, inclusive após falha', async () => {
+    vi.mocked(httpRequest)
+      .mockRejectedValueOnce(new ApiError(500, 'Internal error', 'INTERNAL_ERROR'))
+      .mockResolvedValueOnce({ otpauthUri: 'otpauth://totp/V-Stable:a?secret=XYZ' })
+
+    await expect(twoFactorService.setup()).rejects.toThrow()
+    await expect(twoFactorService.setup()).resolves.toMatchObject({
+      otpauthUri: 'otpauth://totp/V-Stable:a?secret=XYZ',
+    })
+    expect(httpRequest).toHaveBeenCalledTimes(2)
+  })
+
+  it('não compartilha a reconfiguração, que depende do código atual', async () => {
+    vi.mocked(httpRequest).mockResolvedValue({ otpauthUri: 'otpauth://totp/V-Stable:a?secret=N' })
+
+    await Promise.all([
+      twoFactorService.reconfigure('111111'),
+      twoFactorService.reconfigure('222222'),
+    ])
+
+    expect(httpRequest).toHaveBeenCalledTimes(2)
+  })
+})
