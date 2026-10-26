@@ -1,0 +1,92 @@
+name: Deploy frontend
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: frontend-deploy-${{ github.event_name == 'push' && 'staging' || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' || (github.event.release.prerelease == false && github.event.release.draft == false)
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'staging' || 'production' }}
+    env:
+      AWS_REGION: us-east-2
+      FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+      FRONTEND_DISTRIBUTION_ID: ${{ vars.FRONTEND_DISTRIBUTION_ID }}
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify release commit is on main
+        if: github.event_name == 'release'
+        run: |
+          git fetch origin main
+          release_commit="$(git rev-parse "${GITHUB_REF}^{commit}")"
+          git merge-base --is-ancestor "$release_commit" origin/main
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check frontend
+        run: |
+          npm run audit
+          npm run format:check
+          npm run lint
+          npm run test:coverage
+
+      - name: Build for environment
+        run: |
+          test -n "$VITE_API_URL"
+          npm run build
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - name: Upload frontend and invalidate CloudFront
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          : "${FRONTEND_BUCKET:?Configure FRONTEND_BUCKET for this environment}"
+          : "${FRONTEND_DISTRIBUTION_ID:?Configure FRONTEND_DISTRIBUTION_ID for this environment}"
+          test -f dist/index.html
+          test -d dist/assets
+
+          # Keep old hashed files for browser sessions that still use an earlier build.
+          aws s3 sync dist/assets/ "s3://${FRONTEND_BUCKET}/assets/" \
+            --cache-control 'public,max-age=31536000,immutable'
+
+          aws s3 sync dist/ "s3://${FRONTEND_BUCKET}/" \
+            --exclude 'assets/*' --exclude 'index.html' \
+            --cache-control 'public,max-age=300,must-revalidate'
+
+          # Publish the HTML entry point last, after every file it references is available.
+          aws s3 cp dist/index.html "s3://${FRONTEND_BUCKET}/index.html" \
+            --cache-control 'no-cache,must-revalidate' \
+            --content-type 'text/html; charset=utf-8'
+
+          invalidation_id="$(aws cloudfront create-invalidation \
+            --distribution-id "$FRONTEND_DISTRIBUTION_ID" \
+            --paths '/*' --query 'Invalidation.Id' --output text)"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "$FRONTEND_DISTRIBUTION_ID" \
+            --id "$invalidation_id"
