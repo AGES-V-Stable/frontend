@@ -34,9 +34,10 @@ export async function sendSupportChatMessage(
         )
       }
       if (error.status === 400) {
-        throw new Error('A mensagem informada é inválida ou excede o limite de 500 caracteres.', {
-          cause: error,
-        })
+        throw new Error(
+          error.message || 'A mensagem informada é inválida ou excede o limite de 500 caracteres.',
+          { cause: error },
+        )
       }
     }
     throw new Error('Não foi possível obter resposta do assistente no momento. Tente novamente.', {

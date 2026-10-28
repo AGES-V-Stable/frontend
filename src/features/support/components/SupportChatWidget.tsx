@@ -5,9 +5,9 @@ import type { SupportChatMessage } from '../api/supportChat'
 
 const INITIAL_SUGGESTIONS = [
   'Por que não consigo fazer transações com a Colômbia?',
+  'Como funciona a integração com Avenia e BlindPay?',
+  'Quais países, moedas e trilhos locais a V-Stable suporta?',
   'Como ativar ou reconfigurar meu QR Code de 2FA?',
-  'Quais moedas e redes blockchain a V-Stable aceita?',
-  'Por que minha conta ainda não pode fazer transferências?',
 ]
 
 const WELCOME_MESSAGE: SupportChatMessage = {
@@ -85,7 +85,13 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
     if (!trimmed || loading) return
 
     const userMessage: SupportChatMessage = { role: 'user', content: trimmed }
-    const historyForRequest = messages.slice(-8)
+    const historyForRequest = messages
+      .filter((m) => m !== WELCOME_MESSAGE)
+      .slice(-6)
+      .map((m) => ({
+        role: m.role,
+        content: m.content.length > 800 ? `${m.content.slice(0, 800)}...` : m.content,
+      }))
 
     setMessages((prev) => [...prev, userMessage])
     setInput('')
