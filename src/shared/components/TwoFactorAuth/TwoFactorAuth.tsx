@@ -72,7 +72,7 @@ export function TwoFactorAuth({
           placeholder="000000"
           aria-invalid={!!error}
           aria-describedby={error ? `${descriptionId} ${errorId}` : descriptionId}
-          className={`h-12 w-full max-w-[280px] rounded-lg border bg-surface px-4 text-center font-mono text-xl tracking-[0.3em] placeholder:tracking-normal placeholder:text-gray-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+          className={`h-12 w-full max-w-[280px] rounded-lg border bg-surface px-4 text-center font-mono text-xl tracking-[0.3em] placeholder:tracking-normal placeholder:text-gray-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
             error ? 'border-red-700' : 'border-sage-300'
           }`}
         />

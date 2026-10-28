@@ -112,7 +112,7 @@ export function RecoveryCodesContainer({
             data-testid={`recovery-code-${idx}`}
             className="flex items-center justify-between rounded-lg border border-sage-200 bg-slate-50 px-3.5 py-2.5 font-mono text-sm font-semibold tracking-wider text-slate-800 transition-colors select-all hover:bg-slate-100"
           >
-            <span className="text-xs text-slate-400 font-sans select-none">{idx + 1}.</span>
+            <span className="text-xs text-slate-500 font-sans select-none">{idx + 1}.</span>
             <span className="font-bold text-slate-900">{code}</span>
           </div>
         ))}
