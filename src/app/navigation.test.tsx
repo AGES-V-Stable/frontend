@@ -108,7 +108,7 @@ it('keeps login and registration outside the account shell', () => {
   expect(screen.getByRole('heading', { name: 'Dados de acesso' })).toBeInTheDocument()
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
 })
-it('renders the company menu with real company identity and disabled unavailable actions', async () => {
+it('renders the company menu with real company identity and available actions', async () => {
   saveLoginToken('login')
   renderRoute()
   const nav = await screen.findByRole('navigation')
@@ -120,7 +120,7 @@ it('renders the company menu with real company identity and disabled unavailable
   expect(screen.getByText('Empresa de Teste')).toBeInTheDocument()
   expect(screen.getByText('CNPJ: 12.345.678/0001-90')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Configurações' })).toBeEnabled()
-  expect(screen.getByRole('button', { name: 'Suporte' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Suporte' })).toBeEnabled()
 })
 it('opens the company dashboard from the Dashboard item, with balance and transacted volume', async () => {
   saveLoginToken('login')
