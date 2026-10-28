@@ -284,7 +284,7 @@ export function TransferCreate() {
                 ))}
               </select>
               {beneficiaries.status === 'error' && (
-                <p role="alert" className="text-sm text-red-500">
+                <p role="alert" className="text-sm text-red-700">
                   Não foi possível carregar os beneficiários.
                 </p>
               )}
