@@ -204,7 +204,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
       )}
 
       {checkMessage && (
-        <p role="status" className="text-sm text-amber-600">
+        <p role="status" className="text-sm text-amber-700">
           {checkMessage}
         </p>
       )}
