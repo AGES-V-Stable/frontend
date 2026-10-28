@@ -95,7 +95,7 @@ export const authService = {
     }
 
     const header = response.headers
-      .get('Authorization')
+      .get('authorization')
       ?.replace(/^Bearer\s+/i, '')
       .trim()
     if (header) return { token: header }

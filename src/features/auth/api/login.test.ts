@@ -47,6 +47,20 @@ describe('authService.login', () => {
     expect(result).toEqual({ token: 'my-token' })
   })
 
+  it('returns the token from a lowercase authorization header', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: new Headers({ authorization: 'Bearer lowercase-token' }),
+      }),
+    )
+
+    const result = await authService.login({ email: 'a@b.com', password: '123' })
+
+    expect(result).toEqual({ token: 'lowercase-token' })
+  })
+
   it('returns the token from body as fallback', async () => {
     vi.stubGlobal(
       'fetch',
