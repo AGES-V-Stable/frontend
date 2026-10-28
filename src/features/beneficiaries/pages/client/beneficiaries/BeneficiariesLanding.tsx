@@ -14,8 +14,8 @@ export function BeneficiariesLanding() {
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-8 md:px-8">
         <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold text-[#0F172A]">Beneficiários</h1>
-            <p className="text-xs text-[#64748B]">
+            <h1 className="text-2xl font-bold text-slate-900">Beneficiários</h1>
+            <p className="text-xs text-slate-500">
               Cadastre e gerencie os beneficiários das suas transferências internacionais.
             </p>
           </div>
