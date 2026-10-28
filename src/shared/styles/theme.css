@@ -44,7 +44,8 @@
   /* ---------- Azuis ---------- */
   --color-blue-50: #eff6ff; /* fundo do badge info / card em analise */
   --color-blue-700: #1d4ed8; /* texto do badge info */
-  --color-sky-600: #0284c7; /* card "em analise" do compliance */
+  --color-sky-600: #0284c7; /* icone e borda do card "em analise" do compliance */
+  --color-sky-700: #0369a1; /* texto sobre fundo azul claro (badge "em analise") */
 
   /* ---------- Vermelhos ---------- */
   --color-red-50: #fef2f2; /* fundo do badge de erro / card nao aprovado */

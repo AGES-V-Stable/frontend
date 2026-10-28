@@ -98,7 +98,7 @@ export function ComplianceStatusCard({
         return (
           <div className="flex flex-col gap-y-5 items-center justify-center py-[50px] px-6 md:px-[70px] bg-white rounded-[16px] border border-sage-300 max-w-2xl w-full">
             <img className="p-[22px] bg-blue-50 rounded-full" src={clockIcon} alt="Em análise" />
-            <p className="text-[14px] font-medium py-[7px] px-[14px] text-sky-600 bg-blue-50 rounded-[16px]">
+            <p className="text-[14px] font-medium py-[7px] px-[14px] text-sky-700 bg-blue-50 rounded-[16px]">
               Em análise
             </p>
             <h1 className="text-[28px] text-slate-900 font-bold text-center">
@@ -144,7 +144,7 @@ export function ComplianceStatusCard({
       return (
         <div className="flex flex-col gap-y-5 items-center justify-center py-[61px] px-[70px] bg-white rounded-[16px] border border-sage-300">
           <img className="p-[22px] bg-blue-50 rounded-full" src={clockIcon} alt="Em análise" />
-          <p className="text-[14px] font-medium py-[7px] px-[14px] text-sky-600 bg-blue-50 rounded-[16px]">
+          <p className="text-[14px] font-medium py-[7px] px-[14px] text-sky-700 bg-blue-50 rounded-[16px]">
             Em análise
           </p>
           <h1 className="text-[32px] text-slate-900 font-bold">Seu cadastro está em análise</h1>
