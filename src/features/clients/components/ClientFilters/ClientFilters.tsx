@@ -41,7 +41,7 @@ export function ClientFilters({ statuses, cities, periods, onApply, onClear }: C
   }
 
   const inputClassName =
-    'h-11 w-full rounded-md border border-sage-300 bg-white px-3 text-sm text-slate-900 outline-none placeholder:text-placeholder focus:border-primary focus:ring-2 focus:ring-primary/20'
+    'h-11 w-full rounded-md border border-sage-300 bg-white px-3 text-sm text-slate-900 outline-none placeholder:text-gray-500 focus:border-primary focus:ring-2 focus:ring-primary/20'
 
   return (
     <form

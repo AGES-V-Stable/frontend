@@ -274,7 +274,7 @@ function AdminTransfers() {
                   <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                     Economia Estimada
                   </p>
-                  <p className="mt-1 text-emerald-600 font-medium">
+                  <p className="mt-1 text-emerald-700 font-medium">
                     {formatCurrency(drawerData.economia, 'BRL')}
                   </p>
                 </div>

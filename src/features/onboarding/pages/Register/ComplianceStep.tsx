@@ -159,7 +159,7 @@ export default function ComplianceStep({
                 htmlFor="tipoDocumento"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Tipo de Documento <span className="text-red-500">*</span>
+                Tipo de Documento <span className="text-red-700">*</span>
               </label>
               <select
                 id="tipoDocumento"
@@ -168,7 +168,7 @@ export default function ComplianceStep({
                 onChange={(e) =>
                   handleChange('tipoDocumento', e.target.value as TipoDocumento | '')
                 }
-                className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ${errors.tipoDocumento ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ${errors.tipoDocumento ? 'border-red-700' : 'border-gray-300'}`}
                 aria-describedby={errors.tipoDocumento ? 'tipoDocumento-error' : undefined}
               >
                 <option value="">Selecione...</option>
@@ -179,7 +179,7 @@ export default function ComplianceStep({
                 ))}
               </select>
               {errors.tipoDocumento && (
-                <p id="tipoDocumento-error" className="text-red-500 text-xs mt-1">
+                <p id="tipoDocumento-error" className="text-red-700 text-xs mt-1">
                   {errors.tipoDocumento}
                 </p>
               )}
@@ -187,7 +187,7 @@ export default function ComplianceStep({
 
             <div className="mb-4">
               <p className="block text-sm font-medium text-gray-700 mb-1">
-                Documentos <span className="text-red-500">*</span>
+                Documentos <span className="text-red-700">*</span>
               </p>
               <div
                 role="button"
@@ -232,12 +232,12 @@ export default function ComplianceStep({
                 disabled={saving}
               />
               {errors.documentos && (
-                <p className="text-red-500 text-xs mt-1">{errors.documentos}</p>
+                <p className="text-red-700 text-xs mt-1">{errors.documentos}</p>
               )}
               {fileErrors.length > 0 && (
                 <ul className="mt-2" aria-label="Erros de arquivo">
                   {fileErrors.map((err, i) => (
-                    <li key={i} className="text-red-500 text-xs">
+                    <li key={i} className="text-red-700 text-xs">
                       {err}
                     </li>
                   ))}

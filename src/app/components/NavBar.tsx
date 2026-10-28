@@ -73,7 +73,7 @@ export function NavBar({ logo, items, activeId, account, footerItems }: NavBarPr
         <div className="flex items-center gap-3 border-t border-sage-300 px-4 pb-2.5 pt-[11px]">
           <span
             aria-hidden="true"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-500"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-bold text-emerald-700"
           >
             {account.initials}
           </span>

@@ -37,7 +37,7 @@ export function BalanceCard({ state, onRetry }: BalanceCardProps) {
             <button
               type="button"
               onClick={onRetry}
-              className="cursor-pointer text-sm font-medium text-emerald-600 underline hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-emerald-700"
+              className="cursor-pointer text-sm font-medium text-emerald-700 underline hover:decoration-2 focus-visible:outline-2 focus-visible:outline-emerald-700"
             >
               Tentar novamente
             </button>

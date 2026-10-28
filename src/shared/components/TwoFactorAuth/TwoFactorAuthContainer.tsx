@@ -293,7 +293,7 @@ export function TwoFactorAuthContainer({
                   >
                     Código de recuperação
                   </label>
-                  <span className="text-[11px] font-mono text-slate-400">
+                  <span className="text-[11px] font-mono text-slate-500">
                     {rawAlphanumeric.length}/8 dígitos
                   </span>
                 </div>
@@ -312,7 +312,7 @@ export function TwoFactorAuthContainer({
                   placeholder="ex: ABCD-1234"
                   aria-invalid={!!error}
                   aria-describedby={error ? 'recovery-error' : undefined}
-                  className={`h-12 w-full rounded-lg border bg-surface px-4 text-center font-mono text-base uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                  className={`h-12 w-full rounded-lg border bg-surface px-4 text-center font-mono text-base uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal placeholder:text-gray-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                     error ? 'border-red-700' : 'border-sage-300'
                   }`}
                 />
@@ -409,7 +409,7 @@ export function TwoFactorAuthContainer({
                   placeholder="000000"
                   aria-invalid={!!error}
                   aria-describedby={error ? 'two-factor-error' : undefined}
-                  className={`h-12 w-full rounded-lg border bg-surface px-4 text-center font-mono text-xl tracking-[0.3em] placeholder:tracking-normal placeholder:text-gray-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                  className={`h-12 w-full rounded-lg border bg-surface px-4 text-center font-mono text-xl tracking-[0.3em] placeholder:tracking-normal placeholder:text-gray-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                     error ? 'border-red-700' : 'border-sage-300'
                   }`}
                 />

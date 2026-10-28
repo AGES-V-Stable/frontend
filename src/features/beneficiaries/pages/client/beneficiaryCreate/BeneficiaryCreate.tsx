@@ -124,7 +124,7 @@ export function BeneficiaryCreate() {
                 onChange={(event) => change('tipoBeneficiario', event.target.value)}
                 aria-invalid={!!errors.tipoBeneficiario}
                 className={`w-full rounded-lg border bg-surface px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                  errors.tipoBeneficiario ? 'border-red-500' : 'border-sage-300'
+                  errors.tipoBeneficiario ? 'border-red-700' : 'border-sage-300'
                 }`}
               >
                 {TIPOS_BENEFICIARIO.map((tipo) => (
@@ -134,7 +134,7 @@ export function BeneficiaryCreate() {
                 ))}
               </select>
               {errors.tipoBeneficiario && (
-                <p role="alert" className="text-sm text-red-500">
+                <p role="alert" className="text-sm text-red-700">
                   {errors.tipoBeneficiario}
                 </p>
               )}
@@ -233,7 +233,7 @@ export function BeneficiaryCreate() {
                     onChange={(event) => change('redeBlockchain', event.target.value)}
                     aria-invalid={!!errors.redeBlockchain}
                     className={`w-full rounded-lg border bg-surface px-3 py-3.5 text-[16px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                      errors.redeBlockchain ? 'border-red-500' : 'border-sage-300'
+                      errors.redeBlockchain ? 'border-red-700' : 'border-sage-300'
                     }`}
                   >
                     <option value="" disabled>
@@ -246,7 +246,7 @@ export function BeneficiaryCreate() {
                     ))}
                   </select>
                   {errors.redeBlockchain && (
-                    <p role="alert" className="text-sm text-red-500">
+                    <p role="alert" className="text-sm text-red-700">
                       {errors.redeBlockchain}
                     </p>
                   )}
@@ -284,7 +284,7 @@ export function BeneficiaryCreate() {
             Confirmo que os dados foram revisados e pertencem ao beneficiário informado.
           </label>
           {confirmError && (
-            <p role="alert" className="text-sm text-red-500">
+            <p role="alert" className="text-sm text-red-700">
               {confirmError}
             </p>
           )}
