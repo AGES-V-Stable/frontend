@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
 import { MetricCard } from '@/features/dashboard/components/MetricCard'
+import { SettlementDrawer } from '@/features/dashboard/components/SettlementDrawer'
 import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
 import { TransactionVolumeCard } from '@/features/dashboard/components/TransactionVolumeCard'
 import { useBalance } from '@/features/dashboard/hooks/useBalance'
@@ -305,6 +306,7 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
     toDashboardFilters(DEFAULT_FILTER_FORM, todayInSaoPaulo(), admin),
   )
   const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState<Settlement | null>(null)
   const applyFilters = (form: DashboardFilterForm) => {
     setFilters(toDashboardFilters(form, todayInSaoPaulo(), admin))
     setPage(1)
@@ -414,13 +416,7 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
             compact
             columns={columns}
             data={settlements.data.content}
-            actions={[
-              {
-                label: 'Detalhes',
-                onClick: (r: Settlement) =>
-                  void navigate(admin ? adminTransferDetailsPath(r.id) : transferDetailsPath(r.id)),
-              },
-            ]}
+            actions={[{ label: 'Detalhes', onClick: (r: Settlement) => setSelected(r) }]}
             emptyMessage="Nenhuma liquidação registrada."
             entityLabel="liquidações"
             pagination={
@@ -438,6 +434,15 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
           />
         )}
       </section>
+      <SettlementDrawer
+        settlement={selected}
+        admin={admin}
+        status={selected ? STATUS[selected.status] : STATUS.SETTLED}
+        onClose={() => setSelected(null)}
+        onOpenFull={(r) =>
+          void navigate(admin ? adminTransferDetailsPath(r.id) : transferDetailsPath(r.id))
+        }
+      />
     </section>
   )
 }

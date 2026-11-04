@@ -401,7 +401,7 @@ it('dates a pending settlement by its creation', async () => {
   expect(await screen.findByText('21 out 2026 • 10:00')).toBeInTheDocument()
 })
 
-it('shows the administrator the counterparty and type, and opens the details in the history', async () => {
+it('shows the administrator the counterparty and type, and opens the details on the dashboard', async () => {
   vi.stubGlobal('fetch', withSettlements([settlement()]))
   renderDashboard(true)
 
@@ -411,12 +411,19 @@ it('shows the administrator the counterparty and type, and opens the details in 
 
   fireEvent.click(screen.getByRole('button', { name: 'Detalhes' }))
 
+  const dialog = screen.getByRole('dialog')
+  expect(within(dialog).getByText('Alfa')).toBeInTheDocument()
+  expect(within(dialog).getByText(/R\$\s*54\.200,00/)).toBeInTheDocument()
+  expect(screen.getByLabelText('Rota atual')).toHaveTextContent(/^\/dashboard$/)
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Ver no histórico' }))
+
   expect(screen.getByLabelText('Rota atual')).toHaveTextContent(
     '/admin/transferencias?transferId=s1',
   )
 })
 
-it('shows the exchange rate to the client and opens the transfer details', async () => {
+it('shows the exchange rate to the client and opens the details on the dashboard', async () => {
   vi.stubGlobal('fetch', withSettlements([settlement()]))
   renderDashboard()
 
@@ -424,6 +431,20 @@ it('shows the exchange rate to the client and opens the transfer details', async
   expect(screen.getByText(/R\$\s*5,42/)).toBeInTheDocument()
 
   fireEvent.click(screen.getByRole('button', { name: 'Detalhes' }))
+
+  const dialog = screen.getByRole('dialog')
+  expect(within(dialog).getByText('Shenzhen AeroCrop Tech')).toBeInTheDocument()
+  expect(within(dialog).getByText(/R\$\s*1\.951,20/)).toBeInTheDocument()
+  expect(within(dialog).queryByText('Empresa')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Rota atual')).toHaveTextContent(/^\/dashboard$/)
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Fechar' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Detalhes' }))
+  fireEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', { name: 'Abrir detalhe completo' }),
+  )
 
   expect(screen.getByLabelText('Rota atual')).toHaveTextContent('/app/transferencias/s1')
 })
