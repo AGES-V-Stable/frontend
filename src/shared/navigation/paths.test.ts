@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  adminTransferDetailsPath,
   compliancePath,
   livenessPath,
   PATHS,
@@ -75,5 +76,9 @@ describe('PATHS configuration', () => {
 
   it('formats transferDetailsPath with encoded verification id', () => {
     expect(transferDetailsPath('t-123')).toBe('/app/transferencias/t-123')
+  })
+
+  it('opens the administrative transfer details through the history query string', () => {
+    expect(adminTransferDetailsPath('t 1')).toBe('/admin/transferencias?transferId=t+1')
   })
 })

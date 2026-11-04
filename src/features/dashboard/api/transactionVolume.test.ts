@@ -25,16 +25,48 @@ describe('getTransactionVolume', () => {
     )
   })
 
-  it('sends the optional start date as a query parameter', async () => {
+  it('sends the optional period as query parameters', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(JSON.stringify({ transactedVolumeBrl: '75.30' })))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(getTransactionVolume('2026-10-01')).resolves.toBe('75.30')
+    await expect(
+      getTransactionVolume({ startDate: '2026-10-01', endDate: '2026-10-31' }),
+    ).resolves.toBe('75.30')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/v1/dashboard/transaction-volume?startDate=2026-10-01&endDate=2026-10-31',
+      expect.anything(),
+    )
+  })
+
+  it('never sends the company for the client, whose company comes from the token', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ transactedVolumeBrl: '1.00' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await getTransactionVolume({ companyId: 'other', startDate: '2026-10-01' })
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/v1/dashboard/transaction-volume?startDate=2026-10-01',
+      expect.anything(),
+    )
+  })
+
+  it('uses the administrative route with the chosen company', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ transactedVolumeBrl: '2840000.00' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getTransactionVolume({ companyId: 'c1' }, undefined, true)).resolves.toBe(
+      '2840000.00',
+    )
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/v1/admin/dashboard/transaction-volume?companyId=c1',
       expect.anything(),
     )
   })

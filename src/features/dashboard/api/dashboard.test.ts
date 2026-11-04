@@ -1,6 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { downloadStatement } from './dashboard'
+import {
+  downloadStatement,
+  getDashboard,
+  seriesSchema,
+  settlementsSchema,
+  summarySchema,
+} from './dashboard'
+import { TransactionVolumeSchema } from '@/features/dashboard/schemas/transactionVolume'
+import {
+  realEmptySeries,
+  realRemittanceVolume,
+  realSettlementsPage,
+  realSummary,
+  realTransactionVolume,
+} from '@/test/fixtures/dashboardResponses'
 
 // Corpo em texto: no jsdom, o Response não reconhece o Blob do ambiente de teste.
 function pdfResponse(body: string, contentType = 'application/pdf') {
@@ -54,5 +68,37 @@ describe('downloadStatement', () => {
     )
 
     await expect(downloadStatement()).rejects.toThrow('Extrato vazio.')
+  })
+})
+
+describe('contract with the real backend responses', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('accepts every dashboard response captured from the backend', () => {
+    expect(summarySchema.parse(realSummary).amount).toBe('2127.90')
+    expect(seriesSchema.parse(realRemittanceVolume).points).toHaveLength(6)
+    expect(seriesSchema.parse(realEmptySeries).points).toEqual([])
+    expect(TransactionVolumeSchema.parse(realTransactionVolume).transactedVolumeBrl).toBe(
+      '152022.50',
+    )
+    const page = settlementsSchema.parse(realSettlementsPage)
+    expect(page.totalElements).toBe(6)
+    expect(page.content.map((row) => row.status)).toEqual(['AWAITING_PAYMENT', 'SETTLED'])
+  })
+
+  it('sends the period to the client routes and the company only to the administrative ones', async () => {
+    const fetchMock = vi.fn<(url: string) => Promise<Response>>(
+      async () => new Response(JSON.stringify(realSummary)),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const filters = { companyId: 'c1', startDate: '2026-06-01', endDate: '2026-11-03' }
+
+    await getDashboard(false, 'summary', filters, summarySchema, new AbortController().signal)
+    await getDashboard(true, 'summary', filters, summarySchema, new AbortController().signal)
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/v1/dashboard/summary?startDate=2026-06-01&endDate=2026-11-03',
+      '/v1/admin/dashboard/summary?companyId=c1&startDate=2026-06-01&endDate=2026-11-03',
+    ])
   })
 })

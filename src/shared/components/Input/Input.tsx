@@ -1,10 +1,20 @@
 import { useId } from 'react'
 import type { InputType } from '@/shared/components/Input/InputType'
 
-function Input({ label, error, id, prefix, className = '', style, ...inputProps }: InputType) {
+function Input({
+  label,
+  labelPlacement = 'top',
+  error,
+  id,
+  prefix,
+  className = '',
+  style,
+  ...inputProps
+}: InputType) {
   const generatedId = useId()
   const inputId = id ?? generatedId
   const errorId = error ? `${inputId}-error` : undefined
+  const inside = labelPlacement === 'inside' && !!label && !prefix
 
   const field = (
     <input
@@ -13,19 +23,35 @@ function Input({ label, error, id, prefix, className = '', style, ...inputProps 
       id={inputId}
       aria-invalid={!!error}
       aria-describedby={errorId}
-      style={prefix ? { paddingLeft: `calc(1.25rem + ${prefix.length}ch)`, ...style } : style}
-      className={`w-full py-3.5 px-3 text-[16px] placeholder:text-gray-500 border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${error ? 'border-red-700' : 'border-sage-300'} ${className}`}
+      style={
+        prefix
+          ? { paddingLeft: `calc(1.25rem + ${prefix.length}ch)`, ...style }
+          : inside
+            ? { paddingLeft: `calc(1.25rem + ${label?.length ?? 0}ch)`, ...style }
+            : style
+      }
+      className={`w-full ${inside ? 'py-2.5 pr-3 text-[14px] font-medium text-slate-700' : 'py-3.5 px-3 text-[16px]'} placeholder:text-gray-500 border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${error ? 'border-red-700' : 'border-sage-300'} ${className}`}
     />
   )
 
   return (
     <div className="flex flex-col gap-y-1 w-full">
-      {label && (
+      {label && !inside && (
         <label htmlFor={inputId} className="text-[14px] text-sage-800">
           {label}
         </label>
       )}
-      {prefix ? (
+      {inside ? (
+        <div className="relative">
+          <label
+            htmlFor={inputId}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-500"
+          >
+            {label}
+          </label>
+          {field}
+        </div>
+      ) : prefix ? (
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-primary">
             {prefix}

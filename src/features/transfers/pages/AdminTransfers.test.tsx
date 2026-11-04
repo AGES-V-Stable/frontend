@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
@@ -192,6 +192,44 @@ describe('AdminTransfers page', () => {
     // Check if correct data is inside drawer by waiting for it to load
     expect(await within(dialog).findByText('Tech Corp')).toBeInTheDocument()
     expect(within(dialog).getByText('t1')).toBeInTheDocument()
+  })
+
+  it('opens the details of the transfer given in the URL and clears it on close', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getTransfers).mockResolvedValue({
+      data: mockTransfers.slice(0, 1),
+      totalItems: 1,
+      totalPages: 1,
+      currentPage: 1,
+    })
+    vi.mocked(getTransfersById).mockResolvedValue(mockTransfers[0])
+    function Search() {
+      return <output aria-label="Busca">{useLocation().search}</output>
+    }
+    render(
+      <MemoryRouter initialEntries={['/admin/transferencias?transferId=t1']}>
+        <Routes>
+          <Route
+            path="/admin/transferencias"
+            element={
+              <>
+                <AdminTransfers />
+                <Search />
+              </>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    const dialog = await screen.findByRole('dialog')
+    expect(await within(dialog).findByText('Tech Corp')).toBeInTheDocument()
+    expect(getTransfersById).toHaveBeenCalledWith('t1', expect.any(AbortSignal))
+
+    await user.click(screen.getByRole('button', { name: 'Fechar drawer' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Busca')).toHaveTextContent(/^$/)
   })
 
   it('applies filters, resets to page 1 and refetches with the filter params', async () => {

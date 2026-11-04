@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import type { ZodType } from 'zod'
 import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Area,
   AreaChart,
   ResponsiveContainer,
@@ -12,28 +14,55 @@ import {
   YAxis,
 } from 'recharts'
 import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
+import { MetricCard } from '@/features/dashboard/components/MetricCard'
+import { SettlementDrawer } from '@/features/dashboard/components/SettlementDrawer'
+import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
 import { TransactionVolumeCard } from '@/features/dashboard/components/TransactionVolumeCard'
 import { useBalance } from '@/features/dashboard/hooks/useBalance'
 import { useTransactionVolume } from '@/features/dashboard/hooks/useTransactionVolume'
 import { StatusBadge, Table, type StatusVariant } from '@/shared/components/Table'
-import { Button } from '@/shared/components/Button'
+import { adminTransferDetailsPath, transferDetailsPath } from '@/shared/navigation/paths'
 import { formatMoneyString, formatDateTime } from '@/shared/utils/formatters'
 import {
   getDashboard,
   summarySchema,
   seriesSchema,
   settlementsSchema,
-  downloadStatement,
 } from '@/features/dashboard/api/dashboard'
-import type { Period, Settlement } from '@/features/dashboard/api/dashboard'
+import type { Settlement } from '@/features/dashboard/api/dashboard'
+import type {
+  DashboardFilterForm,
+  DashboardFilters as Filters,
+} from '@/features/dashboard/types/dashboardFilters'
+import {
+  DEFAULT_FILTER_FORM,
+  describePeriod,
+  filtersQuery,
+  toDashboardFilters,
+  todayInSaoPaulo,
+} from '@/features/dashboard/utils/period'
 
-function useDashboard<T>(admin: boolean, suffix: string, schema: ZodType<T>) {
+function useDashboard<T>(
+  admin: boolean,
+  resource: string,
+  filters: Filters,
+  schema: ZodType<T>,
+  extra: Record<string, string> = {},
+) {
   const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState<{ key: string; data?: T; error?: boolean }>({ key: '' })
-  const key = `${admin}/${suffix}/${attempt}`
+  const extraQuery = new URLSearchParams(extra).toString()
+  const key = `${admin}/${resource}?${filtersQuery(filters).toString()}&${extraQuery}/${attempt}`
   useEffect(() => {
     const controller = new AbortController()
-    void getDashboard(admin, suffix, schema, controller.signal).then(
+    void getDashboard(
+      admin,
+      resource,
+      filters,
+      schema,
+      controller.signal,
+      Object.fromEntries(new URLSearchParams(extraQuery)),
+    ).then(
       (data) => {
         if (!controller.signal.aborted) setState({ key, data })
       },
@@ -42,7 +71,7 @@ function useDashboard<T>(admin: boolean, suffix: string, schema: ZodType<T>) {
       },
     )
     return () => controller.abort()
-  }, [admin, suffix, schema, key])
+  }, [key, admin, resource, filters, schema, extraQuery])
   return {
     data: state.key === key ? state.data : undefined,
     error: state.key === key && state.error,
@@ -54,6 +83,7 @@ const compactBrl = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
   notation: 'compact',
+  minimumFractionDigits: 0,
   maximumFractionDigits: 1,
 })
 const axisMoney = (value: number) => compactBrl.format(value)
@@ -72,19 +102,70 @@ const STATUS: Record<Settlement['status'], { label: string; variant: StatusVaria
 
 const money = (amount: string | null, currency = 'BRL') =>
   formatMoneyString(amount, currency) ?? 'Indisponível'
-const card = 'rounded-xl border border-sage-300 bg-white p-6'
-// Mesmo visual dos cards de saldo e volume, que dividem a linha de métricas com a economia.
-const metricCard = 'rounded-2xl border border-sage-300 bg-white p-6 shadow-sm'
+const percent = (value: string) => `${value.replace('.', ',')}%`
+// Cotação em reais por unidade da moeda estrangeira, exibida com duas casas como no Figma.
+const rate = (value: string | null) => money(value)
+const card = 'rounded-xl border border-sage-300 bg-white p-5'
 
 function ClientBalanceCard() {
   const { state, retry } = useBalance()
   return <BalanceCard state={state} onRetry={retry} />
 }
 
-function ClientVolumeCard() {
-  const { state, retry } = useTransactionVolume()
-  return <TransactionVolumeCard state={state} onRetry={retry} />
+function VolumeCard({ filters, admin }: { filters: Filters; admin: boolean }) {
+  const { state, retry } = useTransactionVolume(filters, admin)
+  return (
+    <TransactionVolumeCard
+      state={state}
+      onRetry={retry}
+      accent={admin ? 'sky' : 'neutral'}
+      footnote={describePeriod(filters)}
+    />
+  )
 }
+
+function SavingsCard({ admin, filters }: { admin: boolean; filters: Filters }) {
+  const summary = useDashboard(admin, 'summary', filters, summarySchema)
+  const data = summary.data
+  return (
+    <MetricCard
+      title="Economia Acumulada"
+      accent="emerald"
+      state={
+        summary.error
+          ? {
+              status: 'error',
+              message: 'Não foi possível carregar os dados.',
+              onRetry: summary.retry,
+            }
+          : !data
+            ? { status: 'loading', label: 'Carregando...' }
+            : { status: 'ready', value: money(data.amount) }
+      }
+      footnote={
+        <>
+          <p>
+            {data?.averageEffectiveSpreadPercentage
+              ? `Spread efetivo médio: ${percent(data.averageEffectiveSpreadPercentage)}`
+              : admin && !filters.companyId
+                ? 'Economia consolidada da plataforma'
+                : describePeriod(filters)}
+          </p>
+          {data?.incomplete && (
+            <p>
+              {data.incompleteOperations} operação(ões) sem valor ou tarifa registrados ficaram fora
+              da soma.
+            </p>
+          )}
+          {data && (
+            <p>Estimativa com spread de referência de {percent(data.referenceSpreadPercentage)}.</p>
+          )}
+        </>
+      }
+    />
+  )
+}
+
 function Failure({ retry }: { retry: () => void }) {
   return (
     <div role="alert">
@@ -95,25 +176,35 @@ function Failure({ retry }: { retry: () => void }) {
     </div>
   )
 }
-function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boolean }) {
-  const [period, setPeriod] = useState<Period>('SIX_MONTHS')
-  const title = savings ? 'Histórico de Economia' : 'Volume de Remessas (BRL)'
+
+function ChartCard({
+  admin,
+  filters,
+  savings = false,
+}: {
+  admin: boolean
+  filters: Filters
+  savings?: boolean
+}) {
+  const title = savings ? 'Histórico de Economia (BRL)' : 'Volume de Remessas (BRL)'
+  const subtitle = savings
+    ? 'Economia gerada em taxas e spread ao longo do período'
+    : 'Volume processado em BRL por mês'
   const result = useDashboard(
     admin,
-    `${savings ? 'savings-history' : 'remittance-volume'}?period=${period}`,
+    savings ? 'savings-history' : 'remittance-volume',
+    filters,
     seriesSchema,
   )
   const points = result.data?.points.map((p) => ({
     ...p,
-    value: p.amount === null ? null : Number(p.amount),
+    value: Number(p.amount),
     label: new Intl.DateTimeFormat('pt-BR', {
       month: 'short',
       year: '2-digit',
       timeZone: 'UTC',
     }).format(new Date(`${p.month}-01T12:00:00Z`)),
   }))
-  const empty = points?.every((p) => p.amount === '0.00' || p.amount === '0')
-  const unavailable = points?.some((p) => p.incomplete || p.amount === null)
   const axes = (
     <>
       <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -126,31 +217,32 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
   )
   return (
     <section className={card} aria-label={title}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        <select
-          aria-label={`Período — ${title}`}
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as Period)}
-          className="rounded-md border border-sage-300 bg-surface px-3 py-2 text-sm"
-        >
-          <option value="ALL">Desde o início</option>
-          <option value="SIX_MONTHS">6 meses</option>
-          <option value="THIS_MONTH">Esse mês</option>
-        </select>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+          <p className="text-xs text-slate-500">{subtitle}</p>
+        </div>
+        {result.data && points && points.length > 0 && (
+          <p
+            className={`rounded-lg px-4 py-3 font-mono font-medium ${savings ? 'bg-emerald-50 text-primary' : 'bg-blue-50 text-sky-600'}`}
+          >
+            {money(result.data.total)}
+          </p>
+        )}
       </div>
       {result.error ? (
         <Failure retry={result.retry} />
-      ) : !result.data ? (
+      ) : !result.data || !points ? (
         <p role="status">Carregando...</p>
+      ) : points.length === 0 ? (
+        <p className="text-sm text-slate-500">Nenhuma operação no período.</p>
       ) : (
         <>
-          {unavailable && (
+          {result.data.incompleteOperations > 0 && (
             <p role="status" className="mb-3 text-sm text-slate-600">
-              Dados incompletos. Há valores ou datas de liquidação não registrados.
+              Dados incompletos. Há operações sem valor ou tarifa registrados fora da soma.
             </p>
           )}
-          {empty && <p className="text-sm text-slate-500">Nenhuma operação no período.</p>}
           <div className="h-64" role="img" aria-label={`${title}, valores mensais em reais`}>
             <ResponsiveContainer width="100%" height="100%">
               {savings ? (
@@ -162,7 +254,6 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
                     name="Economia"
                     stroke="var(--color-primary)"
                     fill="var(--color-emerald-50)"
-                    connectNulls={false}
                     isAnimationActive={false}
                   />
                 </AreaChart>
@@ -172,9 +263,22 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
                   <Bar
                     dataKey="value"
                     name="Volume"
-                    fill="var(--color-primary)"
+                    fill="var(--color-sky-600)"
+                    radius={[6, 6, 0, 0]}
                     isAnimationActive={false}
-                  />
+                  >
+                    {/* Como no Figma, o mês mais recente da série fica em destaque. */}
+                    {points.map((p, index) => (
+                      <Cell
+                        key={p.month}
+                        fill={
+                          index === points.length - 1
+                            ? 'var(--color-primary)'
+                            : 'var(--color-sky-600)'
+                        }
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               )}
             </ResponsiveContainer>
@@ -182,7 +286,7 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
           <details className="mt-2 text-sm">
             <summary>Consultar valores mensais</summary>
             <ul>
-              {points?.map((p) => (
+              {points.map((p) => (
                 <li key={p.month}>
                   {p.label}: {money(p.amount)}
                 </li>
@@ -191,119 +295,118 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
           </details>
         </>
       )}
-      {savings && (
-        <p className="mt-3 text-xs text-slate-500">
-          Estimativa com spread de referência fixo de 4%, descontada a tarifa registrada.
-        </p>
-      )}
     </section>
   )
 }
+
 /** Dashboard do épico AGES-V-Stable/cicd#44, nas visões de cliente e de administrador. */
 export function Dashboard({ admin = false }: { admin?: boolean }) {
-  const summary = useDashboard(admin, 'summary', summarySchema)
+  const navigate = useNavigate()
+  const [filters, setFilters] = useState<Filters>(() =>
+    toDashboardFilters(DEFAULT_FILTER_FORM, todayInSaoPaulo(), admin),
+  )
   const [page, setPage] = useState(1)
-  const settlements = useDashboard(admin, `settlements?page=${page - 1}&size=5`, settlementsSchema)
-  const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState(false)
-  const exportPdf = async () => {
-    setExporting(true)
-    setExportError(false)
-    try {
-      await downloadStatement()
-    } catch {
-      setExportError(true)
-    } finally {
-      setExporting(false)
-    }
+  const [selected, setSelected] = useState<Settlement | null>(null)
+  const applyFilters = (form: DashboardFilterForm) => {
+    setFilters(toDashboardFilters(form, todayInSaoPaulo(), admin))
+    setPage(1)
   }
-  const columns = [
-    ...(!admin
-      ? [
-          {
-            key: 'counterparty',
-            label: 'Beneficiário / Destino',
-            render: (r: Settlement) => (
-              <>
-                <span className="font-medium">{r.counterparty ?? 'Não registrado'}</span>
-                <span className="block text-xs text-slate-500">{r.destination}</span>
-              </>
-            ),
-          },
-        ]
-      : []),
-    {
-      key: 'date',
-      label: 'Data / Hora',
-      render: (r: Settlement) => (r.date ? formatDateTime(r.date) : 'Não registrada'),
+  const settlements = useDashboard(admin, 'settlements', filters, settlementsSchema, {
+    page: String(page - 1),
+    size: '5',
+  })
+  const counterparty = {
+    key: 'counterparty',
+    label: admin ? 'Beneficiário' : 'Beneficiário / Destino',
+    render: (r: Settlement) => (
+      <>
+        <span className="font-medium">{r.counterparty ?? 'Não registrado'}</span>
+        {r.destination && <span className="block text-xs text-slate-500">{r.destination}</span>}
+      </>
+    ),
+  }
+  const date = {
+    key: 'date',
+    label: admin ? 'Data' : 'Data / Hora',
+    render: (r: Settlement) => {
+      const value = r.settledAt ?? r.createdAt
+      return value ? formatDateTime(value) : 'Não registrada'
     },
-    {
-      key: 'direction',
-      label: 'Tipo',
-      render: (r: Settlement) => (r.direction === 'PAYMENT' ? 'Pagamento' : 'Recebimento'),
-    },
-    { key: 'amount', label: 'Valor', render: (r: Settlement) => money(r.amount, r.currency) },
-    {
-      key: 'status',
-      label: 'Status da ordem',
-      render: (r: Settlement) => (
-        <StatusBadge label={STATUS[r.status].label} variant={STATUS[r.status].variant} />
-      ),
-    },
+  }
+  const amount = {
+    key: 'amount',
+    label: admin ? 'Valor' : 'Valor enviado',
+    render: (r: Settlement) => (
+      <span className="font-mono font-medium text-slate-900">{money(r.amount, r.currency)}</span>
+    ),
+  }
+  const status = {
+    key: 'status',
+    label: 'Status',
+    render: (r: Settlement) => (
+      <StatusBadge label={STATUS[r.status].label} variant={STATUS[r.status].variant} />
+    ),
+  }
+  const columns = admin
+    ? [
+        counterparty,
+        {
+          key: 'direction',
+          label: 'Tipo',
+          render: (r: Settlement) =>
+            r.direction === 'PAYMENT'
+              ? 'Pagamento'
+              : r.direction === 'RECEIPT'
+                ? 'Recebimento'
+                : '—',
+        },
+        amount,
+        date,
+        status,
+        { key: 'details', label: '', type: 'action' as const, align: 'right' as const },
+      ]
+    : [
+        counterparty,
+        date,
+        amount,
+        { key: 'exchangeRate', label: 'Câmbio', render: (r: Settlement) => rate(r.exchangeRate) },
+        status,
+        { key: 'details', label: '', type: 'action' as const, align: 'right' as const },
+      ]
+  const charts = [
+    <ChartCard key="volume" admin={admin} filters={filters} />,
+    <ChartCard key="savings" admin={admin} filters={filters} savings />,
   ]
   return (
-    <section className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-8 lg:px-12">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900">
-          {admin ? 'Dashboard administrativo' : 'Conta empresarial'}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Liquidações registradas • Valores consolidados em BRL
-        </p>
-      </header>
-      <div className={`grid gap-6 ${admin ? 'max-w-xl' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
-        {!admin && <ClientBalanceCard />}
-        <section className={metricCard} aria-label="Economia acumulada">
-          <h2 className="text-sm text-sage-800">
-            Economia Acumulada {summary.data ? `(${summary.data.year})` : ''}
-          </h2>
-          {summary.error ? (
-            <Failure retry={summary.retry} />
-          ) : !summary.data ? (
-            <p role="status">Carregando...</p>
-          ) : (
-            <>
-              <p className="mt-2 text-3xl font-bold text-primary">{money(summary.data.amount)}</p>
-              {summary.data.incomplete && (
-                <p className="mt-2 text-sm">
-                  Subtotal conhecido: {money(summary.data.knownSubtotal)}. Histórico incompleto.
-                </p>
-              )}
-            </>
-          )}
-          <p className="mt-3 text-xs text-slate-500">
-            Estimativa anual com spread de referência fixo de 4%.
-          </p>
-        </section>
-        {!admin && <ClientVolumeCard />}
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ChartCard admin={admin} />
-        <ChartCard admin={admin} savings />
-      </div>
-      <section className={card} aria-label="Últimas liquidações">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-semibold">Últimas Liquidações Internacionais</h2>
-          {!admin && (
-            <Button
-              className="!w-auto !px-4"
-              label={exporting ? 'Gerando extrato...' : 'Gerar extrato completo'}
-              disabled={exporting}
-              onClick={() => void exportPdf()}
-            />
+    <section className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-8 lg:px-8">
+      <header className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-4">
+          <h1 className="text-2xl font-bold text-slate-900">
+            {admin ? 'Dashboard Administrativo' : 'Visão Geral Corporativa'}
+          </h1>
+          {admin && (
+            <span className="rounded-2xl bg-blue-50 px-3 py-1 text-sm font-bold text-sky-700">
+              PAINEL ADMIN
+            </span>
           )}
         </div>
-        {exportError && <p role="alert">Não foi possível gerar o extrato. Tente novamente.</p>}
+        <p className="text-lg font-semibold text-slate-500">
+          {admin
+            ? 'Visão consolidada da operação, performance financeira e liquidações dos beneficiários.'
+            : 'Liquidações registradas • Valores consolidados em BRL'}
+        </p>
+      </header>
+      <div className={`grid gap-4 ${admin ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+        {!admin && <ClientBalanceCard />}
+        <SavingsCard admin={admin} filters={filters} />
+        <VolumeCard filters={filters} admin={admin} />
+      </div>
+      <DashboardFilters admin={admin} onApply={applyFilters} />
+      <div className="grid gap-6 lg:grid-cols-2">{admin ? charts : [...charts].reverse()}</div>
+      <section className={card} aria-label="Últimas liquidações">
+        <h2 className="mb-2 text-xl font-bold text-slate-900">
+          {admin ? 'Últimas Liquidações' : 'Últimas Liquidações Internacionais'}
+        </h2>
         {settlements.error ? (
           <Failure retry={settlements.retry} />
         ) : !settlements.data ? (
@@ -313,6 +416,7 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
             compact
             columns={columns}
             data={settlements.data.content}
+            actions={[{ label: 'Detalhes', onClick: (r: Settlement) => setSelected(r) }]}
             emptyMessage="Nenhuma liquidação registrada."
             entityLabel="liquidações"
             pagination={
@@ -329,10 +433,16 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
             }
           />
         )}
-        <p className="mt-3 text-xs text-slate-500">
-          Até 20 liquidações recentes. Datas e valores ausentes permanecem indisponíveis.
-        </p>
       </section>
+      <SettlementDrawer
+        settlement={selected}
+        admin={admin}
+        status={selected ? STATUS[selected.status] : STATUS.SETTLED}
+        onClose={() => setSelected(null)}
+        onOpenFull={(r) =>
+          void navigate(admin ? adminTransferDetailsPath(r.id) : transferDetailsPath(r.id))
+        }
+      />
     </section>
   )
 }

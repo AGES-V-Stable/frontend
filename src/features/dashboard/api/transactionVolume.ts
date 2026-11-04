@@ -1,19 +1,23 @@
 import { TransactionVolumeSchema } from '@/features/dashboard/schemas/transactionVolume'
+import type { DashboardFilters } from '@/features/dashboard/types/dashboardFilters'
+import { filtersQuery } from '@/features/dashboard/utils/period'
 
 import { httpRequest } from '@/shared/http/httpClient'
 
 /**
- * Volume transacionado em BRL da empresa do usuário autenticado (soma das transações liquidadas),
- * como string decimal ("412000.00"). Sem `startDate` ("AAAA-MM-DD") considera todo o histórico.
- * A empresa vem do token; o backend não aceita `companyId`.
+ * Volume transacionado em BRL (soma das transações liquidadas, criadas no período), como string
+ * decimal ("412000.00"). Datas ausentes não limitam o período. Para o cliente a empresa vem do
+ * token e `companyId` nunca é enviado; para o administrador, sem `companyId` o volume é consolidado.
  */
 export async function getTransactionVolume(
-  startDate?: string,
+  filters: DashboardFilters = {},
   signal?: AbortSignal,
+  admin = false,
 ): Promise<string> {
-  const query = startDate ? `?${new URLSearchParams({ startDate }).toString()}` : ''
+  const params = filtersQuery(admin ? filters : { ...filters, companyId: undefined }).toString()
+  const path = admin ? '/v1/admin/dashboard/transaction-volume' : '/v1/dashboard/transaction-volume'
   const data = TransactionVolumeSchema.parse(
-    await httpRequest<unknown>(`/v1/dashboard/transaction-volume${query}`, { signal }),
+    await httpRequest<unknown>(`${path}${params ? `?${params}` : ''}`, { signal }),
   )
   return data.transactedVolumeBrl
 }

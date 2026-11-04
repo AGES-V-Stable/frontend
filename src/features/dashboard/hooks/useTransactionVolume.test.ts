@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getTransactionVolume } from '@/features/dashboard/api/transactionVolume'
 import { useTransactionVolume } from '@/features/dashboard/hooks/useTransactionVolume'
+import type { DashboardFilters } from '@/features/dashboard/types/dashboardFilters'
 import { ApiError } from '@/shared/http/httpClient'
 
 vi.mock('@/features/dashboard/api/transactionVolume', () => ({ getTransactionVolume: vi.fn() }))
@@ -23,7 +24,11 @@ describe('useTransactionVolume', () => {
     await waitFor(() =>
       expect(result.current.state).toEqual({ status: 'ready', volume: '412000.00' }),
     )
-    expect(getVolumeMock).toHaveBeenCalledWith(undefined, expect.any(AbortSignal))
+    expect(getVolumeMock).toHaveBeenCalledWith(
+      { startDate: undefined, endDate: undefined, companyId: undefined },
+      expect.any(AbortSignal),
+      false,
+    )
   })
 
   it('keeps a zero volume visible instead of hiding it', async () => {
@@ -61,19 +66,36 @@ describe('useTransactionVolume', () => {
     expect(getVolumeMock).toHaveBeenCalledTimes(2)
   })
 
-  it('reloads with the new start date when it changes', async () => {
-    getVolumeMock.mockResolvedValueOnce('300.50').mockResolvedValueOnce('200.00')
+  it('reloads when the period, the company or the scope changes', async () => {
+    getVolumeMock
+      .mockResolvedValueOnce('300.50')
+      .mockResolvedValueOnce('200.00')
+      .mockResolvedValueOnce('900.00')
 
-    const { result, rerender } = renderHook(({ start }) => useTransactionVolume(start), {
-      initialProps: { start: undefined as string | undefined },
-    })
+    const { result, rerender } = renderHook(
+      ({ filters, admin }) => useTransactionVolume(filters, admin),
+      { initialProps: { filters: {} as DashboardFilters, admin: false } },
+    )
     await waitFor(() => expect(result.current.state).toEqual({ status: 'ready', volume: '300.50' }))
 
-    rerender({ start: '2026-10-01' })
+    rerender({ filters: { startDate: '2026-10-01', endDate: '2026-10-31' }, admin: false })
 
     expect(result.current.state).toEqual({ status: 'loading' })
     await waitFor(() => expect(result.current.state).toEqual({ status: 'ready', volume: '200.00' }))
-    expect(getVolumeMock).toHaveBeenLastCalledWith('2026-10-01', expect.any(AbortSignal))
+    expect(getVolumeMock).toHaveBeenLastCalledWith(
+      { startDate: '2026-10-01', endDate: '2026-10-31', companyId: undefined },
+      expect.any(AbortSignal),
+      false,
+    )
+
+    rerender({ filters: { companyId: 'c1' }, admin: true })
+
+    await waitFor(() => expect(result.current.state).toEqual({ status: 'ready', volume: '900.00' }))
+    expect(getVolumeMock).toHaveBeenLastCalledWith(
+      { startDate: undefined, endDate: undefined, companyId: 'c1' },
+      expect.any(AbortSignal),
+      true,
+    )
   })
 
   it('aborts the pending request when the component unmounts', () => {
