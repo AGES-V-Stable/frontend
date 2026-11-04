@@ -55,4 +55,20 @@ describe('Select', () => {
     expect(select.className).toContain('border-sage-300')
     expect(select.className).toContain('focus-visible:outline-primary')
   })
+
+  it('can show the label inside the field, still associated with it', () => {
+    render(
+      <Select
+        label="Período"
+        labelPlacement="inside"
+        value="a"
+        options={options}
+        onChange={vi.fn()}
+      />,
+    )
+
+    const select = screen.getByLabelText('Período')
+    expect(select.parentElement?.className).toContain('relative')
+    expect(select).toHaveStyle({ paddingLeft: 'calc(1.25rem + 7ch)' })
+  })
 })

@@ -51,4 +51,12 @@ describe('Input', () => {
     expect(input.parentElement?.className).not.toContain('relative')
     expect(input.getAttribute('style')).toBeNull()
   })
+
+  it('can show the label inside the field, still associated with it', () => {
+    render(<Input label="Data final" labelPlacement="inside" value="" onChange={vi.fn()} />)
+
+    const input = screen.getByLabelText('Data final')
+    expect(input.parentElement?.className).toContain('relative')
+    expect(input).toHaveStyle({ paddingLeft: 'calc(1.25rem + 10ch)' })
+  })
 })
