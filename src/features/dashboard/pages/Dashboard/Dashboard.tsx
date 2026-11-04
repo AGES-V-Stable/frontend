@@ -5,6 +5,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Area,
   AreaChart,
   ResponsiveContainer,
@@ -264,7 +265,19 @@ function ChartCard({
                     fill="var(--color-sky-600)"
                     radius={[6, 6, 0, 0]}
                     isAnimationActive={false}
-                  />
+                  >
+                    {/* Como no Figma, o mês mais recente da série fica em destaque. */}
+                    {points.map((p, index) => (
+                      <Cell
+                        key={p.month}
+                        fill={
+                          index === points.length - 1
+                            ? 'var(--color-primary)'
+                            : 'var(--color-sky-600)'
+                        }
+                      />
+                    ))}
+                  </Bar>
                 </BarChart>
               )}
             </ResponsiveContainer>

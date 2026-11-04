@@ -18,7 +18,8 @@ vi.mock('recharts', async () => {
     ResponsiveContainer: capture('ResponsiveContainer', true),
     BarChart: capture('BarChart', true),
     AreaChart: capture('AreaChart', true),
-    Bar: capture('Bar'),
+    Bar: capture('Bar', true),
+    Cell: capture('Cell'),
     Area: capture('Area'),
     CartesianGrid: capture('CartesianGrid'),
     Tooltip: capture('Tooltip'),
@@ -468,6 +469,11 @@ it('names the chart series, flags incomplete data and formats the value axis in 
   expect(screen.getAllByText(/Dados incompletos/)).toHaveLength(2)
   expect(screen.getAllByText(/R\$\s*1\.640,00/).length).toBeGreaterThanOrEqual(2)
   expect(chartProps.Bar.at(-1)).toMatchObject({ name: 'Volume', dataKey: 'value' })
+  // Só o mês mais recente fica em destaque, como no Figma.
+  expect(chartProps.Cell.slice(-2).map((cell) => cell.fill)).toEqual([
+    'var(--color-sky-600)',
+    'var(--color-primary)',
+  ])
   expect(chartProps.Area.at(-1)).toMatchObject({ name: 'Economia', dataKey: 'value' })
   const tickFormatter = chartProps.YAxis.at(-1)!.tickFormatter as (value: number) => string
   expect(tickFormatter(340000).replace(/\s/g, ' ')).toBe('R$ 340 mil')
