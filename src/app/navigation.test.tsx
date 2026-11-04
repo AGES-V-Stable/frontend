@@ -69,12 +69,14 @@ beforeEach(() => {
     if (url.includes('/dashboard/summary'))
       return new Response(
         JSON.stringify({
-          year: 2026,
           currency: 'BRL',
+          startDate: null,
+          endDate: null,
           amount: '0.00',
-          knownSubtotal: '0.00',
+          referenceSpreadPercentage: '4.00',
+          averageEffectiveSpreadPercentage: null,
           incomplete: false,
-          undatedOperations: 0,
+          incompleteOperations: 0,
         }),
       )
     if (url.includes('/dashboard/settlements'))
@@ -83,9 +85,17 @@ beforeEach(() => {
       )
     if (url.includes('/dashboard/remittance-volume') || url.includes('/dashboard/savings-history'))
       return new Response(
-        JSON.stringify({ currency: 'BRL', period: 'SIX_MONTHS', points: [], undatedOperations: 0 }),
+        JSON.stringify({
+          currency: 'BRL',
+          granularity: 'MONTH',
+          startDate: null,
+          endDate: null,
+          total: '0.00',
+          points: [],
+          incompleteOperations: 0,
+        }),
       )
-    if (url === '/v1/dashboard/transaction-volume')
+    if (url.startsWith('/v1/dashboard/transaction-volume'))
       return new Response('{"transactedVolumeBrl":"5022.50"}')
     throw new Error(`Unexpected test request: ${url}`)
   }

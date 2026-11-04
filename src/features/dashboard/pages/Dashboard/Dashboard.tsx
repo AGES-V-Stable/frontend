@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
+import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
 import { TransactionVolumeCard } from '@/features/dashboard/components/TransactionVolumeCard'
 import { useBalance } from '@/features/dashboard/hooks/useBalance'
 import { useTransactionVolume } from '@/features/dashboard/hooks/useTransactionVolume'
@@ -25,15 +26,40 @@ import {
   settlementsSchema,
   downloadStatement,
 } from '@/features/dashboard/api/dashboard'
-import type { Period, Settlement } from '@/features/dashboard/api/dashboard'
+import type { Settlement } from '@/features/dashboard/api/dashboard'
+import type {
+  DashboardFilterForm,
+  DashboardFilters as Filters,
+} from '@/features/dashboard/types/dashboardFilters'
+import {
+  DEFAULT_FILTER_FORM,
+  describePeriod,
+  filtersQuery,
+  toDashboardFilters,
+  todayInSaoPaulo,
+} from '@/features/dashboard/utils/period'
 
-function useDashboard<T>(admin: boolean, suffix: string, schema: ZodType<T>) {
+function useDashboard<T>(
+  admin: boolean,
+  resource: string,
+  filters: Filters,
+  schema: ZodType<T>,
+  extra: Record<string, string> = {},
+) {
   const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState<{ key: string; data?: T; error?: boolean }>({ key: '' })
-  const key = `${admin}/${suffix}/${attempt}`
+  const extraQuery = new URLSearchParams(extra).toString()
+  const key = `${admin}/${resource}?${filtersQuery(filters).toString()}&${extraQuery}/${attempt}`
   useEffect(() => {
     const controller = new AbortController()
-    void getDashboard(admin, suffix, schema, controller.signal).then(
+    void getDashboard(
+      admin,
+      resource,
+      filters,
+      schema,
+      controller.signal,
+      Object.fromEntries(new URLSearchParams(extraQuery)),
+    ).then(
       (data) => {
         if (!controller.signal.aborted) setState({ key, data })
       },
@@ -42,7 +68,7 @@ function useDashboard<T>(admin: boolean, suffix: string, schema: ZodType<T>) {
       },
     )
     return () => controller.abort()
-  }, [admin, suffix, schema, key])
+  }, [key, admin, resource, filters, schema, extraQuery])
   return {
     data: state.key === key ? state.data : undefined,
     error: state.key === key && state.error,
@@ -81,8 +107,8 @@ function ClientBalanceCard() {
   return <BalanceCard state={state} onRetry={retry} />
 }
 
-function ClientVolumeCard() {
-  const { state, retry } = useTransactionVolume()
+function VolumeCard({ filters, admin }: { filters: Filters; admin: boolean }) {
+  const { state, retry } = useTransactionVolume(filters, admin)
   return <TransactionVolumeCard state={state} onRetry={retry} />
 }
 function Failure({ retry }: { retry: () => void }) {
@@ -95,25 +121,31 @@ function Failure({ retry }: { retry: () => void }) {
     </div>
   )
 }
-function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boolean }) {
-  const [period, setPeriod] = useState<Period>('SIX_MONTHS')
+function ChartCard({
+  admin,
+  filters,
+  savings = false,
+}: {
+  admin: boolean
+  filters: Filters
+  savings?: boolean
+}) {
   const title = savings ? 'Histórico de Economia' : 'Volume de Remessas (BRL)'
   const result = useDashboard(
     admin,
-    `${savings ? 'savings-history' : 'remittance-volume'}?period=${period}`,
+    savings ? 'savings-history' : 'remittance-volume',
+    filters,
     seriesSchema,
   )
   const points = result.data?.points.map((p) => ({
     ...p,
-    value: p.amount === null ? null : Number(p.amount),
+    value: Number(p.amount),
     label: new Intl.DateTimeFormat('pt-BR', {
       month: 'short',
       year: '2-digit',
       timeZone: 'UTC',
     }).format(new Date(`${p.month}-01T12:00:00Z`)),
   }))
-  const empty = points?.every((p) => p.amount === '0.00' || p.amount === '0')
-  const unavailable = points?.some((p) => p.incomplete || p.amount === null)
   const axes = (
     <>
       <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -126,31 +158,20 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
   )
   return (
     <section className={card} aria-label={title}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        <select
-          aria-label={`Período — ${title}`}
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as Period)}
-          className="rounded-md border border-sage-300 bg-surface px-3 py-2 text-sm"
-        >
-          <option value="ALL">Desde o início</option>
-          <option value="SIX_MONTHS">6 meses</option>
-          <option value="THIS_MONTH">Esse mês</option>
-        </select>
-      </div>
+      <h2 className="mb-6 text-lg font-semibold text-slate-900">{title}</h2>
       {result.error ? (
         <Failure retry={result.retry} />
-      ) : !result.data ? (
+      ) : !result.data || !points ? (
         <p role="status">Carregando...</p>
+      ) : points.length === 0 ? (
+        <p className="text-sm text-slate-500">Nenhuma operação no período.</p>
       ) : (
         <>
-          {unavailable && (
+          {result.data.incompleteOperations > 0 && (
             <p role="status" className="mb-3 text-sm text-slate-600">
-              Dados incompletos. Há valores ou datas de liquidação não registrados.
+              Dados incompletos. Há operações sem valor ou tarifa registrados fora da soma.
             </p>
           )}
-          {empty && <p className="text-sm text-slate-500">Nenhuma operação no período.</p>}
           <div className="h-64" role="img" aria-label={`${title}, valores mensais em reais`}>
             <ResponsiveContainer width="100%" height="100%">
               {savings ? (
@@ -162,7 +183,6 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
                     name="Economia"
                     stroke="var(--color-primary)"
                     fill="var(--color-emerald-50)"
-                    connectNulls={false}
                     isAnimationActive={false}
                   />
                 </AreaChart>
@@ -182,7 +202,7 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
           <details className="mt-2 text-sm">
             <summary>Consultar valores mensais</summary>
             <ul>
-              {points?.map((p) => (
+              {points.map((p) => (
                 <li key={p.month}>
                   {p.label}: {money(p.amount)}
                 </li>
@@ -193,7 +213,7 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
       )}
       {savings && (
         <p className="mt-3 text-xs text-slate-500">
-          Estimativa com spread de referência fixo de 4%, descontada a tarifa registrada.
+          Estimativa frente ao câmbio bancário de referência, descontada a tarifa registrada.
         </p>
       )}
     </section>
@@ -201,9 +221,19 @@ function ChartCard({ admin, savings = false }: { admin: boolean; savings?: boole
 }
 /** Dashboard do épico AGES-V-Stable/cicd#44, nas visões de cliente e de administrador. */
 export function Dashboard({ admin = false }: { admin?: boolean }) {
-  const summary = useDashboard(admin, 'summary', summarySchema)
+  const [filters, setFilters] = useState<Filters>(() =>
+    toDashboardFilters(DEFAULT_FILTER_FORM, todayInSaoPaulo(), admin),
+  )
   const [page, setPage] = useState(1)
-  const settlements = useDashboard(admin, `settlements?page=${page - 1}&size=5`, settlementsSchema)
+  const applyFilters = (form: DashboardFilterForm) => {
+    setFilters(toDashboardFilters(form, todayInSaoPaulo(), admin))
+    setPage(1)
+  }
+  const summary = useDashboard(admin, 'summary', filters, summarySchema)
+  const settlements = useDashboard(admin, 'settlements', filters, settlementsSchema, {
+    page: String(page - 1),
+    size: '5',
+  })
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState(false)
   const exportPdf = async () => {
@@ -235,12 +265,16 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
     {
       key: 'date',
       label: 'Data / Hora',
-      render: (r: Settlement) => (r.date ? formatDateTime(r.date) : 'Não registrada'),
+      render: (r: Settlement) => {
+        const date = r.settledAt ?? r.createdAt
+        return date ? formatDateTime(date) : 'Não registrada'
+      },
     },
     {
       key: 'direction',
       label: 'Tipo',
-      render: (r: Settlement) => (r.direction === 'PAYMENT' ? 'Pagamento' : 'Recebimento'),
+      render: (r: Settlement) =>
+        r.direction === 'PAYMENT' ? 'Pagamento' : r.direction === 'RECEIPT' ? 'Recebimento' : '—',
     },
     { key: 'amount', label: 'Valor', render: (r: Settlement) => money(r.amount, r.currency) },
     {
@@ -261,12 +295,12 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
           Liquidações registradas • Valores consolidados em BRL
         </p>
       </header>
-      <div className={`grid gap-6 ${admin ? 'max-w-xl' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+      <DashboardFilters admin={admin} onApply={applyFilters} />
+      <div className={`grid gap-6 ${admin ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
         {!admin && <ClientBalanceCard />}
         <section className={metricCard} aria-label="Economia acumulada">
-          <h2 className="text-sm text-sage-800">
-            Economia Acumulada {summary.data ? `(${summary.data.year})` : ''}
-          </h2>
+          <h2 className="text-sm text-sage-800">Economia Acumulada</h2>
+          <p className="text-xs text-slate-500">{describePeriod(filters)}</p>
           {summary.error ? (
             <Failure retry={summary.retry} />
           ) : !summary.data ? (
@@ -276,20 +310,22 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
               <p className="mt-2 text-3xl font-bold text-primary">{money(summary.data.amount)}</p>
               {summary.data.incomplete && (
                 <p className="mt-2 text-sm">
-                  Subtotal conhecido: {money(summary.data.knownSubtotal)}. Histórico incompleto.
+                  {summary.data.incompleteOperations} operação(ões) sem valor ou tarifa registrados
+                  ficaram fora da soma.
                 </p>
               )}
+              <p className="mt-3 text-xs text-slate-500">
+                Estimativa com spread de referência de{' '}
+                {summary.data.referenceSpreadPercentage.replace('.', ',')}%.
+              </p>
             </>
           )}
-          <p className="mt-3 text-xs text-slate-500">
-            Estimativa anual com spread de referência fixo de 4%.
-          </p>
         </section>
-        {!admin && <ClientVolumeCard />}
+        <VolumeCard filters={filters} admin={admin} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <ChartCard admin={admin} />
-        <ChartCard admin={admin} savings />
+        <ChartCard admin={admin} filters={filters} />
+        <ChartCard admin={admin} filters={filters} savings />
       </div>
       <section className={card} aria-label="Últimas liquidações">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
