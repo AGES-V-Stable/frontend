@@ -57,72 +57,81 @@ export function DashboardFilters({ admin, onApply }: DashboardFiltersProps) {
       aria-label="Filtrar dados"
       onSubmit={handleSubmit}
       noValidate
-      className="rounded-xl border border-sage-300 bg-white p-4"
+      className="rounded-xl border border-sage-300 bg-white p-3"
     >
-      <h2 className="mb-3 text-sm font-bold text-slate-900">Filtrar dados</h2>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] lg:items-end">
-        {admin && (
-          <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <h2 className="shrink-0 text-sm font-bold text-slate-900">Filtrar dados</h2>
+        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(13rem,16rem))]">
+          {admin && (
             <Select
               label="Empresa"
+              labelPlacement="inside"
               value={form.companyId}
               options={companyOptions}
               disabled={companies.state.status !== 'ready'}
               onChange={(event) => update('companyId', event.target.value)}
             />
-            {companies.state.status === 'error' && (
-              <p className="text-sm text-slate-700">
-                Não foi possível carregar as empresas.{' '}
-                <button
-                  type="button"
-                  onClick={companies.retry}
-                  className="cursor-pointer font-medium text-primary underline"
-                >
-                  Tentar novamente
-                </button>
-              </p>
-            )}
-          </div>
-        )}
-        <Select
-          label="Período"
-          value={form.preset}
-          options={PRESET_OPTIONS}
-          onChange={(event) => update('preset', event.target.value as PeriodPreset)}
-        />
-        {form.preset === 'CUSTOM' && (
-          <>
-            <Input
-              label="Data inicial"
-              type="date"
-              min={MIN_DATE}
-              max={MAX_DATE}
-              value={form.startDate}
-              onChange={(event) => update('startDate', event.target.value)}
-            />
-            <Input
-              label="Data final"
-              type="date"
-              min={MIN_DATE}
-              max={MAX_DATE}
-              value={form.endDate}
-              onChange={(event) => update('endDate', event.target.value)}
-            />
-          </>
-        )}
-        <div className="flex gap-3">
+          )}
+          <Select
+            label="Período"
+            labelPlacement="inside"
+            value={form.preset}
+            options={PRESET_OPTIONS}
+            onChange={(event) => update('preset', event.target.value as PeriodPreset)}
+          />
+          {form.preset === 'CUSTOM' && (
+            <>
+              <Input
+                label="Data inicial"
+                labelPlacement="inside"
+                type="date"
+                min={MIN_DATE}
+                max={MAX_DATE}
+                value={form.startDate}
+                onChange={(event) => update('startDate', event.target.value)}
+              />
+              <Input
+                label="Data final"
+                labelPlacement="inside"
+                type="date"
+                min={MIN_DATE}
+                max={MAX_DATE}
+                value={form.endDate}
+                onChange={(event) => update('endDate', event.target.value)}
+              />
+            </>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-2">
           <Button
             type="button"
             variant="tertiary"
             label="Limpar filtros"
-            className="!w-auto !px-4"
+            className="!w-auto !px-4 !py-2.5"
             onClick={handleClear}
           />
-          <Button type="submit" variant="neutral" label="Aplicar filtros" />
+          <Button
+            type="submit"
+            variant="neutral"
+            label="Aplicar filtros"
+            className="!w-auto !py-2.5 lg:min-w-56"
+          />
         </div>
       </div>
+      {companies.state.status === 'error' && (
+        <p className="mt-2 text-sm text-slate-700">
+          Não foi possível carregar as empresas.{' '}
+          <button
+            type="button"
+            onClick={companies.retry}
+            className="cursor-pointer font-medium text-primary underline"
+          >
+            Tentar novamente
+          </button>
+        </p>
+      )}
       {error && (
-        <p role="alert" className="mt-3 text-sm text-red-700">
+        <p role="alert" className="mt-2 text-sm text-red-700">
           {error}
         </p>
       )}

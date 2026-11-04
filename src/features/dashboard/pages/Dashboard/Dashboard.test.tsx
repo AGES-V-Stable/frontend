@@ -1,4 +1,5 @@
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { Dashboard } from './Dashboard'
 import { settlementsSchema } from '@/features/dashboard/api/dashboard'
@@ -60,6 +61,27 @@ function responses(url: string): unknown {
   if (path.endsWith('/settlements')) return emptyPage
   return series
 }
+function CurrentPath() {
+  const location = useLocation()
+  return <output aria-label="Rota atual">{location.pathname + location.search}</output>
+}
+const renderDashboard = (admin = false) =>
+  render(
+    <MemoryRouter initialEntries={['/dashboard']}>
+      <Routes>
+        <Route path="*" element={<CurrentPath />} />
+        <Route
+          path="/dashboard"
+          element={
+            <>
+              <Dashboard admin={admin} />
+              <CurrentPath />
+            </>
+          }
+        />
+      </Routes>
+    </MemoryRouter>,
+  )
 const reply = (url: string) => new Response(JSON.stringify(responses(url)))
 const calledUrls = (fetcher: ReturnType<typeof vi.fn>) =>
   fetcher.mock.calls.map(([url]) => url as string)
@@ -78,19 +100,20 @@ it('loads real contracts, preserves negative savings and shows empty states', as
     'fetch',
     vi.fn(async (url: string) => reply(url)),
   )
-  render(<Dashboard />)
+  renderDashboard()
   expect(await screen.findByText(/-R\$\s*10,00/)).toBeInTheDocument()
   expect(await screen.findByText('Nenhuma liquidação registrada.')).toBeInTheDocument()
   expect(await screen.findAllByText('Nenhuma operação no período.')).toHaveLength(2)
-  expect(screen.getByText('01/06/2026 a 03/11/2026')).toBeInTheDocument()
+  expect(screen.getAllByText('01/06/2026 a 03/11/2026').length).toBeGreaterThan(0)
   expect(screen.getByText('Estimativa com spread de referência de 4,00%.')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Gerar extrato completo' })).toBeInTheDocument()
+  // O extrato em PDF ainda não existe no backend (issue separada): o botão não aparece.
+  expect(screen.queryByRole('button', { name: /extrato/i })).not.toBeInTheDocument()
 })
 
 it('requests every widget with the default period of the last six months', async () => {
   const fetcher = vi.fn(async (url: string) => reply(url))
   vi.stubGlobal('fetch', fetcher)
-  render(<Dashboard />)
+  renderDashboard()
   await screen.findByText('Nenhuma liquidação registrada.')
 
   expect(calledUrls(fetcher)).toEqual(
@@ -107,7 +130,7 @@ it('requests every widget with the default period of the last six months', async
 it('updates every widget together when a filter is applied, and restores the default on clear', async () => {
   const fetcher = vi.fn(async (url: string) => reply(url))
   vi.stubGlobal('fetch', fetcher)
-  render(<Dashboard />)
+  renderDashboard()
   await screen.findByText('Nenhuma liquidação registrada.')
 
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'THIS_MONTH' } })
@@ -125,7 +148,7 @@ it('updates every widget together when a filter is applied, and restores the def
       ]),
     ),
   )
-  expect(await screen.findByText('01/11/2026 a 03/11/2026')).toBeInTheDocument()
+  expect((await screen.findAllByText('01/11/2026 a 03/11/2026')).length).toBeGreaterThan(0)
 
   fetcher.mockClear()
   fireEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }))
@@ -133,13 +156,13 @@ it('updates every widget together when a filter is applied, and restores the def
   await waitFor(() =>
     expect(calledUrls(fetcher)).toContain(`/v1/dashboard/summary?${DEFAULT_PERIOD}`),
   )
-  expect(await screen.findByText('01/06/2026 a 03/11/2026')).toBeInTheDocument()
+  expect((await screen.findAllByText('01/06/2026 a 03/11/2026')).length).toBeGreaterThan(0)
 })
 
 it('blocks an invalid period without requesting new data', async () => {
   const fetcher = vi.fn(async (url: string) => reply(url))
   vi.stubGlobal('fetch', fetcher)
-  render(<Dashboard />)
+  renderDashboard()
   await screen.findByText('Nenhuma liquidação registrada.')
   fetcher.mockClear()
 
@@ -160,7 +183,7 @@ it('returns to the first settlements page when the filters change', async () => 
     url.includes('/settlements') ? new Response(JSON.stringify(page)) : reply(url),
   )
   vi.stubGlobal('fetch', fetcher)
-  render(<Dashboard />)
+  renderDashboard()
   await screen.findByText('Shenzhen AeroCrop Tech')
   fireEvent.click(screen.getByRole('button', { name: 'Próxima' }))
   await waitFor(() =>
@@ -179,13 +202,13 @@ it('returns to the first settlements page when the filters change', async () => 
   )
 })
 
-it('uses administrative endpoints, filters by company and omits client-only fields', async () => {
+it('uses administrative endpoints and filters every widget by company', async () => {
   const fetcher = vi.fn(async (url: string) => reply(url))
   vi.stubGlobal('fetch', fetcher)
-  render(<Dashboard admin />)
+  renderDashboard(true)
   expect(await screen.findByText('Nenhuma liquidação registrada.')).toBeInTheDocument()
-  expect(screen.queryByText('Beneficiário / Destino')).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Gerar extrato completo' })).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Dashboard Administrativo' })).toBeInTheDocument()
+  expect(screen.getByText('PAINEL ADMIN')).toBeInTheDocument()
   expect(
     calledUrls(fetcher).every(
       (url) => url.startsWith('/v1/admin/dashboard/') || url === '/v1/companies/summaries',
@@ -214,7 +237,7 @@ it('uses administrative endpoints, filters by company and omits client-only fiel
 it('never offers a company filter to the client nor sends a company', async () => {
   const fetcher = vi.fn(async (url: string) => reply(url))
   vi.stubGlobal('fetch', fetcher)
-  render(<Dashboard />)
+  renderDashboard()
   await screen.findByText('Nenhuma liquidação registrada.')
 
   expect(screen.queryByLabelText('Empresa')).not.toBeInTheDocument()
@@ -225,7 +248,7 @@ it('never offers a company filter to the client nor sends a company', async () =
 it('shows the error of each block and permits retry after API errors', async () => {
   const fetcher = vi.fn(async () => new Response('{}', { status: 500 }))
   vi.stubGlobal('fetch', fetcher)
-  render(<Dashboard />)
+  renderDashboard()
   await screen.findAllByText('Não foi possível carregar os dados.')
   fetcher.mockImplementation(async (url?: string) =>
     url?.includes('/summary')
@@ -235,7 +258,7 @@ it('shows the error of each block and permits retry after API errors', async () 
       : reply(url ?? ''),
   )
   fireEvent.click(
-    within(screen.getByRole('region', { name: 'Economia acumulada' })).getByText(
+    within(screen.getByRole('region', { name: 'Economia Acumulada' })).getByText(
       'Tentar novamente',
     ),
   )
@@ -263,7 +286,7 @@ it('ignores a stale chart response after a rapid filter change', async () => {
       return Promise.resolve(reply(url))
     }),
   )
-  render(<Dashboard />)
+  renderDashboard()
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'THIS_MONTH' } })
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
   await screen.findAllByText('Nenhuma operação no período.')
@@ -278,17 +301,17 @@ it('shows balance and transacted volume beside the accumulated savings for the c
     'fetch',
     vi.fn(async (url: string) => reply(url)),
   )
-  render(<Dashboard />)
+  renderDashboard()
 
   const balance = await screen.findByText('R$ 25.000,00')
   const volume = await screen.findByText('R$ 5.022,50')
-  const savings = screen.getByRole('region', { name: 'Economia acumulada' })
+  const savings = screen.getByRole('region', { name: 'Economia Acumulada' })
   const row = savings.parentElement!
   expect(row).toContainElement(balance)
   expect(row).toContainElement(volume)
   expect(
-    Array.from(row.children).map((card) =>
-      card.textContent?.split(/R\$|\(|\d|Carregando/)[0].trim(),
+    Array.from(row.children).map(
+      (card) => within(card as HTMLElement).getByRole('heading').textContent,
     ),
   ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado'])
 })
@@ -296,7 +319,7 @@ it('shows balance and transacted volume beside the accumulated savings for the c
 it('shows the consolidated transacted volume to the administrator, without the balance', async () => {
   const fetcher = vi.fn(async (url: string) => reply(url))
   vi.stubGlobal('fetch', fetcher)
-  render(<Dashboard admin />)
+  renderDashboard(true)
 
   expect(await screen.findByText('R$ 5.022,50')).toBeInTheDocument()
   expect(screen.queryByText('Saldo Disponível')).not.toBeInTheDocument()
@@ -341,7 +364,7 @@ function withSettlements(rows: unknown[], totalElements = rows.length) {
   )
 }
 
-it('lists the latest settlements with counterparty, date, type, amount and status', async () => {
+it('lists the latest settlements with counterparty, date, amount, rate and status', async () => {
   vi.stubGlobal(
     'fetch',
     withSettlements([
@@ -357,13 +380,11 @@ it('lists the latest settlements with counterparty, date, type, amount and statu
       }),
     ]),
   )
-  render(<Dashboard />)
+  renderDashboard()
 
   expect(await screen.findByText('Shenzhen AeroCrop Tech')).toBeInTheDocument()
   expect(screen.getAllByText('CN • Agricultural Bank of China')).toHaveLength(2)
   expect(screen.getByText(/US\$\s*10\.000,00/)).toBeInTheDocument()
-  expect(screen.getByText('Pagamento')).toBeInTheDocument()
-  expect(screen.getByText('Recebimento')).toBeInTheDocument()
   expect(screen.getByText('Não registrado')).toBeInTheDocument()
   expect(screen.getByText('Não registrada')).toBeInTheDocument()
   expect(screen.getAllByText('Concluída')).toHaveLength(2)
@@ -374,52 +395,36 @@ it('dates a pending settlement by its creation', async () => {
     'fetch',
     withSettlements([settlement({ settledAt: null, createdAt: '2026-10-21T13:00:00Z' })]),
   )
-  render(<Dashboard />)
+  renderDashboard()
 
   expect(await screen.findByText('21 out 2026 • 10:00')).toBeInTheDocument()
 })
 
-it('shows the administrator settlements without the counterparty column', async () => {
+it('shows the administrator the counterparty and type, and opens the details in the history', async () => {
   vi.stubGlobal('fetch', withSettlements([settlement()]))
-  render(<Dashboard admin />)
+  renderDashboard(true)
 
-  expect(await screen.findByText('Pagamento')).toBeInTheDocument()
-  expect(screen.queryByText('Shenzhen AeroCrop Tech')).not.toBeInTheDocument()
+  expect(await screen.findByText('Shenzhen AeroCrop Tech')).toBeInTheDocument()
+  expect(screen.getByText('Pagamento')).toBeInTheDocument()
+  expect(screen.queryByRole('columnheader', { name: 'Câmbio' })).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Detalhes' }))
+
+  expect(screen.getByLabelText('Rota atual')).toHaveTextContent(
+    '/admin/transferencias?transferId=s1',
+  )
 })
 
-it('generates the full statement and warns when the download fails', async () => {
-  vi.stubGlobal('URL', {
-    ...URL,
-    createObjectURL: vi.fn(() => 'blob:extrato'),
-    revokeObjectURL: vi.fn(),
-  })
-  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
-  let statementStatus = 200
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string) =>
-      url.endsWith('/statement.pdf')
-        ? statementStatus === 200
-          ? new Response('%PDF-1.4', { headers: { 'Content-Type': 'application/pdf' } })
-          : new Response('{}', { status: statementStatus })
-        : reply(url),
-    ),
-  )
-  render(<Dashboard />)
-  const button = await screen.findByRole('button', { name: 'Gerar extrato completo' })
+it('shows the exchange rate to the client and opens the transfer details', async () => {
+  vi.stubGlobal('fetch', withSettlements([settlement()]))
+  renderDashboard()
 
-  fireEvent.click(button)
-  await waitFor(() => expect(click).toHaveBeenCalledTimes(1))
-  expect(
-    screen.queryByText('Não foi possível gerar o extrato. Tente novamente.'),
-  ).not.toBeInTheDocument()
+  expect(await screen.findByRole('columnheader', { name: 'Câmbio' })).toBeInTheDocument()
+  expect(screen.getByText(/R\$\s*5,42/)).toBeInTheDocument()
 
-  statementStatus = 500
-  fireEvent.click(await screen.findByRole('button', { name: 'Gerar extrato completo' }))
-  expect(
-    await screen.findByText('Não foi possível gerar o extrato. Tente novamente.'),
-  ).toBeInTheDocument()
-  click.mockRestore()
+  fireEvent.click(screen.getByRole('button', { name: 'Detalhes' }))
+
+  expect(screen.getByLabelText('Rota atual')).toHaveTextContent('/app/transferencias/s1')
 })
 
 it('shows the real status of each settlement', async () => {
@@ -431,7 +436,7 @@ it('shows the real status of each settlement', async () => {
       settlement({ id: 's3', status: 'FAILED' }),
     ]),
   )
-  render(<Dashboard />)
+  renderDashboard()
 
   expect(await screen.findByText('Concluída')).toBeInTheDocument()
   expect(screen.getByText('Processando')).toBeInTheDocument()
@@ -457,10 +462,11 @@ it('names the chart series, flags incomplete data and formats the value axis in 
         : reply(url),
     ),
   )
-  render(<Dashboard />)
+  renderDashboard()
   await waitFor(() => expect(chartProps.Bar?.length).toBeTruthy())
 
   expect(screen.getAllByText(/Dados incompletos/)).toHaveLength(2)
+  expect(screen.getAllByText(/R\$\s*1\.640,00/).length).toBeGreaterThanOrEqual(2)
   expect(chartProps.Bar.at(-1)).toMatchObject({ name: 'Volume', dataKey: 'value' })
   expect(chartProps.Area.at(-1)).toMatchObject({ name: 'Economia', dataKey: 'value' })
   const tickFormatter = chartProps.YAxis.at(-1)!.tickFormatter as (value: number) => string

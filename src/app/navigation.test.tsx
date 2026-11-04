@@ -159,7 +159,7 @@ it('opens the administrative dashboard from the Dashboard item', async () => {
   await userEvent.click(within(nav).getByRole('button', { name: 'Dashboard' }))
 
   expect(
-    await screen.findByRole('heading', { name: 'Dashboard administrativo' }),
+    await screen.findByRole('heading', { name: 'Dashboard Administrativo' }),
   ).toBeInTheDocument()
   expect(screen.getByTestId('location')).toHaveTextContent('/admin/dashboard')
   // O admin não consulta saldo nem volume, que pertencem à empresa do cliente.
@@ -251,7 +251,7 @@ it('preserves the transfer identifier and query when redirecting an old details 
 it('redirects a company user away from administrator content', async () => {
   saveLoginToken('login')
   renderRoute('/admin/clientes-pme')
-  await screen.findByRole('heading', { name: 'Conta empresarial' })
+  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
   expect(screen.getByTestId('location')).toHaveTextContent('/app/dashboard')
   expect(mock.mock.calls.some(([url]) => url === '/v1/companies/summaries')).toBe(false)
 })
@@ -261,7 +261,7 @@ it('redirects an admin away from company content', async () => {
     `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
   )
   renderRoute('/app/beneficiarios')
-  await screen.findByRole('heading', { name: 'Dashboard administrativo' })
+  await screen.findByRole('heading', { name: 'Dashboard Administrativo' })
   expect(screen.getByTestId('location')).toHaveTextContent('/admin/dashboard')
 })
 it('clears the shell when an authenticated request expires', async () => {
@@ -325,12 +325,12 @@ it('provides a retry when identity loading fails', async () => {
   renderRoute()
   expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar')
   await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
-  await screen.findByRole('heading', { name: 'Conta empresarial' })
+  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
 })
 it('reacts to logout and clears cached account identity', async () => {
   saveLoginToken('login')
   renderRoute()
-  await screen.findByRole('heading', { name: 'Conta empresarial' })
+  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
   act(() => clearLoginToken())
   await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
   expect(screen.queryByText('Empresa de Teste')).not.toBeInTheDocument()
@@ -338,7 +338,7 @@ it('reacts to logout and clears cached account identity', async () => {
 it('logs out from the account menu and returns to the login page', async () => {
   saveLoginToken('login')
   renderRoute()
-  await screen.findByRole('heading', { name: 'Conta empresarial' })
+  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
   await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
   await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
   expect(getLoginToken()).toBeNull()
@@ -351,7 +351,7 @@ it('selects the administrator menu from localStorage even when /me reports a use
     `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
   )
   renderRoute()
-  await screen.findByRole('heading', { name: 'Dashboard administrativo' })
+  await screen.findByRole('heading', { name: 'Dashboard Administrativo' })
   expect(screen.getByText('Painel administrativo')).toBeInTheDocument()
   expect(mock.mock.calls.some(([url]) => url === '/v1/companies/c1')).toBe(false)
 })
@@ -360,7 +360,7 @@ it('uses the company navigation when the stored token is not an admin despite /m
   saveLoginToken(`header.${btoa(JSON.stringify({ account_type: 'USER' }))}.signature`)
   mock.mockResolvedValueOnce(new Response(JSON.stringify({ ...user, accountType: 'ADMIN' })))
   renderRoute('/admin/clientes-pme')
-  await screen.findByRole('heading', { name: 'Conta empresarial' })
+  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
   expect(screen.queryByText('Painel administrativo')).not.toBeInTheDocument()
   expect(screen.getByTestId('location')).toHaveTextContent('/app/dashboard')
 })

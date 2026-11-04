@@ -8,7 +8,7 @@ describe('BalanceCard', () => {
   it('shows a loading status and no value while the balance is loading', () => {
     render(<BalanceCard state={{ status: 'loading' }} onRetry={vi.fn()} />)
 
-    expect(screen.getByRole('heading', { name: 'Saldo Disponível (BRL)' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Saldo Disponível' })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('Carregando saldo...')
     expect(screen.queryByText(/R\$/)).not.toBeInTheDocument()
   })
