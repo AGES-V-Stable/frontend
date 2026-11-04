@@ -32,3 +32,6 @@ export const livenessPath = (id: string) =>
 export const registrationCompletePath = (id: string) =>
   `/register/${encodeURIComponent(id)}/concluido`
 export const transferDetailsPath = (id: string) => `/app/transferencias/${encodeURIComponent(id)}`
+/** Histórico administrativo com o detalhe da transferência aberto. */
+export const adminTransferDetailsPath = (id: string) =>
+  `${PATHS.ADMIN_TRANSFERS}?${new URLSearchParams({ transferId: id }).toString()}`

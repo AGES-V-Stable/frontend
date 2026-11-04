@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 
 import { Drawer } from '@/shared/components/Drawer'
 import { Table } from '@/shared/components/Table'
@@ -46,7 +47,11 @@ function AdminTransfers() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null)
+  // O dashboard abre o detalhe por ?transferId=; fechar o drawer limpa o parâmetro.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(() =>
+    searchParams.get('transferId'),
+  )
   const [drawerData, setDrawerData] = useState<Transfer | null>(null)
   const [isDrawerLoading, setIsDrawerLoading] = useState(false)
   const [drawerError, setDrawerError] = useState<string | null>(null)
@@ -122,7 +127,14 @@ function AdminTransfers() {
     return () => controller.abort()
   }, [selectedTransferId])
 
-  const closeTransferDetails = () => setSelectedTransferId(null)
+  const closeTransferDetails = () => {
+    setSelectedTransferId(null)
+    if (searchParams.has('transferId')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('transferId')
+      setSearchParams(next, { replace: true })
+    }
+  }
 
   return (
     <>
