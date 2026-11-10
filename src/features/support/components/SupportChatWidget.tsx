@@ -75,10 +75,22 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
 
   useEffect(() => {
     if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' })
       inputRef.current?.focus()
     }
   }, [isOpen, messages, loading])
+
+  useEffect(() => {
+    if (!isOpen) return
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setInternalOpen(false)
+        onOpenChange?.(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onOpenChange])
 
   async function handleSendMessage(rawText: string) {
     const trimmed = rawText.trim()
@@ -180,7 +192,7 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
           </header>
 
           {/* Messages */}
-          <div className="flex-1 space-y-3 overflow-y-auto bg-slate-100/70 p-4">
+          <div aria-live="polite" className="flex-1 space-y-3 overflow-y-auto bg-slate-100/70 p-4">
             {messages.map((msg, index) => {
               const isUser = msg.role === 'user'
               return (
