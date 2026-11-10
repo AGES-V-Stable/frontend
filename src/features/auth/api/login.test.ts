@@ -177,6 +177,14 @@ describe('authService.login', () => {
       'Não foi possível concluir a solicitação. Tente novamente.',
     )
   })
+
+  it('given an unreachable API, when logging in, then it reports a network error, not bad credentials', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    const result = authService.login({ email: 'a@b.com', password: '123' })
+
+    await expect(result).rejects.toMatchObject({ status: 0, code: 'NETWORK_ERROR' })
+  })
 })
 
 describe('authService.verify2fa', () => {

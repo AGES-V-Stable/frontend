@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PATHS } from '@/shared/navigation/paths'
+import { ApiError, HttpError } from '@/shared/http/httpClient'
 import { authService } from '@/features/auth/api/login'
 import { Login } from '@/features/auth/pages/Login/Login'
 
@@ -150,7 +151,9 @@ describe('Login Page Component', () => {
 
   it('shows an error when credentials are rejected', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login).mockRejectedValueOnce(new Error('E-mail ou senha inválidos'))
+    vi.mocked(authService.login).mockRejectedValueOnce(
+      new ApiError(401, 'E-mail ou senha inválidos', 'INVALID_CREDENTIALS'),
+    )
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
@@ -158,11 +161,14 @@ describe('Login Page Component', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findAllByText('E-mail ou senha inválidos')).toHaveLength(2)
+    expect(screen.queryByText(/Não foi possível/)).not.toBeInTheDocument()
   })
 
   it('shows a specific error when the user is locked', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login).mockRejectedValueOnce(new Error('Usuário bloqueado'))
+    vi.mocked(authService.login).mockRejectedValueOnce(
+      new ApiError(423, 'Usuário bloqueado', 'ACCOUNT_LOCKED'),
+    )
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'bloqueado@empresa.com')
@@ -170,11 +176,63 @@ describe('Login Page Component', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText('Usuário bloqueado')).toBeInTheDocument()
+    expect(screen.queryByText('E-mail ou senha inválidos')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      scenario: 'the server cannot be reached',
+      error: new HttpError('Não foi possível conectar ao servidor.', 0, undefined, 'NETWORK_ERROR'),
+      message: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.',
+    },
+    {
+      scenario: 'the response carries no token',
+      error: new Error('Token não encontrado na resposta'),
+      message: 'Não foi possível entrar agora. Tente novamente em instantes.',
+    },
+    {
+      scenario: 'the server fails',
+      error: new HttpError('Internal error', 502),
+      message: 'Não foi possível entrar agora. Tente novamente em instantes.',
+    },
+  ])(
+    'given $scenario, when submitting, then it shows a form error instead of blaming the credentials',
+    async ({ error, message }) => {
+      const user = userEvent.setup()
+      vi.mocked(authService.login).mockRejectedValueOnce(error)
+      renderLogin()
+
+      await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
+      await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+      await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(message)
+      expect(screen.queryByText('E-mail ou senha inválidos')).not.toBeInTheDocument()
+      expect(localStorage.getItem('token')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled()
+    },
+  )
+
+  it('given a form error, when the user edits a field, then the error is cleared', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockRejectedValueOnce(new HttpError('down', 503))
+    renderLogin()
+
+    await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Senha'), 'x')
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('clears credential errors when either input changes', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login).mockRejectedValue(new Error('E-mail ou senha inválidos'))
+    vi.mocked(authService.login).mockRejectedValue(
+      new ApiError(401, 'E-mail ou senha inválidos', 'INVALID_CREDENTIALS'),
+    )
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')

@@ -8,6 +8,7 @@ import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
 import { TwoFactorRecoveryRequest } from './TwoFactorRecoveryRequest'
 import { PATHS } from '@/shared/navigation/paths'
 import { clearSessionExpired, saveLoginToken, wasSessionExpired } from '@/shared/http/authToken'
+import { ApiError } from '@/shared/http/httpClient'
 import { authService } from '@/features/auth/api/login'
 import { isStoredAdmin } from '@/features/auth/model/storedAccount'
 
@@ -37,6 +38,25 @@ function validate(data: LoginFormData): LoginErrors {
   return errors
 }
 
+const INVALID_CREDENTIALS = 'E-mail ou senha inválidos'
+
+/**
+ * Só 401 e 423 dizem respeito às credenciais. Falha de rede, erro do servidor ou resposta sem
+ * token aparecem como erro do formulário, para não sugerir senha errada a quem a digitou certo.
+ */
+function loginFailure(error: unknown): { fields: LoginErrors; form?: string } {
+  if (error instanceof ApiError && error.status === 401)
+    return { fields: { email: INVALID_CREDENTIALS, password: INVALID_CREDENTIALS } }
+  if (error instanceof ApiError && error.status === 423)
+    return { fields: { email: 'Usuário bloqueado' } }
+  if (error instanceof ApiError && error.status === 0)
+    return {
+      fields: {},
+      form: 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.',
+    }
+  return { fields: {}, form: 'Não foi possível entrar agora. Tente novamente em instantes.' }
+}
+
 function Login({ resolveDestination }: LoginProps) {
   const [step, setStep] = useState<'CREDENTIALS' | '2FA' | 'RECOVERY_REQUEST'>('CREDENTIALS')
   const [email, setEmail] = useState('')
@@ -48,6 +68,7 @@ function Login({ resolveDestination }: LoginProps) {
   const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<LoginErrors>({})
+  const [formError, setFormError] = useState('')
   const [sessionExpired] = useState(wasSessionExpired)
 
   const navigate = useNavigate()
@@ -58,11 +79,13 @@ function Login({ resolveDestination }: LoginProps) {
 
   function handleEmailChange(value: string) {
     setEmail(value)
+    setFormError('')
     if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
   }
 
   function handlePasswordChange(value: string) {
     setPassword(value)
+    setFormError('')
     if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
   }
 
@@ -72,6 +95,7 @@ function Login({ resolveDestination }: LoginProps) {
 
     const nextErrors = validate({ email, password })
     setErrors(nextErrors)
+    setFormError('')
 
     if (Object.keys(nextErrors).length > 0) {
       return
@@ -82,13 +106,9 @@ function Login({ resolveDestination }: LoginProps) {
     try {
       result = await authService.login({ email, password })
     } catch (error) {
-      setErrors({
-        email:
-          error instanceof Error && error.message === 'Usuário bloqueado'
-            ? 'Usuário bloqueado'
-            : 'E-mail ou senha inválidos',
-        password: 'E-mail ou senha inválidos',
-      })
+      const failure = loginFailure(error)
+      setErrors(failure.fields)
+      setFormError(failure.form ?? '')
       setSubmitting(false)
       return
     }
@@ -242,6 +262,11 @@ function Login({ resolveDestination }: LoginProps) {
                 error={errors.password}
                 onChange={(e) => handlePasswordChange(e.target.value)}
               />
+              {formError && (
+                <p role="alert" className="text-sm text-red-700">
+                  {formError}
+                </p>
+              )}
             </div>
             <div className="flex flex-col w-[560px] gap-y-[10px]">
               <Button
