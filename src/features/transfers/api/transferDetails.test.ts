@@ -38,7 +38,7 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 const pdf = (disposition?: string, type = 'application/pdf') =>
-  new Response(new Blob(['%PDF-1.7']), {
+  new Response('%PDF-1.7', {
     status: 200,
     headers: {
       'Content-Type': type,
