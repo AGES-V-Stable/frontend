@@ -6,6 +6,12 @@ export const OnboardingResultSchema = z.object({
   kycVerificationId: z.string().min(1),
   accessToken: z.string().min(1),
 })
+/** POST /v1/onboarding/company: a empresa nova e o KYC pendente de quem a cadastrou. */
+export const CompanyRegistrationResultSchema = z.object({
+  userId: z.string().min(1),
+  companyId: z.string().min(1),
+  kycVerificationId: z.string().min(1),
+})
 export const KycResultSchema = z.object({
   aveniaProcessId: z.string(),
   status: ComplianceStatusSchema,

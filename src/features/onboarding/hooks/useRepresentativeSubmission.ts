@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import type { AccessData, CompanyData, RepresentativeData } from '../types/registration'
 import { ApiError, saveRepresentativePersonalData, submitOnboarding } from '../api/onboarding'
+import { representativePersonalData } from '../model/representativePersonalData'
 import { twoFactorSetupPath } from '@/shared/navigation/paths'
 
 export function useRepresentativeSubmission(access?: AccessData, company?: CompanyData) {
@@ -14,7 +15,6 @@ export function useRepresentativeSubmission(access?: AccessData, company?: Compa
     setSaving(true)
     setServerError('')
     try {
-      const isBrazil = company.pais.trim().toLowerCase() === 'brasil'
       const result = await submitOnboarding(
         {
           fullName: access.nomeCompleto,
@@ -34,18 +34,13 @@ export function useRepresentativeSubmission(access?: AccessData, company?: Compa
         },
         company,
       )
-      saveRepresentativePersonalData({
-        fullName: access.nomeCompleto.trim(),
-        email: access.email.trim(),
-        phone: representative.phone.replace(/\D/g, ''),
-        dateOfBirth: representative.date_of_birth,
-        taxIdNumber: representative.cpf.replace(/\D/g, ''),
-        country: representative.pais.trim(),
-        state: representative.estado.trim(),
-        city: representative.cidade.trim(),
-        zipCode: isBrazil ? representative.cep.replace(/\D/g, '') : representative.cep.trim(),
-        streetAddress: representative.linha_endereco.trim(),
-      })
+      saveRepresentativePersonalData(
+        representativePersonalData(
+          { fullName: access.nomeCompleto, email: access.email },
+          representative,
+          company,
+        ),
+      )
       void navigate(twoFactorSetupPath(result.kycVerificationId))
     } catch (error) {
       setServerError(

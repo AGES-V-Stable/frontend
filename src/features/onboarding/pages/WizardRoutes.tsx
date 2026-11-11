@@ -1,4 +1,8 @@
+import { useState } from 'react'
 import { z } from 'zod'
+import { useSession } from '@/features/auth'
+import { useCompanyRegistration } from '../hooks/useCompanyRegistration'
+import type { CompanyData } from '../types/registration'
 import { useRepresentativeSubmission } from '../hooks/useRepresentativeSubmission'
 import { useComplianceSubmission } from '../hooks/useComplianceSubmission'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
@@ -54,6 +58,23 @@ export function RepresentativeRoute() {
   )
   if (!state?.access || !state?.company) return <Navigate to={PATHS.REGISTER} replace />
 
+  return (
+    <RepresentativeStep onContinue={handleContinue} saving={saving} serverError={serverError} />
+  )
+}
+
+/**
+ * Cadastro da empresa por um usuário autenticado sem vínculo: dados da empresa, depois os do
+ * representante. Quem já tem empresa volta ao início.
+ */
+export function CompanySetupRoute() {
+  const navigate = useNavigate()
+  const { user } = useSession()
+  const [company, setCompany] = useState<CompanyData | null>(null)
+  const { saving, serverError, handleContinue } = useCompanyRegistration(company)
+
+  if (user?.companyId) return <Navigate to={PATHS.HOME} replace />
+  if (!company) return <CompanyStep onCancel={() => navigate(PATHS.HOME)} onContinue={setCompany} />
   return (
     <RepresentativeStep onContinue={handleContinue} saving={saving} serverError={serverError} />
   )

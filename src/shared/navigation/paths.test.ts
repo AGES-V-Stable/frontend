@@ -35,6 +35,7 @@ describe('PATHS configuration', () => {
       TRANSFERS: '/app/transferencias/nova',
       TRANSFER_DETAILS: '/app/transferencias/:id',
       SETTINGS: '/app/configuracoes',
+      COMPANY_SETUP: '/app/empresa/cadastrar',
     }
 
     const actualPaths = PATHS
