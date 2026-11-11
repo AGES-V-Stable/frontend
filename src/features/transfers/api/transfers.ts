@@ -1,11 +1,11 @@
 import { z } from 'zod'
 import type { Transfer } from '../types/transferHistory'
-import { CreateTransferResponseSchema, TransferQuoteResponseSchema } from '../schemas/transfer'
+import { QuoteResponseSchema, TransferExecutionSchema } from '../schemas/transfer'
 import type {
-  CreateTransferRequest,
-  CreateTransferResponse,
-  TransferQuoteRequest,
-  TransferQuoteResponse,
+  ConfirmOfferRequest,
+  QuoteRequest,
+  QuoteResponse,
+  TransferExecution,
 } from '../types/transfer'
 import { httpRequest } from '@/shared/http/httpClient'
 
@@ -104,58 +104,71 @@ export async function getTransfersById(id: string, signal?: AbortSignal): Promis
 
 const INVALID_RESPONSE_MESSAGE = 'Formato inválido retornado pela API'
 
-const toQuoteBody = ({
-  amount,
-  amountType,
-  sourceCurrency,
-  destinationCurrency,
-}: TransferQuoteRequest): TransferQuoteRequest => ({
-  amount,
-  amountType,
-  sourceCurrency,
-  destinationCurrency,
-})
+const parseExecution = (payload: unknown): TransferExecution => {
+  const execution = TransferExecutionSchema.safeParse(payload)
+  if (!execution.success) throw new Error(INVALID_RESPONSE_MESSAGE)
+  return execution.data
+}
 
 /**
- * Consulta uma cotação só para exibição; não cria transferência. O `signal`
- * permite cancelar a consulta anterior quando o usuário altera o valor.
+ * Cota nos provedores elegíveis e devolve a melhor oferta; não cria transferência.
+ * O `signal` cancela a consulta anterior quando o usuário altera o formulário.
  */
-export const getTransferQuote = async (
-  request: TransferQuoteRequest,
+export const createQuote = async (
+  request: QuoteRequest,
   signal?: AbortSignal,
-): Promise<TransferQuoteResponse> => {
-  const payload = await httpRequest<unknown>('/v1/transfers/quote', {
+): Promise<QuoteResponse> => {
+  const payload = await httpRequest<unknown>('/v1/quotes', {
     method: 'POST',
-    body: JSON.stringify(toQuoteBody(request)),
+    body: JSON.stringify(request),
     signal,
   })
 
-  const quote = TransferQuoteResponseSchema.safeParse(payload)
+  const quote = QuoteResponseSchema.safeParse(payload)
   if (!quote.success) throw new Error(INVALID_RESPONSE_MESSAGE)
 
   return quote.data
 }
 
-/**
- * Cria a transferência. Nenhum dado da cotação exibida é enviado: o backend
- * gera uma cotação nova e a usa imediatamente.
- */
-export const createTransfer = async (
-  request: CreateTransferRequest,
-): Promise<CreateTransferResponse> => {
-  const payload = await httpRequest<unknown>('/v1/transfers', {
-    method: 'POST',
-    body: JSON.stringify({
-      ...toQuoteBody(request),
-      paymentMethod: request.paymentMethod,
-      beneficiaryId: request.beneficiaryId,
-      description: request.description,
-      ...(request.totpCode !== undefined ? { totpCode: request.totpCode } : {}),
+/** Executa a oferta exibida; o backend recusa se os valores não forem exatamente os dela. */
+export const confirmOffer = async (
+  offerId: string,
+  amounts: ConfirmOfferRequest,
+): Promise<TransferExecution> =>
+  parseExecution(
+    await httpRequest<unknown>(`/v1/quotes/offers/${encodeURIComponent(offerId)}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify({
+        sourceAmount: amounts.sourceAmount,
+        targetAmount: amounts.targetAmount,
+      }),
     }),
-  })
+  )
 
-  const result = CreateTransferResponseSchema.safeParse(payload)
-  if (!result.success) throw new Error(INVALID_RESPONSE_MESSAGE)
+export const getTransferExecution = async (
+  executionId: string,
+  signal?: AbortSignal,
+): Promise<TransferExecution> =>
+  parseExecution(
+    await httpRequest<unknown>(`/v1/transfer-executions/${encodeURIComponent(executionId)}`, {
+      signal,
+    }),
+  )
 
-  return result.data
-}
+/** Aceita a nova cotação de uma execução em REQUOTE_REQUIRED, com os valores exibidos. */
+export const confirmRequote = async (
+  executionId: string,
+  amounts: ConfirmOfferRequest,
+): Promise<TransferExecution> =>
+  parseExecution(
+    await httpRequest<unknown>(
+      `/v1/transfer-executions/${encodeURIComponent(executionId)}/requote/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          sourceAmount: amounts.sourceAmount,
+          targetAmount: amounts.targetAmount,
+        }),
+      },
+    ),
+  )

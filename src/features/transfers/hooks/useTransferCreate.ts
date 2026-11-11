@@ -1,41 +1,53 @@
 import { useEffect, useState } from 'react'
 
-import {
-  TotpCodeSchema,
-  TransferAmountSchema,
-  TransferFormSchema,
-} from '@/features/transfers/schemas/transfer'
+import { TransferAmountSchema, TransferFormSchema } from '@/features/transfers/schemas/transfer'
 import { getCompanyBeneficiaries } from '@/features/beneficiaries'
 import { HttpError } from '@/shared/http/httpClient'
-import { createTransfer, getTransferQuote } from '@/features/transfers/api/transfers'
+import {
+  confirmOffer,
+  confirmRequote,
+  createQuote,
+  getTransferExecution,
+} from '@/features/transfers/api/transfers'
 import { useSession } from '@/features/auth'
 import type { Beneficiary } from '@/features/beneficiaries'
 import type {
-  TransactionStatus,
+  FundingMethod,
+  QuoteResponse,
   TransferAmountType,
-  TransferPaymentMethod,
-  TransferQuoteResponse,
+  TransferExecution,
+  TransferExecutionStatus,
 } from '@/features/transfers/types/transfer'
 import { formatDecimal, parseDecimalInput } from '@/shared/utils/formatters'
 
-// Mesmo visual do Input para os campos nativos (select e textarea) da tela.
-
 const QUOTE_DEBOUNCE_MS = 500
+export const EXECUTION_POLL_MS = 5000
 const SOURCE_CURRENCY = 'BRL'
-// Moeda usada enquanto nenhum beneficiário com moeda cadastrada foi escolhido (BRL → USD no Figma).
+// Moeda exibida enquanto nenhum beneficiário com moeda cadastrada foi escolhido (BRL → USD no Figma).
 const DEFAULT_DESTINATION_CURRENCY = 'USD'
+
+/** Estados em que o provedor ainda vai avançar a execução sem ação do usuário. */
+const IN_PROGRESS_STATUSES = new Set<TransferExecutionStatus>([
+  'PENDING_SUBMISSION',
+  'AWAITING_FUNDS',
+  'FUNDS_RECEIVED',
+  'PAYOUT_SUBMITTING',
+  'PAYOUT_PROCESSING',
+  'SUBMITTED',
+])
 
 type QuoteState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ready'; quote: TransferQuoteResponse }
+  | { status: 'ready'; quote: QuoteResponse }
+  | { status: 'expired' }
   | { status: 'error'; message: string }
 
 type BeneficiariesState =
   { status: 'loading' } | { status: 'ready'; items: Beneficiary[] } | { status: 'error' }
 
 interface FormValues {
-  paymentMethod: TransferPaymentMethod | ''
+  paymentMethod: FundingMethod | ''
   sourceAmount: string
   destinationAmount: string
   beneficiaryId: string
@@ -43,62 +55,34 @@ interface FormValues {
 }
 
 const initialValues: FormValues = {
-  paymentMethod: 'ACCOUNT_BALANCE',
+  paymentMethod: 'PIX',
   sourceAmount: '',
   destinationAmount: '',
   beneficiaryId: '',
   description: '',
 }
 
-const backendMessage = (error: HttpError) => {
-  if (
-    typeof error.body === 'object' &&
-    error.body !== null &&
-    'message' in error.body &&
-    typeof error.body.message === 'string'
-  )
-    return error.body.message
-  try {
-    const body = JSON.parse(String(error.body))
-    return typeof body.message === 'string' ? body.message : undefined
-  } catch {
-    return undefined
-  }
-}
+const EXPIRED_QUOTE_MESSAGE = 'A cotação expirou ou mudou. Atualize a cotação e confirme novamente.'
 
 const quoteErrorMessage = (error: unknown) => {
-  const fallback = 'Não foi possível obter a cotação. Tente novamente.'
-  if (error instanceof HttpError && error.status === 422) return backendMessage(error) ?? fallback
-  return fallback
+  if (error instanceof HttpError && error.status === 422)
+    return 'Nenhuma cotação disponível para este beneficiário e método de pagamento.'
+  if (error instanceof HttpError && error.status === 404)
+    return 'Beneficiário não encontrado. Selecione outro beneficiário.'
+  return 'Não foi possível obter a cotação. Tente novamente.'
 }
 
-const createErrorMessage = (error: unknown) => {
-  const fallback = 'Não foi possível criar a transferência. Tente novamente.'
-  if (!(error instanceof HttpError)) return fallback
-  // O backend descreve o código 2FA rejeitado em inglês; a interface usa a própria mensagem.
-  if (error.status === 401) return 'Código de autenticação inválido ou expirado.'
-  if (error.status === 423)
-    return 'Muitas tentativas com código inválido. Aguarde alguns minutos e tente novamente.'
-  if (error.status === 400)
-    return backendMessage(error) ?? 'Código de autenticação inválido ou expirado.'
-  if (error.status === 403) {
-    const body =
-      typeof error.body === 'object' && error.body !== null
-        ? (error.body as Record<string, unknown>)
-        : null
-    const hasLock = body && ('withdrawalLockedUntil' in body || body.code === 'WITHDRAWAL_LOCKED')
-    if (hasLock) {
-      return (
-        backendMessage(error) ??
-        'Por medidas de segurança, transferências estão temporariamente bloqueadas por 48 horas devido à redefinição recente do seu 2FA.'
-      )
-    }
-    return backendMessage(error) ?? 'Você não tem permissão para realizar esta transferência.'
-  }
-  if (error.status === 404) return 'Beneficiário não encontrado. Selecione outro beneficiário.'
-  if (error.status === 422) return backendMessage(error) ?? fallback
-  return fallback
+const confirmErrorMessage = (error: unknown) => {
+  if (!(error instanceof HttpError)) return 'Não foi possível confirmar a transferência.'
+  if (error.status === 403) return 'Você não tem permissão para realizar esta transferência.'
+  if (error.status === 404 || error.status === 409 || error.status === 410 || error.status === 422)
+    return EXPIRED_QUOTE_MESSAGE
+  return 'Não foi possível confirmar a transferência. Tente novamente.'
 }
+
+/** A oferta só vale até `expiresAt`; o backend recusa confirmações depois disso. */
+const millisUntil = (isoDate: string | null) =>
+  isoDate === null ? Number.POSITIVE_INFINITY : new Date(isoDate).getTime() - Date.now()
 
 const isFutureIsoDate = (isoString: string | null | undefined): boolean => {
   if (!isoString) return false
@@ -114,7 +98,6 @@ export function useTransferCreate() {
   const user = session.user
   const companyId = user?.companyId
   const [activeStep, setActiveStep] = useState<number>(0)
-  const [totpCode, setTotpCode] = useState('')
   const [values, setValues] = useState<FormValues>(initialValues)
   const [amountType, setAmountType] = useState<TransferAmountType>('SOURCE')
   const [quoteState, setQuoteState] = useState<QuoteState>({ status: 'idle' })
@@ -122,12 +105,12 @@ export function useTransferCreate() {
   const [beneficiaries, setBeneficiaries] = useState<BeneficiariesState>({ status: 'loading' })
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | undefined>(undefined)
-  const [createdStatus, setCreatedStatus] = useState<TransactionStatus | undefined>(undefined)
-  const [apiLockedUntil, setApiLockedUntil] = useState<string | null>(null)
+  const [execution, setExecution] = useState<TransferExecution | null>(null)
+  const [pollAttempt, setPollAttempt] = useState(0)
+  const [pollError, setPollError] = useState(false)
 
-  // O backend é a fonte da trava: o perfil do usuário ou a resposta de erro desta sessão.
-  const rawLockedUntil = apiLockedUntil || user?.withdrawalLockedUntil
-
+  // O backend é a fonte da trava, entregue no perfil do usuário.
+  const rawLockedUntil = user?.withdrawalLockedUntil
   const isWithdrawalLocked = isFutureIsoDate(rawLockedUntil)
   const withdrawalLockedUntil = isWithdrawalLocked ? rawLockedUntil : null
 
@@ -136,6 +119,20 @@ export function useTransferCreate() {
   const beneficiaryList = beneficiaries.status === 'ready' ? beneficiaries.items : []
   const selectedBeneficiary = beneficiaryList.find((item) => item.id === values.beneficiaryId)
   const destinationCurrency = selectedBeneficiary?.currency || DEFAULT_DESTINATION_CURRENCY
+  // A cotação precisa da moeda e do trilho reais do beneficiário; sem eles não se presume nada.
+  const beneficiaryMissingData = Boolean(
+    selectedBeneficiary && (!selectedBeneficiary.currency || !selectedBeneficiary.paymentRail),
+  )
+  const quoteCurrency = selectedBeneficiary?.currency || null
+  const quoteRail = selectedBeneficiary?.paymentRail || null
+  const paymentMethod = values.paymentMethod
+  const beneficiaryId = values.beneficiaryId
+  const description = values.description.trim()
+  const canQuote =
+    isValidAmount(editedAmount) &&
+    quoteCurrency !== null &&
+    quoteRail !== null &&
+    paymentMethod !== ''
 
   useEffect(() => {
     let active = true
@@ -157,16 +154,24 @@ export function useTransferCreate() {
   }, [companyId])
 
   useEffect(() => {
-    if (!isValidAmount(editedAmount)) return
+    if (!isValidAmount(editedAmount) || !quoteCurrency || !quoteRail || paymentMethod === '') return
+    const amount = editedAmount
+    const sourcePaymentMethod = paymentMethod
 
     const controller = new AbortController()
     const timer = setTimeout(() => {
-      getTransferQuote(
+      createQuote(
         {
-          amount: editedAmount,
-          amountType,
+          beneficiaryId,
+          direction: 'PAYOUT',
           sourceCurrency: SOURCE_CURRENCY,
-          destinationCurrency,
+          targetCurrency: quoteCurrency,
+          sourcePaymentMethod,
+          targetPaymentMethod: quoteRail,
+          amount,
+          amountSide: amountType === 'SOURCE' ? 'SOURCE' : 'TARGET',
+          coverFees: false,
+          ...(description ? { description } : {}),
         },
         controller.signal,
       )
@@ -175,8 +180,8 @@ export function useTransferCreate() {
           setQuoteState({ status: 'ready', quote })
           setValues((previous) =>
             amountType === 'SOURCE'
-              ? { ...previous, destinationAmount: formatDecimal(quote.destination.amount) }
-              : { ...previous, sourceAmount: formatDecimal(quote.source.amount) },
+              ? { ...previous, destinationAmount: formatDecimal(quote.offer.targetAmount) }
+              : { ...previous, sourceAmount: formatDecimal(quote.offer.sourceAmount) },
           )
         })
         .catch((error: unknown) => {
@@ -190,12 +195,68 @@ export function useTransferCreate() {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [editedAmount, amountType, destinationCurrency, quoteRequestId])
+  }, [
+    editedAmount,
+    amountType,
+    beneficiaryId,
+    paymentMethod,
+    quoteCurrency,
+    quoteRail,
+    description,
+    quoteRequestId,
+  ])
+
+  // Ao vencer, a oferta deixa de ser exibida como válida e precisa ser atualizada.
+  const readyExpiresAt = quoteState.status === 'ready' ? quoteState.quote.offer.expiresAt : null
+  useEffect(() => {
+    if (readyExpiresAt === null) return
+    const timer = setTimeout(
+      () => {
+        setQuoteState({ status: 'expired' })
+        // Na revisão, a oferta vencida não pode mais ser confirmada: volta aos dados.
+        if (activeStep === 1) {
+          setSubmitError(EXPIRED_QUOTE_MESSAGE)
+          setActiveStep(0)
+        }
+      },
+      Math.max(0, millisUntil(readyExpiresAt)),
+    )
+    return () => clearTimeout(timer)
+  }, [readyExpiresAt, activeStep])
+
+  // Acompanha a execução enquanto o provedor ainda vai movê-la.
+  const executionId = execution?.executionId
+  const executionStatus = execution?.status
+  useEffect(() => {
+    if (!executionId || !executionStatus || !IN_PROGRESS_STATUSES.has(executionStatus)) return
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      getTransferExecution(executionId, controller.signal)
+        .then((next) => {
+          if (controller.signal.aborted) return
+          setPollError(false)
+          setExecution(next)
+          setPollAttempt((attempt) => attempt + 1)
+        })
+        .catch(() => {
+          if (controller.signal.aborted) return
+          setPollError(true)
+          setPollAttempt((attempt) => attempt + 1)
+        })
+    }, EXECUTION_POLL_MS)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [executionId, executionStatus, pollAttempt])
 
   // Qualquer mudança que afete a cotação invalida a anterior na hora: nada fica exibido como válido.
-  function invalidateQuote(nextAmount: number | null) {
-    setQuoteState(isValidAmount(nextAmount) ? { status: 'loading' } : { status: 'idle' })
+  function invalidateQuote(willQuote: boolean) {
+    setQuoteState(willQuote ? { status: 'loading' } : { status: 'idle' })
   }
+
+  const hasQuoteTarget = (beneficiary: Beneficiary | undefined) =>
+    Boolean(beneficiary?.currency && beneficiary.paymentRail)
 
   function handleAmountChange(type: TransferAmountType, text: string) {
     setAmountType(type)
@@ -204,124 +265,127 @@ export function useTransferCreate() {
         ? { ...previous, sourceAmount: text, destinationAmount: '' }
         : { ...previous, destinationAmount: text, sourceAmount: '' },
     )
-    invalidateQuote(parseDecimalInput(text))
-    setCreatedStatus(undefined)
+    invalidateQuote(
+      isValidAmount(parseDecimalInput(text)) &&
+        hasQuoteTarget(selectedBeneficiary) &&
+        values.paymentMethod !== '',
+    )
   }
 
   function handleBeneficiaryChange(beneficiaryId: string) {
     const next = beneficiaryList.find((item) => item.id === beneficiaryId)
-    const currencyChanged = (next?.currency || DEFAULT_DESTINATION_CURRENCY) !== destinationCurrency
     setValues((previous) => ({
       ...previous,
       beneficiaryId,
-      // O valor do lado oposto veio da cotação anterior, que deixa de valer com a nova moeda.
-      ...(currencyChanged &&
-        (amountType === 'SOURCE' ? { destinationAmount: '' } : { sourceAmount: '' })),
+      // O valor do lado oposto veio da cotação anterior, que deixa de valer.
+      ...(amountType === 'SOURCE' ? { destinationAmount: '' } : { sourceAmount: '' }),
     }))
-    if (currencyChanged) invalidateQuote(editedAmount)
-    setCreatedStatus(undefined)
+    invalidateQuote(
+      isValidAmount(editedAmount) && hasQuoteTarget(next) && values.paymentMethod !== '',
+    )
+  }
+
+  function handlePaymentMethodChange(paymentMethod: FundingMethod | '') {
+    setValues((previous) => ({
+      ...previous,
+      paymentMethod,
+      ...(amountType === 'SOURCE' ? { destinationAmount: '' } : { sourceAmount: '' }),
+    }))
+    invalidateQuote(
+      isValidAmount(editedAmount) && hasQuoteTarget(selectedBeneficiary) && paymentMethod !== '',
+    )
+  }
+
+  function handleDescriptionChange(text: string) {
+    setValues((previous) => ({ ...previous, description: text }))
+    if (text.trim() !== description) invalidateQuote(canQuote)
   }
 
   function handleRetryQuote() {
-    invalidateQuote(editedAmount)
+    invalidateQuote(canQuote)
     setQuoteRequestId((id) => id + 1)
   }
 
   function handleCancel() {
     setValues(initialValues)
-    setTotpCode('')
     setAmountType('SOURCE')
     setQuoteState({ status: 'idle' })
     setSubmitError(undefined)
-    setCreatedStatus(undefined)
+    setExecution(null)
+    setPollError(false)
     setActiveStep(0)
-  }
-
-  function handleNextStep() {
-    if (isWithdrawalLocked) return
-    if (activeStep === 0) {
-      if (!canContinue || !form.success) return
-      setSubmitError(undefined)
-      setActiveStep(1)
-    } else if (activeStep === 1) {
-      setSubmitError(undefined)
-      setActiveStep(2)
-    }
-  }
-
-  function handlePreviousStep() {
-    setSubmitError(undefined)
-    if (activeStep === 2) {
-      setActiveStep(1)
-    } else if (activeStep === 1) {
-      setActiveStep(0)
-    }
-  }
-
-  function handleTotpChange(code: string) {
-    setTotpCode(code)
-    if (submitError) setSubmitError(undefined)
   }
 
   const form = TransferFormSchema.safeParse({
     amount: editedAmount,
     amountType,
-    sourceCurrency: SOURCE_CURRENCY,
-    destinationCurrency,
     paymentMethod: values.paymentMethod,
     beneficiaryId: values.beneficiaryId,
     description: values.description,
   })
-  const canContinue =
-    form.success && quoteState.status === 'ready' && !submitting && !isWithdrawalLocked
+  const quote = quoteState.status === 'ready' ? quoteState.quote : undefined
+  const canContinue = form.success && quote !== undefined && !submitting && !isWithdrawalLocked
 
-  function handleSubmit(eventOrCode?: React.FormEvent<HTMLFormElement> | string) {
-    if (typeof eventOrCode === 'object') eventOrCode.preventDefault()
-    if (isWithdrawalLocked) return
-    if (activeStep !== 2) return
-    if (!canContinue || !form.success || submitting) return
+  function handleNextStep() {
+    if (!canContinue) return
+    setSubmitError(undefined)
+    setActiveStep(1)
+  }
 
-    const effectiveCode = typeof eventOrCode === 'string' ? eventOrCode : totpCode
-    const totpValidation = TotpCodeSchema.safeParse(effectiveCode)
-    if (!totpValidation.success) {
-      setSubmitError(totpValidation.error.issues[0]?.message ?? 'Código de autenticação inválido.')
+  function handlePreviousStep() {
+    setSubmitError(undefined)
+    setActiveStep(0)
+  }
+
+  function returnWithExpiredQuote() {
+    setSubmitError(EXPIRED_QUOTE_MESSAGE)
+    setQuoteState({ status: 'expired' })
+    setActiveStep(0)
+  }
+
+  function handleConfirm() {
+    if (activeStep !== 1 || submitting || isWithdrawalLocked) return
+    if (!quote || millisUntil(quote.offer.expiresAt) <= 0) {
+      returnWithExpiredQuote()
       return
     }
 
     setSubmitting(true)
     setSubmitError(undefined)
-    createTransfer({ ...form.data, totpCode: effectiveCode })
+    // Envia exatamente os valores exibidos: o backend recusa qualquer diferença da oferta.
+    confirmOffer(quote.offer.offerId, {
+      sourceAmount: quote.offer.sourceAmount,
+      targetAmount: quote.offer.targetAmount,
+    })
       .then((result) => {
-        setCreatedStatus(result.status)
-        setValues(initialValues)
-        setTotpCode('')
-        setAmountType('SOURCE')
-        setQuoteState({ status: 'idle' })
-        setActiveStep(0)
+        setExecution(result)
+        setPollError(false)
+        setActiveStep(2)
       })
       .catch((error: unknown) => {
-        if (error instanceof HttpError) {
-          const body =
-            typeof error.body === 'object' && error.body !== null
-              ? (error.body as Record<string, unknown>)
-              : null
-          const lockedUntilFromBody =
-            body && typeof body.withdrawalLockedUntil === 'string'
-              ? body.withdrawalLockedUntil
-              : null
-          const isWithdrawalLockError =
-            Boolean(lockedUntilFromBody) ||
-            (body !== null &&
-              (body?.code === 'WITHDRAWAL_LOCKED' || body?.code === '2FA_RESET_LOCK'))
-
-          if (isWithdrawalLockError) {
-            const lockedUntil =
-              lockedUntilFromBody ?? new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
-            setApiLockedUntil(lockedUntil)
-          }
-        }
-        setSubmitError(createErrorMessage(error))
+        const message = confirmErrorMessage(error)
+        if (message === EXPIRED_QUOTE_MESSAGE) returnWithExpiredQuote()
+        else setSubmitError(message)
       })
+      .finally(() => setSubmitting(false))
+  }
+
+  function handleConfirmRequote() {
+    if (!execution?.requote || submitting) return
+    setSubmitting(true)
+    setSubmitError(undefined)
+    confirmRequote(execution.executionId, {
+      sourceAmount: execution.requote.source.amount,
+      targetAmount: execution.requote.target.amount,
+    })
+      .then(setExecution)
+      .catch((error: unknown) =>
+        setSubmitError(
+          error instanceof HttpError && [409, 410, 422].includes(error.status)
+            ? 'A nova cotação expirou. Aguarde uma nova cotação para confirmar.'
+            : 'Não foi possível confirmar a nova cotação. Tente novamente.',
+        ),
+      )
       .finally(() => setSubmitting(false))
   }
 
@@ -329,25 +393,21 @@ export function useTransferCreate() {
     editedAmountText.trim() !== '' && !isValidAmount(editedAmount)
       ? 'Informe um valor maior que zero'
       : undefined
-  const quote = quoteState.status === 'ready' ? quoteState.quote : undefined
 
   return {
     activeStep,
-    setActiveStep,
-    totpCode,
-    setTotpCode,
     selectedBeneficiary,
+    beneficiaryMissingData,
     values,
-    setValues,
     amountType,
     quoteState,
     beneficiaries,
     submitting,
     submitError,
-    createdStatus,
+    execution,
+    pollError,
     beneficiaryList,
     destinationCurrency,
-    form,
     canContinue,
     amountError,
     quote,
@@ -355,11 +415,13 @@ export function useTransferCreate() {
     withdrawalLockedUntil,
     handleAmountChange,
     handleBeneficiaryChange,
+    handlePaymentMethodChange,
+    handleDescriptionChange,
     handleRetryQuote,
     handleCancel,
     handleNextStep,
     handlePreviousStep,
-    handleTotpChange,
-    handleSubmit,
+    handleConfirm,
+    handleConfirmRequote,
   }
 }

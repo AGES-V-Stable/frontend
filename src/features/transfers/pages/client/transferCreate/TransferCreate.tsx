@@ -2,51 +2,212 @@ import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
 import { ActionIcon } from '@/shared/components/Icons/ActionIcon'
 import { Stepper } from '@/shared/components/Stepper'
-import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
 import type { Beneficiary } from '@/features/beneficiaries'
-import type { TransactionStatus, TransferPaymentMethod } from '@/features/transfers/types/transfer'
-import { currencySymbol, formatMoney, formatPercent } from '@/shared/utils/formatters'
+import type {
+  FundingMethod,
+  QuoteOffer,
+  TransferExecution,
+  TransferExecutionStatus,
+} from '@/features/transfers/types/transfer'
+import { currencySymbol, formatMoney } from '@/shared/utils/formatters'
 import { useTransferCreate } from '@/features/transfers/hooks/useTransferCreate'
 
-const TRANSFER_STEPS = ['Dados', 'Revisão', 'Autenticação'] as const
+const TRANSFER_STEPS = ['Dados', 'Revisão', 'Pagamento'] as const
 
 // Mesmo visual do Input para os campos nativos (select e textarea) da tela.
 const FIELD_CLASS =
   'w-full rounded-lg border border-sage-300 bg-surface px-3 text-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
 const SOURCE_CURRENCY = 'BRL'
-// Moeda usada enquanto nenhum beneficiário com moeda cadastrada foi escolhido (BRL → USD no Figma).
 
-const PAYMENT_METHODS: { value: TransferPaymentMethod; label: string }[] = [
-  { value: 'ACCOUNT_BALANCE', label: 'Saldo em Conta' },
+const PAYMENT_METHODS: { value: FundingMethod; label: string }[] = [
+  { value: 'PIX', label: 'PIX' },
+  { value: 'TED', label: 'TED' },
 ]
 
-const STATUS_LABELS: Record<TransactionStatus, string> = {
-  AWAITING_PAYMENT: 'aguardando pagamento',
-  PROCESSING: 'em processamento',
-  HELD: 'retida para análise',
-  SETTLED: 'concluída',
-  FAILED: 'com falha',
-  PARTIAL_FAILURE: 'com falha parcial',
-  CANCELED: 'cancelada',
-  EXPIRED: 'expirada',
+const EXECUTION_STATUS: Record<TransferExecutionStatus, string> = {
+  PENDING_SUBMISSION: 'Enviando ao provedor...',
+  AWAITING_FUNDS: 'Aguardando o seu pagamento',
+  FUNDS_RECEIVED: 'Pagamento recebido. Preparando o envio ao beneficiário...',
+  REQUOTE_REQUIRED: 'A cotação mudou durante o pagamento e precisa ser confirmada de novo',
+  PAYOUT_SUBMITTING: 'Enviando ao beneficiário...',
+  PAYOUT_PROCESSING: 'Envio em processamento',
+  SUBMITTED: 'Transferência enviada ao provedor',
+  COMPLETED: 'Transferência concluída',
+  FAILED: 'A transferência falhou',
+  REFUNDED: 'A transferência foi estornada',
+  RECONCILIATION_REQUIRED: 'Em análise pela equipe V-Stable. Não repita a transferência.',
 }
 
+const PROVIDER_LABELS: Record<string, string> = { BLINDPAY: 'BlindPay', AVENIA: 'Avenia' }
+
+/** O backend cota em todos os provedores elegíveis e devolve só a oferta mais vantajosa. */
+const providerName = (provider: string) => PROVIDER_LABELS[provider] ?? provider
+
 const beneficiaryName = (beneficiary: Beneficiary) => beneficiary.legalName || beneficiary.nickname
+
+const formatTime = (isoDate: string) => new Date(isoDate).toLocaleTimeString('pt-BR')
+
+/** Câmbio efetivo: quanto chega por real pago, já com as taxas dos provedores. */
+const effectiveRate = (offer: QuoteOffer, targetCurrency: string) =>
+  `1 ${SOURCE_CURRENCY} = ${formatMoney(offer.exchangeRate, targetCurrency)}`
+
+function OfferValues({ offer, targetCurrency }: { offer: QuoteOffer; targetCurrency: string }) {
+  return (
+    <>
+      <div className="flex items-center justify-between gap-4">
+        <dt className="text-slate-500">Melhor oferta</dt>
+        <dd className="font-medium text-slate-900">{providerName(offer.provider)}</dd>
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <dt className="text-slate-500">Você paga</dt>
+        <dd className="font-bold text-slate-900">
+          {formatMoney(offer.sourceAmount, SOURCE_CURRENCY)}
+        </dd>
+      </div>
+      <div className="flex items-center justify-between gap-4">
+        <dt className="text-slate-500">Beneficiário recebe</dt>
+        <dd className="font-bold text-slate-900">
+          {formatMoney(offer.targetAmount, targetCurrency)}
+        </dd>
+      </div>
+      {offer.expiresAt && (
+        <div className="flex items-center justify-between gap-4">
+          <dt className="text-slate-500">Válida até</dt>
+          <dd className="font-medium text-slate-900">{formatTime(offer.expiresAt)}</dd>
+        </div>
+      )}
+    </>
+  )
+}
+
+interface ExecutionPanelProps {
+  execution: TransferExecution
+  pollError: boolean
+  submitting: boolean
+  submitError?: string
+  onConfirmRequote: () => void
+  onNewTransfer: () => void
+}
+
+function ExecutionPanel({
+  execution,
+  pollError,
+  submitting,
+  submitError,
+  onConfirmRequote,
+  onNewTransfer,
+}: ExecutionPanelProps) {
+  const done = ['COMPLETED', 'FAILED', 'REFUNDED', 'RECONCILIATION_REQUIRED'].includes(
+    execution.status,
+  )
+  return (
+    <section className="flex flex-col gap-6 rounded-xl border border-sage-300 bg-white p-6">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-sm font-bold text-slate-900">Pagamento da transferência</h2>
+        <p role="status" className="text-base font-medium text-slate-900">
+          {EXECUTION_STATUS[execution.status]}
+        </p>
+      </div>
+
+      <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+        <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
+          <dt className="text-xs font-semibold uppercase text-slate-500">Você paga</dt>
+          <dd className="text-base font-semibold text-slate-900">
+            {formatMoney(execution.source.amount, execution.source.currency)}
+          </dd>
+        </div>
+        <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
+          <dt className="text-xs font-semibold uppercase text-slate-500">Beneficiário recebe</dt>
+          <dd className="text-base font-semibold text-slate-900">
+            {formatMoney(execution.target.amount, execution.target.currency)}
+          </dd>
+        </div>
+      </dl>
+
+      {execution.status === 'AWAITING_FUNDS' && execution.fundingInstructions && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor="transfer-funding" className="text-[14px] text-sage-800">
+            Código PIX para pagamento (copia e cola)
+          </label>
+          <textarea
+            id="transfer-funding"
+            readOnly
+            value={execution.fundingInstructions}
+            className={`${FIELD_CLASS} h-24 resize-none py-3 font-mono text-xs`}
+          />
+          <p className="text-xs text-slate-500">
+            Pague o valor exato. O status é atualizado automaticamente após a confirmação.
+          </p>
+        </div>
+      )}
+
+      {execution.status === 'REQUOTE_REQUIRED' && execution.requote && (
+        <div className="flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm text-amber-900">
+            Nova cotação: você paga{' '}
+            <strong>
+              {formatMoney(execution.requote.source.amount, execution.requote.source.currency)}
+            </strong>{' '}
+            e o beneficiário recebe{' '}
+            <strong>
+              {formatMoney(execution.requote.target.amount, execution.requote.target.currency)}
+            </strong>
+            {execution.requote.expiresAt &&
+              `, válida até ${formatTime(execution.requote.expiresAt)}`}
+            .
+          </p>
+          <div className="w-full sm:w-[240px]">
+            <Button
+              type="button"
+              label={submitting ? 'Confirmando...' : 'Aceitar nova cotação'}
+              onClick={onConfirmRequote}
+              disabled={submitting}
+              className="h-12 font-medium"
+            />
+          </div>
+        </div>
+      )}
+
+      {submitError && (
+        <p role="alert" className="text-sm text-red-700">
+          {submitError}
+        </p>
+      )}
+      {pollError && (
+        <p role="alert" className="text-sm text-amber-800">
+          Não foi possível atualizar o status agora. Tentaremos novamente em instantes.
+        </p>
+      )}
+
+      {done && (
+        <div className="w-full sm:w-[240px]">
+          <Button
+            type="button"
+            variant="secondary"
+            label="Nova transferência"
+            onClick={onNewTransfer}
+            className="h-12 font-medium"
+          />
+        </div>
+      )}
+    </section>
+  )
+}
 
 export function TransferCreate() {
   const {
     activeStep,
-    totpCode,
     selectedBeneficiary,
+    beneficiaryMissingData,
     values,
-    setValues,
     amountType,
     quoteState,
     beneficiaries,
     submitting,
     submitError,
-    createdStatus,
+    execution,
+    pollError,
     beneficiaryList,
     destinationCurrency,
     canContinue,
@@ -56,12 +217,14 @@ export function TransferCreate() {
     withdrawalLockedUntil,
     handleAmountChange,
     handleBeneficiaryChange,
+    handlePaymentMethodChange,
+    handleDescriptionChange,
     handleRetryQuote,
     handleCancel,
     handleNextStep,
     handlePreviousStep,
-    handleTotpChange,
-    handleSubmit,
+    handleConfirm,
+    handleConfirmRequote,
   } = useTransferCreate()
 
   const quoteAside = (
@@ -70,7 +233,7 @@ export function TransferCreate() {
       className="flex flex-col gap-4 rounded-xl border border-sage-300 bg-white p-6"
     >
       <h2 id="transfer-quote-title" className="text-sm font-bold text-slate-900">
-        Cotação e taxas
+        Cotação
       </h2>
 
       {quoteState.status === 'loading' && (
@@ -78,19 +241,29 @@ export function TransferCreate() {
           Atualizando cotação...
         </p>
       )}
-      {quoteState.status === 'idle' && (
-        <p className="text-sm text-slate-500">Informe um valor para consultar a cotação.</p>
-      )}
-      {quoteState.status === 'error' && (
+      {quoteState.status === 'idle' &&
+        (beneficiaryMissingData ? (
+          <p role="alert" className="text-sm text-red-700">
+            Este beneficiário não tem moeda ou trilho de recebimento cadastrado. Atualize o cadastro
+            para transferir.
+          </p>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Selecione o beneficiário e informe um valor para consultar a cotação.
+          </p>
+        ))}
+      {(quoteState.status === 'error' || quoteState.status === 'expired') && (
         <div className="flex flex-col gap-2">
           <p role="alert" className="text-sm text-red-700">
-            {quoteState.message}
+            {quoteState.status === 'error'
+              ? quoteState.message
+              : 'A cotação expirou. Atualize para ver os valores atuais.'}
           </p>
           <div>
             <Button
               type="button"
               variant="tertiary"
-              label="Tentar novamente"
+              label={quoteState.status === 'error' ? 'Tentar novamente' : 'Atualizar cotação'}
               onClick={handleRetryQuote}
             />
           </div>
@@ -99,34 +272,14 @@ export function TransferCreate() {
 
       <dl className="flex flex-col gap-3 text-sm tabular-nums">
         <div className="flex w-fit flex-col gap-1 rounded-lg bg-blue-50 p-4">
-          <dt className="text-sm uppercase text-slate-500">Cotação atual</dt>
+          <dt className="text-sm uppercase text-slate-500">Câmbio efetivo</dt>
           <dd className="text-base font-medium text-slate-900">
-            {quote
-              ? `1 ${quote.exchangeRate.fromCurrency} = ${formatMoney(
-                  quote.exchangeRate.rate,
-                  quote.exchangeRate.toCurrency,
-                )}`
-              : '—'}
+            {quote ? effectiveRate(quote.offer, destinationCurrency) : '—'}
           </dd>
         </div>
-        <div className="flex items-center justify-between gap-4">
-          <dt className="text-slate-500">Taxa V-Stable</dt>
-          <dd className="font-medium text-primary">
-            {quote
-              ? `${formatPercent(quote.fee.percentage)} • ${formatMoney(
-                  quote.fee.amount,
-                  quote.fee.currency,
-                )}`
-              : '—'}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <dt className="text-slate-500">Valor total</dt>
-          <dd className="font-bold text-slate-900">
-            {quote ? formatMoney(quote.total.amount, quote.total.currency) : '—'}
-          </dd>
-        </div>
+        {quote && <OfferValues offer={quote.offer} targetCurrency={destinationCurrency} />}
       </dl>
+      <p className="text-xs text-slate-500">O câmbio efetivo já inclui as taxas dos provedores.</p>
     </aside>
   )
 
@@ -173,15 +326,6 @@ export function TransferCreate() {
 
       <Stepper steps={TRANSFER_STEPS} activeStep={activeStep} className="max-w-[1038px]" />
 
-      {createdStatus && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-primary"
-        >
-          Transferência criada com sucesso. Status: {STATUS_LABELS[createdStatus]}.
-        </p>
-      )}
-
       {submitError && activeStep !== 2 && (
         <p role="alert" className="text-sm text-red-700">
           {submitError}
@@ -210,12 +354,10 @@ export function TransferCreate() {
                 value={values.paymentMethod}
                 disabled={submitting}
                 onChange={(event) =>
-                  setValues((previous) => ({
-                    ...previous,
-                    paymentMethod:
-                      PAYMENT_METHODS.find((method) => method.value === event.target.value)
-                        ?.value ?? '',
-                  }))
+                  handlePaymentMethodChange(
+                    PAYMENT_METHODS.find((method) => method.value === event.target.value)?.value ??
+                      '',
+                  )
                 }
                 className={`${FIELD_CLASS} h-12`}
               >
@@ -297,11 +439,10 @@ export function TransferCreate() {
               <textarea
                 id="transfer-description"
                 placeholder="Pagamento de importação..."
+                maxLength={128}
                 value={values.description}
                 disabled={submitting}
-                onChange={(event) =>
-                  setValues((previous) => ({ ...previous, description: event.target.value }))
-                }
+                onChange={(event) => handleDescriptionChange(event.target.value)}
                 className={`${FIELD_CLASS} h-24 resize-none py-3.5 placeholder:text-gray-500`}
               />
             </div>
@@ -321,7 +462,7 @@ export function TransferCreate() {
                 <Button
                   type="submit"
                   label="Continuar"
-                  disabled={!canContinue || isWithdrawalLocked}
+                  disabled={!canContinue}
                   className="h-12 font-medium"
                 />
               </div>
@@ -333,86 +474,70 @@ export function TransferCreate() {
       )}
 
       {/* PASSO 1: REVISÃO DA TRANSFERÊNCIA */}
-      {activeStep === 1 && (
+      {activeStep === 1 && quote && (
         <div className="mx-auto w-full max-w-[1038px]">
           <section className="flex flex-col gap-6 rounded-xl border border-sage-300 bg-white p-6">
             <div className="flex flex-col gap-1">
               <h2 className="text-sm font-bold text-slate-900">Revisão da transferência</h2>
               <p className="text-xs text-slate-500">
-                Confira todas as informações da transferência antes de prosseguir com a
-                autenticação.
+                Confira os valores. Ao confirmar, a transferência é executada exatamente com esta
+                cotação.
               </p>
             </div>
 
-            <dl className="grid grid-cols-1 gap-4 divide-y divide-sage-200 text-sm md:grid-cols-2 md:divide-y-0">
+            <dl className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
               <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
                 <dt className="text-xs font-semibold uppercase text-slate-500">
                   Método de Pagamento
                 </dt>
-                <dd className="text-sm font-medium text-slate-900">
-                  {PAYMENT_METHODS.find((method) => method.value === values.paymentMethod)?.label ??
-                    values.paymentMethod}
-                </dd>
+                <dd className="text-sm font-medium text-slate-900">{values.paymentMethod}</dd>
               </div>
-
               <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
                 <dt className="text-xs font-semibold uppercase text-slate-500">Beneficiário</dt>
                 <dd className="text-sm font-medium text-slate-900">
                   {selectedBeneficiary ? beneficiaryName(selectedBeneficiary) : '—'}
                 </dd>
               </div>
-
               <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
-                <dt className="text-xs font-semibold uppercase text-slate-500">Valor de Origem</dt>
+                <dt className="text-xs font-semibold uppercase text-slate-500">Você paga</dt>
                 <dd className="text-base font-semibold text-slate-900">
-                  {currencySymbol(SOURCE_CURRENCY)} {values.sourceAmount}
+                  {formatMoney(quote.offer.sourceAmount, SOURCE_CURRENCY)}
                 </dd>
               </div>
-
               <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
-                <dt className="text-xs font-semibold uppercase text-slate-500">Valor de Destino</dt>
-                <dd className="text-base font-semibold text-slate-900">
-                  {currencySymbol(destinationCurrency)} {values.destinationAmount}
-                </dd>
-              </div>
-
-              <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
-                <dt className="text-xs font-semibold uppercase text-slate-500">Cotação Atual</dt>
-                <dd className="text-sm text-slate-900 font-medium">
-                  {quote
-                    ? `1 ${quote.exchangeRate.fromCurrency} = ${formatMoney(
-                        quote.exchangeRate.rate,
-                        quote.exchangeRate.toCurrency,
-                      )}`
-                    : '—'}
-                </dd>
-              </div>
-
-              <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
-                <dt className="text-xs font-semibold uppercase text-slate-500">Taxa V-Stable</dt>
-                <dd className="text-sm font-medium text-primary">
-                  {quote
-                    ? `${formatPercent(quote.fee.percentage)} • ${formatMoney(
-                        quote.fee.amount,
-                        quote.fee.currency,
-                      )}`
-                    : '—'}
-                </dd>
-              </div>
-
-              <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4 md:col-span-2">
                 <dt className="text-xs font-semibold uppercase text-slate-500">
-                  Valor Total a Pagar
+                  Beneficiário recebe
                 </dt>
-                <dd className="text-base font-bold text-primary">
-                  {quote ? formatMoney(quote.total.amount, quote.total.currency) : '—'}
+                <dd className="text-base font-semibold text-slate-900">
+                  {formatMoney(quote.offer.targetAmount, destinationCurrency)}
                 </dd>
               </div>
-
-              {values.description && (
+              <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
+                <dt className="text-xs font-semibold uppercase text-slate-500">Melhor oferta</dt>
+                <dd className="text-sm font-medium text-slate-900">
+                  {providerName(quote.offer.provider)}
+                </dd>
+              </div>
+              <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
+                <dt className="text-xs font-semibold uppercase text-slate-500">Câmbio efetivo</dt>
+                <dd className="text-sm font-medium text-slate-900">
+                  {effectiveRate(quote.offer, destinationCurrency)}
+                </dd>
+              </div>
+              {quote.offer.expiresAt && (
+                <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4">
+                  <dt className="text-xs font-semibold uppercase text-slate-500">
+                    Cotação válida até
+                  </dt>
+                  <dd className="text-sm font-medium text-slate-900">
+                    {formatTime(quote.offer.expiresAt)}
+                  </dd>
+                </div>
+              )}
+              {values.description.trim() && (
                 <div className="flex flex-col gap-1 rounded-lg bg-slate-50 p-4 md:col-span-2">
                   <dt className="text-xs font-semibold uppercase text-slate-500">Descrição</dt>
-                  <dd className="text-sm text-slate-700">{values.description}</dd>
+                  <dd className="text-sm text-slate-700">{values.description.trim()}</dd>
                 </div>
               )}
             </dl>
@@ -424,6 +549,7 @@ export function TransferCreate() {
                   variant="secondary"
                   label="Voltar"
                   onClick={handlePreviousStep}
+                  disabled={submitting}
                   className="h-12 font-medium"
                 />
               </div>
@@ -431,9 +557,9 @@ export function TransferCreate() {
                 <Button
                   type="button"
                   variant="primary"
-                  label="Confirmar e Autenticar"
-                  onClick={handleNextStep}
-                  disabled={isWithdrawalLocked}
+                  label={submitting ? 'Confirmando...' : 'Confirmar transferência'}
+                  onClick={handleConfirm}
+                  disabled={submitting || isWithdrawalLocked}
                   className="h-12 font-medium"
                 />
               </div>
@@ -442,25 +568,16 @@ export function TransferCreate() {
         </div>
       )}
 
-      {/* PASSO 2: AUTENTICAÇÃO EM DUAS ETAPAS */}
-      {activeStep === 2 && (
+      {/* PASSO 2: PAGAMENTO E ACOMPANHAMENTO */}
+      {activeStep === 2 && execution && (
         <div className="mx-auto w-full max-w-[1038px]">
-          <TwoFactorAuthContainer
-            title="Autenticação em duas etapas"
-            description="Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para confirmar a transferência."
-            value={totpCode}
-            onChange={handleTotpChange}
-            onVerify={(code) => handleSubmit(code)}
-            onVerifyRecovery={(recoveryCode) => handleSubmit(recoveryCode)}
-            error={submitError}
-            loading={submitting}
-            loadingLabel="Enviando..."
-            submitLabel="Confirmar transferência"
-            submitRecoveryLabel="Confirmar transferência"
-            onBack={handlePreviousStep}
-            backLabel="Voltar"
-            allowRecovery
-            disabled={isWithdrawalLocked}
+          <ExecutionPanel
+            execution={execution}
+            pollError={pollError}
+            submitting={submitting}
+            submitError={submitError}
+            onConfirmRequote={handleConfirmRequote}
+            onNewTransfer={handleCancel}
           />
         </div>
       )}

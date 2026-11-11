@@ -17,6 +17,8 @@ export const BeneficiarySchema = z.object({
   bankCode: z.string().nullish(),
   branchNumber: z.string().nullish(),
   currency: z.string().nullish(),
+  /** Trilho de recebimento (ex.: international_swift); a cotação o envia como destino. */
+  paymentRail: z.string().nullish(),
   swiftBic: z.string().nullish(),
   pixKey: z.string().nullish(),
   walletAddress: z.string().nullish(),

@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { saveAccessToken } from '@/shared/http/authToken'
 import {
-  createTransfer,
-  getTransferQuote,
+  confirmOffer,
+  confirmRequote,
+  createQuote,
+  getTransferExecution,
   getTransfers,
   getTransfersById,
 } from '@/features/transfers/api/transfers'
@@ -85,12 +87,48 @@ describe('admin history contracts', () => {
   })
 })
 
+const OFFER_ID = '7d7f2a54-8f0b-4c1e-9f0e-3c2a1b0d9e8f'
+const EXECUTION_ID = '0b1c2d3e-4f50-4617-8293-a4b5c6d7e8f9'
+
 const quoteResponse = {
-  source: { amount: 125000, currency: 'BRL' },
-  destination: { amount: 24235.14, currency: 'USD' },
-  exchangeRate: { fromCurrency: 'USD', toCurrency: 'BRL', rate: 5.16 },
-  fee: { percentage: 0.45, amount: 562.5, currency: 'BRL' },
-  total: { amount: 125562.5, currency: 'BRL' },
+  quoteRequestId: '1a2b3c4d-5e6f-4789-8abc-def012345678',
+  offer: {
+    offerId: OFFER_ID,
+    sourceAmount: 1000,
+    targetAmount: 182.45,
+    exchangeRate: 0.18245,
+    totalFee: 3.1,
+    expiresAt: '2026-11-10T23:59:00Z',
+    provider: 'BLINDPAY',
+  },
+}
+
+const execution = {
+  executionId: EXECUTION_ID,
+  offerId: OFFER_ID,
+  transactionId: null,
+  provider: 'BLINDPAY',
+  status: 'AWAITING_FUNDS',
+  source: { amount: 1000, currency: 'BRL' },
+  target: { amount: 182.45, currency: 'USD' },
+  totalFee: 3.1,
+  fundingInstructions: '00020126580014br.gov.bcb.pix',
+  requote: null,
+  failureCode: null,
+  createdAt: '2026-11-10T23:50:00Z',
+  updatedAt: '2026-11-10T23:50:00Z',
+}
+
+const quoteRequest = {
+  beneficiaryId: '550e8400-e29b-41d4-a716-446655440000',
+  direction: 'PAYOUT' as const,
+  sourceCurrency: 'BRL',
+  targetCurrency: 'USD',
+  sourcePaymentMethod: 'PIX' as const,
+  targetPaymentMethod: 'international_swift',
+  amount: 1000,
+  amountSide: 'SOURCE' as const,
+  coverFees: false,
 }
 
 const jsonResponse = (body: unknown, status = 200) => ({
@@ -102,154 +140,109 @@ const jsonResponse = (body: unknown, status = 200) => ({
 
 const sentRequest = (fetchMock: ReturnType<typeof vi.fn>) => {
   const [url, options] = fetchMock.mock.calls[0]! as [string, RequestInit]
-  return { url, options, body: JSON.parse(options.body as string) as Record<string, unknown> }
+  return {
+    url,
+    options,
+    body: options.body ? (JSON.parse(options.body as string) as Record<string, unknown>) : null,
+  }
 }
 
-describe('getTransferQuote service', () => {
+describe('quote and execution services', () => {
   beforeEach(() => {
     sessionStorage.clear()
+    saveAccessToken('token-abc')
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('consulta POST /v1/transfers/quote com o lado editado e devolve a cotação do backend', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(quoteResponse))
-    vi.stubGlobal('fetch', fetchMock)
-
-    const result = await getTransferQuote({
-      amount: 125000,
-      amountType: 'SOURCE',
-      sourceCurrency: 'BRL',
-      destinationCurrency: 'USD',
-    })
-
-    const { url, options, body } = sentRequest(fetchMock)
-    expect(url).toBe('/v1/transfers/quote')
-    expect(options.method).toBe('POST')
-    expect(body).toEqual({
-      amount: 125000,
-      amountType: 'SOURCE',
-      sourceCurrency: 'BRL',
-      destinationCurrency: 'USD',
-    })
-    expect(result).toEqual(quoteResponse)
-  })
-
-  it('envia só amount e amountType quando as moedas não são informadas', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(quoteResponse))
-    vi.stubGlobal('fetch', fetchMock)
-
-    await getTransferQuote({ amount: 24235.14, amountType: 'DESTINATION' })
-
-    expect(sentRequest(fetchMock).body).toEqual({ amount: 24235.14, amountType: 'DESTINATION' })
-  })
-
-  it('envia o token Bearer e repassa o AbortSignal para cancelar a consulta anterior', async () => {
-    saveAccessToken('token-abc')
+  it('given a filled form, when quoting, then it posts the request to /v1/quotes and returns the best offer', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(quoteResponse))
     vi.stubGlobal('fetch', fetchMock)
     const controller = new AbortController()
 
-    await getTransferQuote({ amount: 10, amountType: 'SOURCE' }, controller.signal)
-
-    const { options } = sentRequest(fetchMock)
-    expect(options.headers).toMatchObject({ Authorization: 'Bearer token-abc' })
-    expect(options.signal).toBe(controller.signal)
-  })
-
-  it('rejeita cotação incompleta em vez de exibir valores parciais', async () => {
-    const withoutFee = { ...quoteResponse, fee: undefined }
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(withoutFee)))
-
-    await expect(getTransferQuote({ amount: 10, amountType: 'SOURCE' })).rejects.toThrow(
-      'Formato inválido retornado pela API',
-    )
-  })
-
-  it('propaga o status HTTP do backend quando a cotação falha', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ message: 'Usuário sem KYC associado' }, 422)),
-    )
-
-    await expect(getTransferQuote({ amount: 10, amountType: 'SOURCE' })).rejects.toMatchObject({
-      name: 'HttpError',
-      status: 422,
-    })
-  })
-})
-
-describe('createTransfer service', () => {
-  beforeEach(() => {
-    sessionStorage.clear()
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  const createRequest = {
-    amount: 125000,
-    amountType: 'SOURCE' as const,
-    sourceCurrency: 'BRL',
-    destinationCurrency: 'USD',
-    paymentMethod: 'ACCOUNT_BALANCE' as const,
-    beneficiaryId: '550e8400-e29b-41d4-a716-446655440000',
-    description: 'Pagamento de importação',
-  }
-
-  it('cria a transferência via POST /v1/transfers e devolve o status', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ status: 'PROCESSING' }))
-    vi.stubGlobal('fetch', fetchMock)
-
-    const result = await createTransfer(createRequest)
+    const result = await createQuote(quoteRequest, controller.signal)
 
     const { url, options, body } = sentRequest(fetchMock)
-    expect(url).toBe('/v1/transfers')
+    expect(url).toBe('/v1/quotes')
     expect(options.method).toBe('POST')
-    expect(body).toEqual(createRequest)
-    expect(result).toEqual({ status: 'PROCESSING' })
+    expect(options.signal).toBe(controller.signal)
+    expect((options.headers as Record<string, string>).Authorization).toBe('Bearer token-abc')
+    // Token e rede intermediários ficam por conta da configuração do backend.
+    expect(body).toEqual(quoteRequest)
+    expect(result).toEqual(quoteResponse)
   })
 
-  it('envia o totpCode no payload quando informado', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ status: 'PROCESSING' }))
-    vi.stubGlobal('fetch', fetchMock)
-
-    await createTransfer({ ...createRequest, totpCode: '123456' })
-
-    const { body } = sentRequest(fetchMock)
-    expect(body).toEqual({ ...createRequest, totpCode: '123456' })
-  })
-
-  it('não envia nenhum dado de cotação, mesmo que o objeto recebido tenha campos extras', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ status: 'PROCESSING' }))
-    vi.stubGlobal('fetch', fetchMock)
-    const requestWithQuoteData = { ...createRequest, quoteId: 'q-1', quoteToken: 't-1' }
-
-    await createTransfer(requestWithQuoteData)
-
-    const { body } = sentRequest(fetchMock)
-    expect(body).not.toHaveProperty('quoteId')
-    expect(body).not.toHaveProperty('quoteToken')
-    expect(body).not.toHaveProperty('ticketId')
-  })
-
-  it('rejeita status desconhecido retornado pela API', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ status: 'UNKNOWN' })))
-
-    await expect(createTransfer(createRequest)).rejects.toThrow(
-      'Formato inválido retornado pela API',
-    )
-  })
-
-  it('propaga 404 quando o beneficiário não é encontrado', async () => {
+  it('given an incomplete offer, when quoting, then it rejects instead of showing partial values', async () => {
+    const offerWithoutProvider: Partial<typeof quoteResponse.offer> = { ...quoteResponse.offer }
+    delete offerWithoutProvider.provider
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse({ message: 'Beneficiário não encontrado' }, 404)),
+      vi.fn().mockResolvedValue(jsonResponse({ ...quoteResponse, offer: offerWithoutProvider })),
     )
 
-    await expect(createTransfer(createRequest)).rejects.toMatchObject({ status: 404 })
+    await expect(createQuote(quoteRequest)).rejects.toThrow('Formato inválido retornado pela API')
+  })
+
+  it('given no eligible provider, when quoting, then it propagates the HTTP status', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ message: 'No quote available' }, 422)),
+    )
+
+    await expect(createQuote(quoteRequest)).rejects.toMatchObject({ status: 422 })
+  })
+
+  it('given an offer, when confirming, then it sends only the displayed amounts to the offer URL', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(execution))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await confirmOffer(OFFER_ID, { sourceAmount: 1000, targetAmount: 182.45 })
+
+    const { url, options, body } = sentRequest(fetchMock)
+    expect(url).toBe(`/v1/quotes/offers/${OFFER_ID}/confirm`)
+    expect(options.method).toBe('POST')
+    expect(body).toEqual({ sourceAmount: 1000, targetAmount: 182.45 })
+    expect(result.status).toBe('AWAITING_FUNDS')
+    expect(result.fundingInstructions).toBe('00020126580014br.gov.bcb.pix')
+  })
+
+  it('given an unknown execution status, when confirming, then it rejects the response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ ...execution, status: 'DONE' })),
+    )
+
+    await expect(
+      confirmOffer(OFFER_ID, { sourceAmount: 1000, targetAmount: 182.45 }),
+    ).rejects.toThrow('Formato inválido retornado pela API')
+  })
+
+  it('given an execution, when polling, then it reads it with cancellation support', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ...execution, status: 'COMPLETED' }))
+    vi.stubGlobal('fetch', fetchMock)
+    const controller = new AbortController()
+
+    const result = await getTransferExecution(EXECUTION_ID, controller.signal)
+
+    const { url, options } = sentRequest(fetchMock)
+    expect(url).toBe(`/v1/transfer-executions/${EXECUTION_ID}`)
+    expect(options.signal).toBe(controller.signal)
+    expect(result.status).toBe('COMPLETED')
+  })
+
+  it('given a requote, when accepting it, then it posts the new amounts to the requote URL', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ ...execution, status: 'FUNDS_RECEIVED' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await confirmRequote(EXECUTION_ID, { sourceAmount: 1000, targetAmount: 180.1 })
+
+    const { url, options, body } = sentRequest(fetchMock)
+    expect(url).toBe(`/v1/transfer-executions/${EXECUTION_ID}/requote/confirm`)
+    expect(options.method).toBe('POST')
+    expect(body).toEqual({ sourceAmount: 1000, targetAmount: 180.1 })
   })
 })

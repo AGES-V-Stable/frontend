@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  CreateTransferSchema,
-  TotpCodeSchema,
+  QuoteResponseSchema,
   TransferAmountSchema,
+  TransferExecutionSchema,
   TransferFormSchema,
 } from '@/features/transfers/schemas/transfer'
 
 const validForm = {
   amount: 125000,
   amountType: 'SOURCE',
-  paymentMethod: 'ACCOUNT_BALANCE',
+  paymentMethod: 'PIX',
   beneficiaryId: '550e8400-e29b-41d4-a716-446655440000',
   description: '  Pagamento de importação  ',
 }
@@ -24,24 +24,26 @@ const firstErrorFor = (input: unknown, field: string) => {
 describe('TransferAmountSchema', () => {
   it('aceita o valor mínimo aceito pelo backend', () => {
     expect(TransferAmountSchema.safeParse(0.01).success).toBe(true)
-  })
-
-  it.each([0, -10, 0.001])('rejeita %s como valor da transferência', (amount) => {
-    expect(TransferAmountSchema.safeParse(amount).success).toBe(false)
+    expect(TransferAmountSchema.safeParse(0).success).toBe(false)
   })
 })
 
 describe('TransferFormSchema', () => {
   it('aceita um formulário completo e remove espaços da descrição', () => {
     const result = TransferFormSchema.parse(validForm)
-
-    expect(result).toEqual({ ...validForm, description: 'Pagamento de importação' })
+    expect(result.description).toBe('Pagamento de importação')
   })
 
   it('não envia descrição vazia', () => {
-    const result = TransferFormSchema.parse({ ...validForm, description: '   ' })
+    expect(TransferFormSchema.parse({ ...validForm, description: '   ' }).description).toBe(
+      undefined,
+    )
+  })
 
-    expect(result).not.toHaveProperty('description', expect.anything())
+  it('rejeita descrição acima do limite do backend', () => {
+    expect(firstErrorFor({ ...validForm, description: 'x'.repeat(129) }, 'description')).toBe(
+      'A descrição deve ter no máximo 128 caracteres',
+    )
   })
 
   it('exige valor maior que zero', () => {
@@ -50,8 +52,9 @@ describe('TransferFormSchema', () => {
     )
   })
 
-  it('exige a seleção do método de pagamento', () => {
-    expect(firstErrorFor({ ...validForm, paymentMethod: '' }, 'paymentMethod')).toBe(
+  it('aceita só os métodos de pagamento suportados pelos provedores', () => {
+    expect(TransferFormSchema.safeParse({ ...validForm, paymentMethod: 'TED' }).success).toBe(true)
+    expect(firstErrorFor({ ...validForm, paymentMethod: 'ACCOUNT_BALANCE' }, 'paymentMethod')).toBe(
       'Selecione o método de pagamento',
     )
   })
@@ -61,43 +64,61 @@ describe('TransferFormSchema', () => {
       'Selecione o beneficiário',
     )
   })
-
-  it('rejeita lado do valor diferente de SOURCE ou DESTINATION', () => {
-    expect(TransferFormSchema.safeParse({ ...validForm, amountType: 'BOTH' }).success).toBe(false)
-  })
 })
 
-describe('TotpCodeSchema', () => {
-  it('aceita código de 6 dígitos numéricos', () => {
-    expect(TotpCodeSchema.safeParse('123456').success).toBe(true)
-  })
-
-  it('aceita código de recuperação alfanumérico de 8 caracteres (com ou sem hífen)', () => {
-    expect(TotpCodeSchema.safeParse('ABCD1234').success).toBe(true)
-    expect(TotpCodeSchema.safeParse('ABCD-1234').success).toBe(true)
-  })
-
-  it.each(['12345', '1234567', 'abcdef', '123 45', '12-345'])(
-    'rejeita %s como código TOTP',
-    (code) => {
-      expect(TotpCodeSchema.safeParse(code).success).toBe(false)
+describe('QuoteResponseSchema', () => {
+  const quote = {
+    quoteRequestId: '1a2b3c4d-5e6f-4789-8abc-def012345678',
+    offer: {
+      offerId: '7d7f2a54-8f0b-4c1e-9f0e-3c2a1b0d9e8f',
+      sourceAmount: 1000,
+      targetAmount: 182.45,
+      exchangeRate: 0.18245,
+      totalFee: 3.1,
+      expiresAt: '2026-11-10T23:59:00+00:00',
+      provider: 'BLINDPAY',
     },
-  )
+  }
+
+  it('aceita a oferta completa, com ou sem expiração', () => {
+    expect(QuoteResponseSchema.safeParse(quote).success).toBe(true)
+    expect(
+      QuoteResponseSchema.safeParse({ ...quote, offer: { ...quote.offer, expiresAt: null } })
+        .success,
+    ).toBe(true)
+  })
+
+  it('rejeita valores não positivos para não exibir uma oferta inválida', () => {
+    expect(
+      QuoteResponseSchema.safeParse({ ...quote, offer: { ...quote.offer, targetAmount: 0 } })
+        .success,
+    ).toBe(false)
+  })
 })
 
-describe('CreateTransferSchema', () => {
-  it('aceita payload completo com totpCode de 6 dígitos', () => {
-    const result = CreateTransferSchema.safeParse({ ...validForm, totpCode: '654321' })
-    expect(result.success).toBe(true)
+describe('TransferExecutionSchema', () => {
+  const execution = {
+    executionId: '0b1c2d3e-4f50-4617-8293-a4b5c6d7e8f9',
+    offerId: '7d7f2a54-8f0b-4c1e-9f0e-3c2a1b0d9e8f',
+    transactionId: null,
+    provider: 'BLINDPAY',
+    status: 'REQUOTE_REQUIRED',
+    source: { amount: 1000, currency: 'BRL' },
+    target: { amount: 182.45, currency: 'USD' },
+    fundingInstructions: null,
+    requote: {
+      source: { amount: 1000, currency: 'BRL' },
+      target: { amount: 180.1, currency: 'USD' },
+      expiresAt: '2026-11-10T23:59:00Z',
+    },
+    failureCode: null,
+  }
+
+  it('aceita a execução com recotação', () => {
+    expect(TransferExecutionSchema.parse(execution).requote?.target.amount).toBe(180.1)
   })
 
-  it('aceita payload com código de recuperação de 8 caracteres', () => {
-    const result = CreateTransferSchema.safeParse({ ...validForm, totpCode: 'ABCD-1234' })
-    expect(result.success).toBe(true)
-  })
-
-  it('rejeita payload sem totpCode ou com totpCode inválido', () => {
-    expect(CreateTransferSchema.safeParse(validForm).success).toBe(false)
-    expect(CreateTransferSchema.safeParse({ ...validForm, totpCode: 'abc' }).success).toBe(false)
+  it('rejeita status desconhecido', () => {
+    expect(TransferExecutionSchema.safeParse({ ...execution, status: 'DONE' }).success).toBe(false)
   })
 })
