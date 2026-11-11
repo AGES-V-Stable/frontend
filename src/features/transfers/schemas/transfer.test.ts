@@ -121,4 +121,38 @@ describe('TransferExecutionSchema', () => {
   it('rejeita status desconhecido', () => {
     expect(TransferExecutionSchema.safeParse({ ...execution, status: 'DONE' }).success).toBe(false)
   })
+
+  it('aceita a resposta de um backend anterior, sem método nem dados de TED', () => {
+    const parsed = TransferExecutionSchema.parse(execution)
+
+    expect(parsed.fundingMethod).toBeNull()
+    expect(parsed.fundingBankTransfer).toBeNull()
+  })
+
+  it('aceita as instruções de TED e completa com nulo os campos que a BlindPay não enviou', () => {
+    const parsed = TransferExecutionSchema.parse({
+      ...execution,
+      status: 'AWAITING_FUNDS',
+      fundingMethod: 'TED',
+      fundingBankTransfer: { memoCode: 'BP-MEMO-1', accountNumber: '31254097', bankName: null },
+    })
+
+    expect(parsed.fundingMethod).toBe('TED')
+    expect(parsed.fundingBankTransfer).toEqual({
+      memoCode: 'BP-MEMO-1',
+      beneficiaryName: null,
+      beneficiaryAddress: null,
+      bankName: null,
+      bankAddress: null,
+      routingNumber: null,
+      accountNumber: '31254097',
+      accountType: null,
+    })
+  })
+
+  it('rejeita método de pagamento desconhecido', () => {
+    expect(TransferExecutionSchema.safeParse({ ...execution, fundingMethod: 'CASH' }).success).toBe(
+      false,
+    )
+  })
 })

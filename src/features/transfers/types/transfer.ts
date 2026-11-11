@@ -13,6 +13,10 @@ export type TransferPaymentMethod = 'TED' | 'PIX' | 'ACCOUNT_BALANCE' | 'BLOCKCH
 /** Como a empresa paga a transferência criada por esta tela. */
 export type FundingMethod = 'PIX' | 'TED'
 
+/** Tokens que a Avenia entrega em carteira com origem BRL via PIX; a rede vem do cadastro. */
+export const WALLET_TOKENS = ['USDC', 'USDT', 'BRLA'] as const
+export type WalletToken = (typeof WALLET_TOKENS)[number]
+
 export type TransactionStatus =
   | 'AWAITING_PAYMENT'
   | 'PROCESSING'
@@ -30,7 +34,8 @@ export interface MoneyAmount {
 
 /**
  * Token e rede intermediários não são enviados: o backend aplica os configurados para o
- * ambiente. `targetPaymentMethod` é o trilho do beneficiário (ex.: international_swift).
+ * ambiente. `targetPaymentMethod` é o trilho da conta bancária (ex.: international_swift)
+ * ou a rede da carteira cripto (ex.: polygon).
  */
 export interface QuoteRequest {
   beneficiaryId: string
@@ -80,6 +85,18 @@ export type TransferExecutionStatus =
   | 'REFUNDED'
   | 'RECONCILIATION_REQUIRED'
 
+/** Como a BlindPay devolve no payin (`memo_code` e `blindpay_bank_details`). */
+export interface BankTransferInstructions {
+  memoCode: string | null
+  beneficiaryName: string | null
+  beneficiaryAddress: string | null
+  bankName: string | null
+  bankAddress: string | null
+  routingNumber: string | null
+  accountNumber: string | null
+  accountType: string | null
+}
+
 export interface TransferExecution {
   executionId: string
   offerId: string
@@ -88,8 +105,12 @@ export interface TransferExecution {
   status: TransferExecutionStatus
   source: MoneyAmount
   target: MoneyAmount
-  /** Código PIX a pagar enquanto o status for AWAITING_FUNDS. */
+  /** Código PIX (copia e cola) a pagar enquanto o status for AWAITING_FUNDS. */
   fundingInstructions: string | null
+  /** Método de pagamento da origem; nulo em execuções antigas (sempre PIX). */
+  fundingMethod: TransferPaymentMethod | null
+  /** Dados da TED enquanto o status for AWAITING_FUNDS; campos ausentes vêm nulos. */
+  fundingBankTransfer: BankTransferInstructions | null
   /** Nova cotação a confirmar quando o status for REQUOTE_REQUIRED. */
   requote: { source: MoneyAmount; target: MoneyAmount; expiresAt: string | null } | null
   failureCode: string | null

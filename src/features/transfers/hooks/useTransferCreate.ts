@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router'
+import { z } from 'zod'
 
 import { TransferAmountSchema, TransferFormSchema } from '@/features/transfers/schemas/transfer'
 import { getCompanyBeneficiaries } from '@/features/beneficiaries'
@@ -17,14 +19,19 @@ import type {
   TransferAmountType,
   TransferExecution,
   TransferExecutionStatus,
+  WalletToken,
 } from '@/features/transfers/types/transfer'
 import { formatDecimal, parseDecimalInput } from '@/shared/utils/formatters'
 
 const QUOTE_DEBOUNCE_MS = 500
 export const EXECUTION_POLL_MS = 5000
+/** Identifica na URL a transferência em pagamento: recarregar a página a retoma pelo backend. */
+export const EXECUTION_PARAM = 'execucao'
 const SOURCE_CURRENCY = 'BRL'
 // Moeda exibida enquanto nenhum beneficiário com moeda cadastrada foi escolhido (BRL → USD no Figma).
 const DEFAULT_DESTINATION_CURRENCY = 'USD'
+// O backend não acompanha execuções da Avenia depois do ticket: consultar de novo não muda nada.
+const UNTRACKED_PROVIDER = 'AVENIA'
 
 /** Estados em que o provedor ainda vai avançar a execução sem ação do usuário. */
 const IN_PROGRESS_STATUSES = new Set<TransferExecutionStatus>([
@@ -51,6 +58,7 @@ interface FormValues {
   sourceAmount: string
   destinationAmount: string
   beneficiaryId: string
+  walletToken: WalletToken | ''
   description: string
 }
 
@@ -59,10 +67,35 @@ const initialValues: FormValues = {
   sourceAmount: '',
   destinationAmount: '',
   beneficiaryId: '',
+  walletToken: '',
   description: '',
 }
 
 const EXPIRED_QUOTE_MESSAGE = 'A cotação expirou ou mudou. Atualize a cotação e confirme novamente.'
+
+const isWallet = (beneficiary: Beneficiary | undefined) =>
+  beneficiary?.receivingMethod === 'CRYPTO_WALLET'
+
+/**
+ * Moeda e trilho da cotação, sempre vindos de dados reais. Conta bancária: moeda e trilho do
+ * cadastro. Carteira cripto: rede do cadastro e token do cadastro ou escolhido pelo usuário.
+ */
+function quoteTarget(beneficiary: Beneficiary | undefined, walletToken: WalletToken | '') {
+  if (!beneficiary) return null
+  if (isWallet(beneficiary)) {
+    const currency = beneficiary.currency || walletToken
+    return currency && beneficiary.blockchainNetwork
+      ? { currency, rail: beneficiary.blockchainNetwork }
+      : null
+  }
+  return beneficiary.currency && beneficiary.paymentRail
+    ? { currency: beneficiary.currency, rail: beneficiary.paymentRail }
+    : null
+}
+
+/** A Avenia, única que cota carteira cripto, só recebe BRL por PIX; TED é da BlindPay. */
+const fundingMethodsFor = (beneficiary: Beneficiary | undefined): FundingMethod[] =>
+  isWallet(beneficiary) ? ['PIX'] : ['PIX', 'TED']
 
 const quoteErrorMessage = (error: unknown) => {
   if (error instanceof HttpError && error.status === 422)
@@ -79,6 +112,13 @@ const confirmErrorMessage = (error: unknown) => {
     return EXPIRED_QUOTE_MESSAGE
   return 'Não foi possível confirmar a transferência. Tente novamente.'
 }
+
+const restoreErrorMessage = (error: unknown) =>
+  error instanceof HttpError && error.status === 404
+    ? 'Transferência não encontrada para a sua empresa.'
+    : 'Não foi possível carregar a transferência. Tente novamente.'
+
+const isUuid = (value: string) => z.uuid().safeParse(value).success
 
 /** A oferta só vale até `expiresAt`; o backend recusa confirmações depois disso. */
 const millisUntil = (isoDate: string | null) =>
@@ -97,6 +137,7 @@ export function useTransferCreate() {
   const session = useSession()
   const user = session.user
   const companyId = user?.companyId
+  const [searchParams, setSearchParams] = useSearchParams()
   const [activeStep, setActiveStep] = useState<number>(0)
   const [values, setValues] = useState<FormValues>(initialValues)
   const [amountType, setAmountType] = useState<TransferAmountType>('SOURCE')
@@ -108,31 +149,53 @@ export function useTransferCreate() {
   const [execution, setExecution] = useState<TransferExecution | null>(null)
   const [pollAttempt, setPollAttempt] = useState(0)
   const [pollError, setPollError] = useState(false)
+  const [restoreFailure, setRestoreFailure] = useState<{ id: string; message: string } | null>(null)
+  // A URL é atualizada numa transição do router: até lá, a execução deixada não é recarregada.
+  const [leftExecutionId, setLeftExecutionId] = useState<string | null>(null)
 
   // O backend é a fonte da trava, entregue no perfil do usuário.
   const rawLockedUntil = user?.withdrawalLockedUntil
   const isWithdrawalLocked = isFutureIsoDate(rawLockedUntil)
   const withdrawalLockedUntil = isWithdrawalLocked ? rawLockedUntil : null
 
+  // Execução indicada na URL e ainda não carregada: a página a retoma em vez de abrir o formulário.
+  const urlExecutionId = searchParams.get(EXECUTION_PARAM)
+  const executionParam = urlExecutionId === leftExecutionId ? null : urlExecutionId
+  const restoreError =
+    executionParam === null
+      ? undefined
+      : !isUuid(executionParam)
+        ? 'O link desta transferência é inválido.'
+        : restoreFailure?.id === executionParam
+          ? restoreFailure.message
+          : undefined
+  const restoring =
+    executionParam !== null &&
+    restoreError === undefined &&
+    execution?.executionId !== executionParam
+  const canRetryRestore = executionParam !== null && restoreFailure?.id === executionParam
+
   const editedAmountText = amountType === 'SOURCE' ? values.sourceAmount : values.destinationAmount
   const editedAmount = parseDecimalInput(editedAmountText)
   const beneficiaryList = beneficiaries.status === 'ready' ? beneficiaries.items : []
   const selectedBeneficiary = beneficiaryList.find((item) => item.id === values.beneficiaryId)
-  const destinationCurrency = selectedBeneficiary?.currency || DEFAULT_DESTINATION_CURRENCY
-  // A cotação precisa da moeda e do trilho reais do beneficiário; sem eles não se presume nada.
+  const target = quoteTarget(selectedBeneficiary, values.walletToken)
+  // Carteira sem token cadastrado: o usuário escolhe o token; nada é presumido.
+  const needsWalletToken = isWallet(selectedBeneficiary) && !selectedBeneficiary?.currency
   const beneficiaryMissingData = Boolean(
-    selectedBeneficiary && (!selectedBeneficiary.currency || !selectedBeneficiary.paymentRail),
+    selectedBeneficiary &&
+    (isWallet(selectedBeneficiary)
+      ? !selectedBeneficiary.blockchainNetwork
+      : !selectedBeneficiary.currency || !selectedBeneficiary.paymentRail),
   )
-  const quoteCurrency = selectedBeneficiary?.currency || null
-  const quoteRail = selectedBeneficiary?.paymentRail || null
+  const fundingMethods = fundingMethodsFor(selectedBeneficiary)
+  const destinationCurrency = target?.currency || DEFAULT_DESTINATION_CURRENCY
+  const quoteCurrency = target?.currency ?? null
+  const quoteRail = target?.rail ?? null
   const paymentMethod = values.paymentMethod
   const beneficiaryId = values.beneficiaryId
   const description = values.description.trim()
-  const canQuote =
-    isValidAmount(editedAmount) &&
-    quoteCurrency !== null &&
-    quoteRail !== null &&
-    paymentMethod !== ''
+  const canQuote = isValidAmount(editedAmount) && target !== null && paymentMethod !== ''
 
   useEffect(() => {
     let active = true
@@ -152,6 +215,24 @@ export function useTransferCreate() {
       controller.abort()
     }
   }, [companyId])
+
+  // Retoma a execução da URL pelo backend, que só a devolve para a empresa do usuário.
+  useEffect(() => {
+    if (!restoring || executionParam === null) return
+    const controller = new AbortController()
+    getTransferExecution(executionParam, controller.signal)
+      .then((restored) => {
+        if (controller.signal.aborted) return
+        setExecution(restored)
+        setPollError(false)
+        setActiveStep(2)
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return
+        setRestoreFailure({ id: executionParam, message: restoreErrorMessage(error) })
+      })
+    return () => controller.abort()
+  }, [restoring, executionParam])
 
   useEffect(() => {
     if (!isValidAmount(editedAmount) || !quoteCurrency || !quoteRail || paymentMethod === '') return
@@ -227,8 +308,15 @@ export function useTransferCreate() {
   // Acompanha a execução enquanto o provedor ainda vai movê-la.
   const executionId = execution?.executionId
   const executionStatus = execution?.status
+  const executionTracked = execution?.provider !== UNTRACKED_PROVIDER
   useEffect(() => {
-    if (!executionId || !executionStatus || !IN_PROGRESS_STATUSES.has(executionStatus)) return
+    if (
+      !executionId ||
+      !executionStatus ||
+      !executionTracked ||
+      !IN_PROGRESS_STATUSES.has(executionStatus)
+    )
+      return
     const controller = new AbortController()
     const timer = setTimeout(() => {
       getTransferExecution(executionId, controller.signal)
@@ -248,15 +336,16 @@ export function useTransferCreate() {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [executionId, executionStatus, pollAttempt])
+  }, [executionId, executionStatus, executionTracked, pollAttempt])
 
   // Qualquer mudança que afete a cotação invalida a anterior na hora: nada fica exibido como válido.
   function invalidateQuote(willQuote: boolean) {
     setQuoteState(willQuote ? { status: 'loading' } : { status: 'idle' })
   }
 
-  const hasQuoteTarget = (beneficiary: Beneficiary | undefined) =>
-    Boolean(beneficiary?.currency && beneficiary.paymentRail)
+  // O valor do lado oposto veio da cotação anterior, que deixa de valer.
+  const clearCalculatedAmount = () =>
+    amountType === 'SOURCE' ? { destinationAmount: '' } : { sourceAmount: '' }
 
   function handleAmountChange(type: TransferAmountType, text: string) {
     setAmountType(type)
@@ -266,34 +355,41 @@ export function useTransferCreate() {
         : { ...previous, destinationAmount: text, sourceAmount: '' },
     )
     invalidateQuote(
-      isValidAmount(parseDecimalInput(text)) &&
-        hasQuoteTarget(selectedBeneficiary) &&
-        values.paymentMethod !== '',
+      isValidAmount(parseDecimalInput(text)) && target !== null && values.paymentMethod !== '',
     )
   }
 
   function handleBeneficiaryChange(beneficiaryId: string) {
     const next = beneficiaryList.find((item) => item.id === beneficiaryId)
+    // O token escolhido vale só para a carteira em que foi escolhido.
+    const nextPaymentMethod =
+      values.paymentMethod !== '' && !fundingMethodsFor(next).includes(values.paymentMethod)
+        ? 'PIX'
+        : values.paymentMethod
     setValues((previous) => ({
       ...previous,
       beneficiaryId,
-      // O valor do lado oposto veio da cotação anterior, que deixa de valer.
-      ...(amountType === 'SOURCE' ? { destinationAmount: '' } : { sourceAmount: '' }),
+      walletToken: '',
+      paymentMethod: nextPaymentMethod,
+      ...clearCalculatedAmount(),
     }))
     invalidateQuote(
-      isValidAmount(editedAmount) && hasQuoteTarget(next) && values.paymentMethod !== '',
+      isValidAmount(editedAmount) && quoteTarget(next, '') !== null && nextPaymentMethod !== '',
+    )
+  }
+
+  function handleWalletTokenChange(walletToken: WalletToken | '') {
+    setValues((previous) => ({ ...previous, walletToken, ...clearCalculatedAmount() }))
+    invalidateQuote(
+      isValidAmount(editedAmount) &&
+        quoteTarget(selectedBeneficiary, walletToken) !== null &&
+        values.paymentMethod !== '',
     )
   }
 
   function handlePaymentMethodChange(paymentMethod: FundingMethod | '') {
-    setValues((previous) => ({
-      ...previous,
-      paymentMethod,
-      ...(amountType === 'SOURCE' ? { destinationAmount: '' } : { sourceAmount: '' }),
-    }))
-    invalidateQuote(
-      isValidAmount(editedAmount) && hasQuoteTarget(selectedBeneficiary) && paymentMethod !== '',
-    )
+    setValues((previous) => ({ ...previous, paymentMethod, ...clearCalculatedAmount() }))
+    invalidateQuote(isValidAmount(editedAmount) && target !== null && paymentMethod !== '')
   }
 
   function handleDescriptionChange(text: string) {
@@ -306,6 +402,11 @@ export function useTransferCreate() {
     setQuoteRequestId((id) => id + 1)
   }
 
+  function handleRetryRestore() {
+    setRestoreFailure(null)
+  }
+
+  /** Volta ao formulário. A transferência anterior continua no backend; nada é cancelado. */
   function handleCancel() {
     setValues(initialValues)
     setAmountType('SOURCE')
@@ -313,7 +414,18 @@ export function useTransferCreate() {
     setSubmitError(undefined)
     setExecution(null)
     setPollError(false)
+    setRestoreFailure(null)
     setActiveStep(0)
+    if (urlExecutionId !== null) {
+      setLeftExecutionId(urlExecutionId)
+      setSearchParams(
+        (params) => {
+          params.delete(EXECUTION_PARAM)
+          return params
+        },
+        { replace: true },
+      )
+    }
   }
 
   const form = TransferFormSchema.safeParse({
@@ -361,6 +473,14 @@ export function useTransferCreate() {
         setExecution(result)
         setPollError(false)
         setActiveStep(2)
+        // Com o id na URL, recarregar a página retoma esta execução em vez de criar outra.
+        setSearchParams(
+          (params) => {
+            params.set(EXECUTION_PARAM, result.executionId)
+            return params
+          },
+          { replace: true },
+        )
       })
       .catch((error: unknown) => {
         const message = confirmErrorMessage(error)
@@ -398,6 +518,8 @@ export function useTransferCreate() {
     activeStep,
     selectedBeneficiary,
     beneficiaryMissingData,
+    needsWalletToken,
+    fundingMethods,
     values,
     amountType,
     quoteState,
@@ -405,7 +527,11 @@ export function useTransferCreate() {
     submitting,
     submitError,
     execution,
+    executionTracked,
     pollError,
+    restoring,
+    restoreError,
+    canRetryRestore,
     beneficiaryList,
     destinationCurrency,
     canContinue,
@@ -415,9 +541,11 @@ export function useTransferCreate() {
     withdrawalLockedUntil,
     handleAmountChange,
     handleBeneficiaryChange,
+    handleWalletTokenChange,
     handlePaymentMethodChange,
     handleDescriptionChange,
     handleRetryQuote,
+    handleRetryRestore,
     handleCancel,
     handleNextStep,
     handlePreviousStep,

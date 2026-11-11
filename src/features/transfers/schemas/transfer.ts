@@ -40,6 +40,23 @@ export const QuoteResponseSchema = z.object({
   }),
 }) satisfies z.ZodType<QuoteResponse>
 
+// Campos novos do backend: aceitos ausentes para não quebrar com uma versão anterior da API.
+const optionalText = z
+  .string()
+  .nullish()
+  .transform((value) => value ?? null)
+
+const BankTransferSchema = z.object({
+  memoCode: optionalText,
+  beneficiaryName: optionalText,
+  beneficiaryAddress: optionalText,
+  bankName: optionalText,
+  bankAddress: optionalText,
+  routingNumber: optionalText,
+  accountNumber: optionalText,
+  accountType: optionalText,
+})
+
 export const TransferExecutionSchema = z.object({
   executionId: z.uuid(),
   offerId: z.uuid(),
@@ -61,6 +78,11 @@ export const TransferExecutionSchema = z.object({
   source: MoneyAmountSchema,
   target: MoneyAmountSchema,
   fundingInstructions: z.string().nullable(),
+  fundingMethod: z
+    .enum(['PIX', 'TED', 'ACCOUNT_BALANCE', 'BLOCKCHAIN'])
+    .nullish()
+    .transform((value) => value ?? null),
+  fundingBankTransfer: BankTransferSchema.nullish().transform((value) => value ?? null),
   requote: z
     .object({
       source: MoneyAmountSchema,

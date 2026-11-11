@@ -3,11 +3,13 @@ import { Input } from '@/shared/components/Input'
 import { ActionIcon } from '@/shared/components/Icons/ActionIcon'
 import { Stepper } from '@/shared/components/Stepper'
 import type { Beneficiary } from '@/features/beneficiaries'
-import type {
-  FundingMethod,
-  QuoteOffer,
-  TransferExecution,
-  TransferExecutionStatus,
+import {
+  WALLET_TOKENS,
+  type BankTransferInstructions,
+  type FundingMethod,
+  type QuoteOffer,
+  type TransferExecution,
+  type TransferExecutionStatus,
 } from '@/features/transfers/types/transfer'
 import { currencySymbol, formatMoney } from '@/shared/utils/formatters'
 import { useTransferCreate } from '@/features/transfers/hooks/useTransferCreate'
@@ -20,10 +22,7 @@ const FIELD_CLASS =
 
 const SOURCE_CURRENCY = 'BRL'
 
-const PAYMENT_METHODS: { value: FundingMethod; label: string }[] = [
-  { value: 'PIX', label: 'PIX' },
-  { value: 'TED', label: 'TED' },
-]
+const PAYMENT_METHOD_LABELS: Record<FundingMethod, string> = { PIX: 'PIX', TED: 'TED' }
 
 const EXECUTION_STATUS: Record<TransferExecutionStatus, string> = {
   PENDING_SUBMISSION: 'Enviando ao provedor...',
@@ -48,9 +47,82 @@ const beneficiaryName = (beneficiary: Beneficiary) => beneficiary.legalName || b
 
 const formatTime = (isoDate: string) => new Date(isoDate).toLocaleTimeString('pt-BR')
 
-/** Câmbio efetivo: quanto chega por real pago, já com as taxas dos provedores. */
+const RATE_FORMAT = new Intl.NumberFormat('pt-BR', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 4,
+})
+
+/**
+ * Câmbio efetivo: quanto chega por real pago, já com as taxas. Calculado dos próprios valores
+ * da oferta, que têm o mesmo significado em todos os provedores.
+ */
 const effectiveRate = (offer: QuoteOffer, targetCurrency: string) =>
-  `1 ${SOURCE_CURRENCY} = ${formatMoney(offer.exchangeRate, targetCurrency)}`
+  `1 ${SOURCE_CURRENCY} = ${RATE_FORMAT.format(offer.targetAmount / offer.sourceAmount)} ${targetCurrency}`
+
+/** Rótulos dos dados que a BlindPay devolve para a TED; só os preenchidos são exibidos. */
+const BANK_TRANSFER_FIELDS: { key: keyof BankTransferInstructions; label: string }[] = [
+  { key: 'memoCode', label: 'Código de referência' },
+  { key: 'beneficiaryName', label: 'Favorecido' },
+  { key: 'beneficiaryAddress', label: 'Endereço do favorecido' },
+  { key: 'bankName', label: 'Banco' },
+  { key: 'bankAddress', label: 'Endereço do banco' },
+  { key: 'routingNumber', label: 'Código de roteamento' },
+  { key: 'accountNumber', label: 'Conta' },
+  { key: 'accountType', label: 'Tipo de conta' },
+]
+
+function FundingInstructions({ execution }: { execution: TransferExecution }) {
+  if (execution.fundingMethod === 'TED') {
+    const transfer = execution.fundingBankTransfer
+    const fields = BANK_TRANSFER_FIELDS.filter(({ key }) => transfer?.[key])
+    if (!transfer || fields.length === 0) {
+      return (
+        <p role="alert" className="text-sm text-amber-800">
+          Os dados para a TED ainda não estão disponíveis. Não faça o pagamento até que apareçam
+          aqui.
+        </p>
+      )
+    }
+    return (
+      <div className="flex flex-col gap-2">
+        <h3 className="text-[14px] text-sage-800">Dados para pagamento por TED</h3>
+        <dl className="grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 text-sm md:grid-cols-2">
+          {fields.map(({ key, label }) => (
+            <div key={key} className="flex flex-col gap-1">
+              <dt className="text-xs font-semibold uppercase text-slate-500">{label}</dt>
+              <dd className="break-all font-mono text-slate-900">{transfer[key]}</dd>
+            </div>
+          ))}
+        </dl>
+        {transfer.memoCode && (
+          <p className="text-xs text-slate-500">
+            Informe o código de referência na transferência para que o pagamento seja identificado.
+          </p>
+        )}
+      </div>
+    )
+  }
+  if (!execution.fundingInstructions) {
+    return (
+      <p role="alert" className="text-sm text-amber-800">
+        O código PIX ainda não está disponível. Não faça o pagamento até que apareça aqui.
+      </p>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor="transfer-funding" className="text-[14px] text-sage-800">
+        Código PIX para pagamento (copia e cola)
+      </label>
+      <textarea
+        id="transfer-funding"
+        readOnly
+        value={execution.fundingInstructions}
+        className={`${FIELD_CLASS} h-24 resize-none py-3 font-mono text-xs`}
+      />
+    </div>
+  )
+}
 
 function OfferValues({ offer, targetCurrency }: { offer: QuoteOffer; targetCurrency: string }) {
   return (
@@ -83,6 +155,7 @@ function OfferValues({ offer, targetCurrency }: { offer: QuoteOffer; targetCurre
 
 interface ExecutionPanelProps {
   execution: TransferExecution
+  tracked: boolean
   pollError: boolean
   submitting: boolean
   submitError?: string
@@ -92,6 +165,7 @@ interface ExecutionPanelProps {
 
 function ExecutionPanel({
   execution,
+  tracked,
   pollError,
   submitting,
   submitError,
@@ -101,6 +175,8 @@ function ExecutionPanel({
   const done = ['COMPLETED', 'FAILED', 'REFUNDED', 'RECONCILIATION_REQUIRED'].includes(
     execution.status,
   )
+  // Sem acompanhamento automático, a tela não chega sozinha a um estado final.
+  const canStartAnother = done || !tracked
   return (
     <section className="flex flex-col gap-6 rounded-xl border border-sage-300 bg-white p-6">
       <div className="flex flex-col gap-1">
@@ -125,21 +201,21 @@ function ExecutionPanel({
         </div>
       </dl>
 
-      {execution.status === 'AWAITING_FUNDS' && execution.fundingInstructions && (
+      {execution.status === 'AWAITING_FUNDS' && (
         <div className="flex flex-col gap-2">
-          <label htmlFor="transfer-funding" className="text-[14px] text-sage-800">
-            Código PIX para pagamento (copia e cola)
-          </label>
-          <textarea
-            id="transfer-funding"
-            readOnly
-            value={execution.fundingInstructions}
-            className={`${FIELD_CLASS} h-24 resize-none py-3 font-mono text-xs`}
-          />
+          <FundingInstructions execution={execution} />
           <p className="text-xs text-slate-500">
-            Pague o valor exato. O status é atualizado automaticamente após a confirmação.
+            Pague o valor exato.{' '}
+            {tracked && 'O status é atualizado automaticamente após a confirmação.'}
           </p>
         </div>
+      )}
+
+      {!tracked && (
+        <p className="text-sm text-slate-600">
+          Pela {providerName(execution.provider)}, esta tela não acompanha o pagamento
+          automaticamente. Guarde o código antes de sair e não repita a transferência.
+        </p>
       )}
 
       {execution.status === 'REQUOTE_REQUIRED' && execution.requote && (
@@ -180,15 +256,20 @@ function ExecutionPanel({
         </p>
       )}
 
-      {done && (
-        <div className="w-full sm:w-[240px]">
-          <Button
-            type="button"
-            variant="secondary"
-            label="Nova transferência"
-            onClick={onNewTransfer}
-            className="h-12 font-medium"
-          />
+      {canStartAnother && (
+        <div className="flex flex-col gap-2">
+          {!done && (
+            <p className="text-xs text-slate-500">Iniciar outra transferência não cancela esta.</p>
+          )}
+          <div className="w-full sm:w-[240px]">
+            <Button
+              type="button"
+              variant="secondary"
+              label="Nova transferência"
+              onClick={onNewTransfer}
+              className="h-12 font-medium"
+            />
+          </div>
         </div>
       )}
     </section>
@@ -200,6 +281,8 @@ export function TransferCreate() {
     activeStep,
     selectedBeneficiary,
     beneficiaryMissingData,
+    needsWalletToken,
+    fundingMethods,
     values,
     amountType,
     quoteState,
@@ -207,7 +290,11 @@ export function TransferCreate() {
     submitting,
     submitError,
     execution,
+    executionTracked,
     pollError,
+    restoring,
+    restoreError,
+    canRetryRestore,
     beneficiaryList,
     destinationCurrency,
     canContinue,
@@ -217,9 +304,11 @@ export function TransferCreate() {
     withdrawalLockedUntil,
     handleAmountChange,
     handleBeneficiaryChange,
+    handleWalletTokenChange,
     handlePaymentMethodChange,
     handleDescriptionChange,
     handleRetryQuote,
+    handleRetryRestore,
     handleCancel,
     handleNextStep,
     handlePreviousStep,
@@ -244,8 +333,13 @@ export function TransferCreate() {
       {quoteState.status === 'idle' &&
         (beneficiaryMissingData ? (
           <p role="alert" className="text-sm text-red-700">
-            Este beneficiário não tem moeda ou trilho de recebimento cadastrado. Atualize o cadastro
-            para transferir.
+            {selectedBeneficiary?.receivingMethod === 'CRYPTO_WALLET'
+              ? 'Esta carteira não tem rede cadastrada. Atualize o cadastro para transferir.'
+              : 'Este beneficiário não tem moeda ou trilho de recebimento cadastrado. Atualize o cadastro para transferir.'}
+          </p>
+        ) : needsWalletToken && !values.walletToken ? (
+          <p className="text-sm text-slate-500">
+            Escolha o token que a carteira vai receber para consultar a cotação.
           </p>
         ) : (
           <p className="text-sm text-slate-500">
@@ -324,7 +418,44 @@ export function TransferCreate() {
         </div>
       )}
 
-      <Stepper steps={TRANSFER_STEPS} activeStep={activeStep} className="max-w-[1038px]" />
+      {restoring && (
+        <p role="status" className="text-sm text-slate-500">
+          Carregando a transferência...
+        </p>
+      )}
+
+      {restoreError && (
+        <section className="flex flex-col gap-4 rounded-xl border border-sage-300 bg-white p-6">
+          <p role="alert" className="text-sm text-red-700">
+            {restoreError}
+          </p>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row">
+            <div className="w-full sm:w-[240px]">
+              <Button
+                type="button"
+                variant="secondary"
+                label="Nova transferência"
+                onClick={handleCancel}
+                className="h-12 font-medium"
+              />
+            </div>
+            {canRetryRestore && (
+              <div className="w-full sm:w-[240px]">
+                <Button
+                  type="button"
+                  label="Tentar novamente"
+                  onClick={handleRetryRestore}
+                  className="h-12 font-medium"
+                />
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {!restoring && !restoreError && (
+        <Stepper steps={TRANSFER_STEPS} activeStep={activeStep} className="max-w-[1038px]" />
+      )}
 
       {submitError && activeStep !== 2 && (
         <p role="alert" className="text-sm text-red-700">
@@ -333,7 +464,7 @@ export function TransferCreate() {
       )}
 
       {/* PASSO 0: DADOS DA TRANSFERÊNCIA */}
-      {activeStep === 0 && (
+      {activeStep === 0 && !restoring && !restoreError && (
         <form
           noValidate
           onSubmit={(event) => {
@@ -355,19 +486,23 @@ export function TransferCreate() {
                 disabled={submitting}
                 onChange={(event) =>
                   handlePaymentMethodChange(
-                    PAYMENT_METHODS.find((method) => method.value === event.target.value)?.value ??
-                      '',
+                    fundingMethods.find((method) => method === event.target.value) ?? '',
                   )
                 }
                 className={`${FIELD_CLASS} h-12`}
               >
                 <option value="">Selecione o método de pagamento</option>
-                {PAYMENT_METHODS.map((method) => (
-                  <option key={method.value} value={method.value}>
-                    {method.label}
+                {fundingMethods.map((method) => (
+                  <option key={method} value={method}>
+                    {PAYMENT_METHOD_LABELS[method]}
                   </option>
                 ))}
               </select>
+              {selectedBeneficiary?.receivingMethod === 'CRYPTO_WALLET' && (
+                <p className="text-xs text-slate-500">
+                  Transferência para carteira cripto é paga somente por PIX.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-6">
@@ -431,6 +566,36 @@ export function TransferCreate() {
                 </p>
               )}
             </div>
+
+            {needsWalletToken && (
+              <div className="flex flex-col gap-1">
+                <label htmlFor="transfer-walletToken" className="text-[14px] text-sage-800">
+                  Token recebido na carteira*
+                </label>
+                <select
+                  id="transfer-walletToken"
+                  value={values.walletToken}
+                  disabled={submitting}
+                  onChange={(event) =>
+                    handleWalletTokenChange(
+                      WALLET_TOKENS.find((token) => token === event.target.value) ?? '',
+                    )
+                  }
+                  className={`${FIELD_CLASS} h-12`}
+                >
+                  <option value="">Selecione o token</option>
+                  {WALLET_TOKENS.map((token) => (
+                    <option key={token} value={token}>
+                      {token}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500">
+                  A rede é a cadastrada na carteira ({selectedBeneficiary?.blockchainNetwork}).
+                  Confirme que ela aceita este token antes de transferir.
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-col gap-1">
               <label htmlFor="transfer-description" className="text-[14px] text-sage-800">
@@ -573,6 +738,7 @@ export function TransferCreate() {
         <div className="mx-auto w-full max-w-[1038px]">
           <ExecutionPanel
             execution={execution}
+            tracked={executionTracked}
             pollError={pollError}
             submitting={submitting}
             submitError={submitError}

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getCompanyBeneficiaries } from '@/features/beneficiaries/api/beneficiary'
@@ -13,7 +14,7 @@ import { useSession } from '@/features/auth'
 import type { Beneficiary } from '@/features/beneficiaries/types/beneficiary'
 import type { QuoteResponse, TransferExecution } from '@/features/transfers/types/transfer'
 import { formatMoney } from '@/shared/utils/formatters'
-import { EXECUTION_POLL_MS } from '@/features/transfers/hooks/useTransferCreate'
+import { EXECUTION_PARAM, EXECUTION_POLL_MS } from '@/features/transfers/hooks/useTransferCreate'
 
 import { TransferCreate } from '@/features/transfers/pages/client/transferCreate/TransferCreate'
 
@@ -51,6 +52,32 @@ const withoutRail: Beneficiary = {
   paymentRail: null,
 }
 
+// Carteira cadastrada pela tela atual: sem moeda; o backend preenche paymentRail por padrão.
+const wallet: Beneficiary = {
+  ...atlas,
+  id: '9b2f6c1e-3d4a-4b5c-8d6e-7f8091a2b3c4',
+  nickname: 'Treasury wallet',
+  legalName: 'Treasury Wallet Ltd',
+  receivingMethod: 'CRYPTO_WALLET',
+  currency: null,
+  paymentRail: 'international_swift',
+  blockchainNetwork: 'polygon',
+}
+
+const usdtWallet: Beneficiary = {
+  ...wallet,
+  id: '1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f',
+  legalName: 'USDT Wallet Ltd',
+  currency: 'USDT',
+}
+
+const walletWithoutNetwork: Beneficiary = {
+  ...wallet,
+  id: '2d3e4f5a-6b7c-4d8e-9f0a-1b2c3d4e5f6a',
+  legalName: 'Broken Wallet Ltd',
+  blockchainNetwork: null,
+}
+
 let quote: QuoteResponse
 
 const offerFor = (sourceAmount: number, targetAmount: number, provider = 'BLINDPAY') => ({
@@ -75,6 +102,8 @@ const execution = (overrides: Partial<TransferExecution> = {}): TransferExecutio
   source: { amount: 1000, currency: 'BRL' },
   target: { amount: 182.45, currency: 'USD' },
   fundingInstructions: '00020126580014br.gov.bcb.pix',
+  fundingMethod: 'PIX',
+  fundingBankTransfer: null,
   requote: null,
   failureCode: null,
   ...overrides,
@@ -98,10 +127,25 @@ const paymentSelect = () => screen.getByLabelText('Método de Pagamento*')
 const continueButton = () => screen.getByRole('button', { name: 'Continuar' })
 const confirmButton = () => screen.getByRole('button', { name: 'Confirmar transferência' })
 
-const renderPage = async () => {
-  render(<TransferCreate />)
+// Mostra a query string atual: é ela que permite retomar a execução ao recarregar a página.
+function LocationProbe() {
+  return <span data-testid="location">{useLocation().search}</span>
+}
+
+const currentSearch = () => screen.getByTestId('location').textContent
+
+const renderPage = async (path = '/app/transferencias') => {
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <TransferCreate />
+      <LocationProbe />
+    </MemoryRouter>,
+  )
   await advance()
 }
+
+const reloadWithExecution = (id = EXECUTION_ID) =>
+  renderPage(`/app/transferencias?${EXECUTION_PARAM}=${id}`)
 
 const typeSourceAmount = async (text: string) => {
   fireEvent.change(sourceInput(), { target: { value: text } })
@@ -150,8 +194,8 @@ describe('TransferCreate', () => {
     quote = offerFor(1000, 182.45)
     vi.mocked(useSession).mockReturnValue(sessionUser())
     vi.mocked(getCompanyBeneficiaries).mockResolvedValue({
-      content: [atlas, withoutRail],
-      totalElements: 2,
+      content: [atlas, withoutRail, wallet, usdtWallet, walletWithoutNetwork],
+      totalElements: 5,
       totalPages: 1,
       number: 0,
       size: 100,
@@ -297,6 +341,78 @@ describe('TransferCreate', () => {
       )
     })
 
+    it('given a crypto wallet without token, when the user picks one, then it quotes PIX on the registered network', async () => {
+      await renderPage()
+      fireEvent.change(beneficiarySelect(), { target: { value: wallet.id } })
+      await typeSourceAmount('1000')
+
+      expect(createQuote).not.toHaveBeenCalled()
+      expect(
+        screen.getByText('Escolha o token que a carteira vai receber para consultar a cotação.'),
+      ).toBeInTheDocument()
+      const methods = Array.from(paymentSelect().querySelectorAll('option')).map((o) => o.value)
+      expect(methods).toEqual(['', 'PIX'])
+
+      fireEvent.change(screen.getByLabelText('Token recebido na carteira*'), {
+        target: { value: 'USDC' },
+      })
+      await advance(DEBOUNCE_MS)
+
+      expect(createQuote).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(createQuote).mock.calls[0]![0]).toMatchObject({
+        beneficiaryId: wallet.id,
+        targetCurrency: 'USDC',
+        sourcePaymentMethod: 'PIX',
+        targetPaymentMethod: 'polygon',
+      })
+    })
+
+    it('uses the token registered in the wallet without asking for one', async () => {
+      await renderPage()
+      fireEvent.change(beneficiarySelect(), { target: { value: usdtWallet.id } })
+
+      await typeSourceAmount('1000')
+
+      expect(screen.queryByLabelText('Token recebido na carteira*')).not.toBeInTheDocument()
+      expect(vi.mocked(createQuote).mock.calls[0]![0]).toMatchObject({
+        targetCurrency: 'USDT',
+        targetPaymentMethod: 'polygon',
+      })
+    })
+
+    it('switches back to PIX when a wallet is chosen after TED was selected', async () => {
+      await renderPage()
+      fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
+      fireEvent.change(paymentSelect(), { target: { value: 'TED' } })
+
+      fireEvent.change(beneficiarySelect(), { target: { value: usdtWallet.id } })
+      await typeSourceAmount('1000')
+
+      expect(paymentSelect()).toHaveValue('PIX')
+      expect(vi.mocked(createQuote).mock.calls[0]![0]).toMatchObject({ sourcePaymentMethod: 'PIX' })
+    })
+
+    it('warns and does not quote when the wallet has no network', async () => {
+      await renderPage()
+      fireEvent.change(beneficiarySelect(), { target: { value: walletWithoutNetwork.id } })
+
+      await typeSourceAmount('1000')
+
+      expect(createQuote).not.toHaveBeenCalled()
+      expect(screen.getByRole('alert')).toHaveTextContent('Esta carteira não tem rede cadastrada')
+    })
+
+    it('shows the effective rate from the offer amounts, whatever the provider exchangeRate means', async () => {
+      // A Avenia já devolveu o basePrice (BRL por token) como exchangeRate.
+      quote = { ...offerFor(1000, 180.5, 'AVENIA') }
+      quote.offer.exchangeRate = 5.54
+      await renderPage()
+
+      await fillStep0()
+
+      expect(screen.getByText('1 BRL = 0,1805 USD')).toBeInTheDocument()
+    })
+
     it('explains when no provider can quote and allows a retry', async () => {
       vi.mocked(createQuote).mockRejectedValueOnce(httpError(422))
       await renderPage()
@@ -389,6 +505,8 @@ describe('TransferCreate', () => {
       expect(screen.getByLabelText('Código PIX para pagamento (copia e cola)')).toHaveValue(
         '00020126580014br.gov.bcb.pix',
       )
+      // O id da execução vai para a URL: recarregar retoma esta transferência.
+      expect(currentSearch()).toBe(`?${EXECUTION_PARAM}=${EXECUTION_ID}`)
     })
 
     it('returns to Dados asking for a new quote when the backend rejects the offer', async () => {
@@ -498,6 +616,151 @@ describe('TransferCreate', () => {
       await advance()
 
       expect(sourceInput()).toHaveValue('')
+      expect(currentSearch()).toBe('')
+      expect(getTransferExecution).not.toHaveBeenCalled()
+    })
+
+    it('does not offer a new transfer while a tracked payment is pending', async () => {
+      vi.mocked(getTransferExecution).mockResolvedValue(execution())
+      await renderPage()
+      await goToPayment()
+
+      await advance(EXECUTION_POLL_MS)
+
+      expect(screen.queryByRole('button', { name: 'Nova transferência' })).not.toBeInTheDocument()
+    })
+
+    it('shows the TED bank details instead of a PIX code', async () => {
+      vi.mocked(confirmOffer).mockResolvedValueOnce(
+        execution({
+          fundingMethod: 'TED',
+          fundingInstructions: null,
+          fundingBankTransfer: {
+            memoCode: 'BP-MEMO-1',
+            beneficiaryName: 'BlindPay, Inc.',
+            beneficiaryAddress: null,
+            bankName: 'Column NA',
+            bankAddress: null,
+            routingNumber: '121145349',
+            accountNumber: '31254097',
+            accountType: 'Business checking',
+          },
+        }),
+      )
+      await renderPage()
+      await goToPayment()
+
+      expect(screen.getByText('Dados para pagamento por TED')).toBeInTheDocument()
+      expect(screen.getByText('Código de referência').nextSibling).toHaveTextContent('BP-MEMO-1')
+      expect(screen.getByText('Conta').nextSibling).toHaveTextContent('31254097')
+      expect(screen.getByText('Banco').nextSibling).toHaveTextContent('Column NA')
+      expect(screen.queryByText('Endereço do banco')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Código PIX/)).not.toBeInTheDocument()
+    })
+
+    it('warns not to pay while the TED details are missing', async () => {
+      vi.mocked(confirmOffer).mockResolvedValueOnce(
+        execution({ fundingMethod: 'TED', fundingInstructions: null, fundingBankTransfer: null }),
+      )
+      await renderPage()
+      await goToPayment()
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Os dados para a TED ainda não estão disponíveis. Não faça o pagamento',
+      )
+      expect(screen.queryByLabelText(/Código PIX/)).not.toBeInTheDocument()
+    })
+
+    it('warns not to pay while the PIX code is missing', async () => {
+      vi.mocked(confirmOffer).mockResolvedValueOnce(execution({ fundingInstructions: null }))
+      await renderPage()
+      await goToPayment()
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'O código PIX ainda não está disponível. Não faça o pagamento',
+      )
+    })
+
+    it('shows the Avenia PIX code without polling and allows another transfer without cancelling it', async () => {
+      quote = offerFor(1000, 180.5, 'AVENIA')
+      vi.mocked(confirmOffer).mockResolvedValueOnce(
+        execution({ provider: 'AVENIA', fundingInstructions: 'avenia-br-code' }),
+      )
+      await renderPage()
+      await goToPayment()
+
+      await advance(EXECUTION_POLL_MS * 3)
+
+      expect(getTransferExecution).not.toHaveBeenCalled()
+      expect(screen.getByLabelText('Código PIX para pagamento (copia e cola)')).toHaveValue(
+        'avenia-br-code',
+      )
+      expect(screen.getByText(/esta tela não acompanha o pagamento automaticamente/)).toBeVisible()
+      expect(screen.getByText('Iniciar outra transferência não cancela esta.')).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Nova transferência' })).toBeEnabled()
+    })
+  })
+
+  describe('retomada após recarregar a página', () => {
+    it('given the execution in the URL, when the page loads, then it resumes the payment from the backend', async () => {
+      vi.mocked(getTransferExecution).mockResolvedValueOnce(execution())
+
+      await reloadWithExecution()
+
+      expect(getTransferExecution).toHaveBeenCalledWith(EXECUTION_ID, expect.any(AbortSignal))
+      expect(screen.getByRole('status')).toHaveTextContent('Aguardando o seu pagamento')
+      expect(screen.getByLabelText('Código PIX para pagamento (copia e cola)')).toHaveValue(
+        '00020126580014br.gov.bcb.pix',
+      )
+      expect(confirmOffer).not.toHaveBeenCalled()
+      expect(createQuote).not.toHaveBeenCalled()
+    })
+
+    it('shows that it is loading instead of the empty form', async () => {
+      vi.mocked(getTransferExecution).mockImplementationOnce(() => new Promise(() => {}))
+
+      await reloadWithExecution()
+
+      expect(screen.getByRole('status')).toHaveTextContent('Carregando a transferência...')
+      expect(screen.queryByLabelText('Valor de origem*')).not.toBeInTheDocument()
+    })
+
+    it('reports a transfer of another company as not found and starts a clean transfer', async () => {
+      vi.mocked(getTransferExecution).mockRejectedValueOnce(httpError(404))
+
+      await reloadWithExecution()
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Transferência não encontrada para a sua empresa.',
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Nova transferência' }))
+      await advance()
+
+      expect(currentSearch()).toBe('')
+      expect(sourceInput()).toHaveValue('')
+    })
+
+    it('retries loading after a temporary failure', async () => {
+      vi.mocked(getTransferExecution)
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValueOnce(execution({ status: 'COMPLETED' }))
+      await reloadWithExecution()
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Não foi possível carregar a transferência. Tente novamente.',
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+      await advance()
+
+      expect(getTransferExecution).toHaveBeenCalledTimes(2)
+      expect(screen.getByRole('status')).toHaveTextContent('Transferência concluída')
+    })
+
+    it('rejects an invalid link without calling the backend', async () => {
+      await reloadWithExecution('not-a-uuid')
+
+      expect(screen.getByRole('alert')).toHaveTextContent('O link desta transferência é inválido.')
+      expect(screen.queryByRole('button', { name: 'Tentar novamente' })).not.toBeInTheDocument()
       expect(getTransferExecution).not.toHaveBeenCalled()
     })
   })
