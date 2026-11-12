@@ -9,6 +9,7 @@ Na ordem do Figma (V-Stable-Design, frames 353:877 e 357:939):
 
 - Linha de métricas (`MetricCard`): o cliente vê Saldo Disponível, Economia Acumulada e Volume
   Transacionado; o administrador vê Economia Acumulada e Volume Transacionado.
+- Câmbio Atual (`ExchangeRateCard`), para cliente e administrador.
 - Barra "Filtrar dados" (`DashboardFilters`).
 - Gráficos Recharts de histórico de economia e de volume de remessas, com o total do período.
 - Últimas liquidações, paginadas no backend, com a ação "Detalhes".
@@ -41,6 +42,18 @@ nota exibida usa o percentual devolvido pela API.
 administrativo com o drawer aberto (`/admin/transferencias?transferId={id}`).
 
 O extrato em PDF (`downloadStatement`) não aparece na tela até o backend oferecer o endpoint.
+
+## Câmbio atual (cicd#55)
+
+`GET /v1/exchange-rates`, buscado uma vez ao montar o dashboard (sem polling) e independente dos
+filtros. Cada par aparece como "BRL → USDC", com "1 USDC = R$ 5,4700" (4 casas, formatadas da
+string decimal) e "Atualizado em dd/mm/aaaa hh:mm" no fuso do navegador. A taxa é de referência,
+sem tarifas. O cliente não aplica regra de validade: o status vem do backend.
+
+- `STALE`: badge "Cotação desatualizada" e valor esmaecido, com a data da última atualização.
+- `UNAVAILABLE`: "Cotação indisponível", sem número nem data. O schema rejeita uma cotação
+  indisponível com taxa, ou disponível sem taxa ou data.
+- Falha da requisição: mensagem e "Tentar novamente", sem afetar os outros blocos.
 
 ## Validação
 

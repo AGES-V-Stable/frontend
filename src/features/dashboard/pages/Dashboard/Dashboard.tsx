@@ -17,8 +17,10 @@ import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
 import { MetricCard } from '@/features/dashboard/components/MetricCard'
 import { SettlementDrawer } from '@/features/dashboard/components/SettlementDrawer'
 import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
+import { ExchangeRateCard } from '@/features/dashboard/components/ExchangeRateCard'
 import { TransactionVolumeCard } from '@/features/dashboard/components/TransactionVolumeCard'
 import { useBalance } from '@/features/dashboard/hooks/useBalance'
+import { useExchangeRates } from '@/features/dashboard/hooks/useExchangeRates'
 import { useTransactionVolume } from '@/features/dashboard/hooks/useTransactionVolume'
 import { StatusBadge, Table, type StatusVariant } from '@/shared/components/Table'
 import { adminTransferDetailsPath, transferDetailsPath } from '@/shared/navigation/paths'
@@ -110,6 +112,12 @@ const card = 'rounded-xl border border-sage-300 bg-white p-5'
 function ClientBalanceCard() {
   const { state, retry } = useBalance()
   return <BalanceCard state={state} onRetry={retry} />
+}
+
+// Cotações globais: iguais para cliente e administrador e independentes dos filtros.
+function CurrentExchangeRates() {
+  const { state, retry } = useExchangeRates()
+  return <ExchangeRateCard state={state} onRetry={retry} />
 }
 
 function VolumeCard({ filters, admin }: { filters: Filters; admin: boolean }) {
@@ -401,6 +409,7 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
         <SavingsCard admin={admin} filters={filters} />
         <VolumeCard filters={filters} admin={admin} />
       </div>
+      <CurrentExchangeRates />
       <DashboardFilters admin={admin} onApply={applyFilters} />
       <div className="grid gap-6 lg:grid-cols-2">{admin ? charts : [...charts].reverse()}</div>
       <section className={card} aria-label="Últimas liquidações">

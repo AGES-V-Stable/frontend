@@ -50,11 +50,31 @@ const series = {
   points: [] as { month: string; amount: string }[],
   incompleteOperations: 0,
 }
+const exchangeRates = {
+  rates: [
+    {
+      baseCurrency: 'BRL',
+      quoteCurrency: 'USDC',
+      rate: '5.47000000',
+      fetchedAt: '2026-11-03T12:00:00Z',
+      status: 'CURRENT',
+    },
+    {
+      baseCurrency: 'BRL',
+      quoteCurrency: 'USDT',
+      rate: null,
+      fetchedAt: null,
+      status: 'UNAVAILABLE',
+    },
+  ],
+  ttlSeconds: 7200,
+}
 const emptyPage = { content: [], number: 0, size: 5, totalElements: 0, totalPages: 0 }
 
 function responses(url: string): unknown {
   const path = url.split('?')[0]
   if (path === '/v1/balance') return { availableBalanceBrl: '25000.00' }
+  if (path === '/v1/exchange-rates') return exchangeRates
   if (path === '/v1/companies/summaries')
     return [{ id: 'c1', legalName: 'Alfa Ltda', tradeName: 'Alfa', cnpj: '1' }]
   if (path.endsWith('/transaction-volume')) return { transactedVolumeBrl: '5022.50' }
@@ -210,9 +230,13 @@ it('uses administrative endpoints and filters every widget by company', async ()
   expect(await screen.findByText('Nenhuma liquidação registrada.')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Dashboard Administrativo' })).toBeInTheDocument()
   expect(screen.getByText('PAINEL ADMIN')).toBeInTheDocument()
+  // As cotações são globais (cicd#55): a mesma rota para cliente e administrador.
   expect(
     calledUrls(fetcher).every(
-      (url) => url.startsWith('/v1/admin/dashboard/') || url === '/v1/companies/summaries',
+      (url) =>
+        url.startsWith('/v1/admin/dashboard/') ||
+        url === '/v1/companies/summaries' ||
+        url === '/v1/exchange-rates',
     ),
   ).toBe(true)
 
@@ -505,4 +529,42 @@ it('names the chart series, flags incomplete data and formats the value axis in 
     item: { payload: { amount: string | null } },
   ) => string
   expect(formatter(1640, 'Economia', { payload: { amount: '1640.00' } })).toMatch(/R\$\s*1\.640,00/)
+})
+
+it.each([
+  ['client', false],
+  ['administrator', true],
+])(
+  'shows the current exchange rates to the %s, independent of the filters',
+  async (_label, admin) => {
+    const fetcher = vi.fn(async (url: string) => reply(url))
+    vi.stubGlobal('fetch', fetcher)
+    renderDashboard(admin)
+
+    const card = await screen.findByRole('region', { name: 'Câmbio Atual' })
+    expect(await within(card).findByText(/^1 USDC = R\$\s5,4700$/)).toBeInTheDocument()
+    expect(within(card).getByText('Cotação indisponível')).toBeInTheDocument()
+    expect(calledUrls(fetcher).filter((url) => url.startsWith('/v1/exchange-rates'))).toEqual([
+      '/v1/exchange-rates',
+    ])
+  },
+)
+
+it('keeps the dashboard working when the exchange rates fail, and retries only them', async () => {
+  const fetcher = vi.fn(async (url: string) =>
+    url.startsWith('/v1/exchange-rates') ? new Response('{}', { status: 502 }) : reply(url),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  renderDashboard()
+
+  const card = await screen.findByRole('region', { name: 'Câmbio Atual' })
+  expect(await within(card).findByRole('alert')).toHaveTextContent(
+    'Não foi possível carregar as cotações',
+  )
+  expect(await screen.findByText('Nenhuma liquidação registrada.')).toBeInTheDocument()
+
+  fetcher.mockImplementation(async (url: string) => reply(url))
+  fireEvent.click(within(card).getByText('Tentar novamente'))
+
+  expect(await within(card).findByText(/^1 USDC = R\$\s5,4700$/)).toBeInTheDocument()
 })
