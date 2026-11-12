@@ -72,6 +72,9 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const activeRequestRef = useRef<AbortController | null>(null)
+
+  useEffect(() => () => activeRequestRef.current?.abort(), [])
 
   useEffect(() => {
     if (isOpen) {
@@ -94,7 +97,10 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
 
   async function handleSendMessage(rawText: string) {
     const trimmed = rawText.trim()
-    if (!trimmed || loading) return
+    if (!trimmed || activeRequestRef.current) return
+
+    const controller = new AbortController()
+    activeRequestRef.current = controller
 
     const userMessage: SupportChatMessage = { role: 'user', content: trimmed }
     const historyForRequest = messages
@@ -111,10 +117,15 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
     setLoading(true)
 
     try {
-      const response = await sendSupportChatMessage({
-        message: trimmed,
-        history: historyForRequest,
-      })
+      const response = await sendSupportChatMessage(
+        {
+          message: trimmed,
+          history: historyForRequest,
+        },
+        controller.signal,
+      )
+
+      if (controller.signal.aborted || activeRequestRef.current !== controller) return
 
       setMessages((prev) => [
         ...prev,
@@ -127,13 +138,17 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
         setSuggestions(response.suggestedQuestions)
       }
     } catch (err) {
+      if (controller.signal.aborted || activeRequestRef.current !== controller) return
       setError(
         err instanceof Error
           ? err.message
           : 'Não foi possível obter resposta do assistente no momento.',
       )
     } finally {
-      setLoading(false)
+      if (activeRequestRef.current === controller) {
+        activeRequestRef.current = null
+        setLoading(false)
+      }
     }
   }
 
@@ -143,7 +158,12 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
   }
 
   function handleClearChat() {
+    activeRequestRef.current?.abort()
+    activeRequestRef.current = null
     setMessages([WELCOME_MESSAGE])
+    setSuggestions(INITIAL_SUGGESTIONS)
+    setInput('')
+    setLoading(false)
     setError(null)
   }
 
@@ -152,7 +172,7 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
       {isOpen && (
         <section
           aria-label="Assistente de Suporte V-Stable"
-          className="mb-4 flex h-[540px] max-h-[calc(100dvh-110px)] w-[360px] flex-col overflow-hidden rounded-2xl border border-sage-300 bg-white shadow-2xl sm:w-[410px]"
+          className="mb-4 flex h-[540px] max-h-[calc(100dvh-110px)] w-[calc(100vw-3rem)] max-w-[410px] flex-col overflow-hidden rounded-2xl border border-sage-300 bg-white shadow-2xl"
         >
           {/* Header */}
           <header className="flex items-center justify-between bg-primary px-4 py-3.5 text-white">
@@ -267,7 +287,7 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
               maxLength={500}
               placeholder="Digite sua dúvida sobre a V-Stable..."
               disabled={loading}
-              className="h-10 flex-1 rounded-xl border border-sage-300 bg-surface px-3 text-xs text-slate-900 placeholder:text-placeholder focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60"
+              className="h-10 min-w-0 flex-1 rounded-xl border border-sage-300 bg-surface px-3 text-xs text-slate-900 placeholder:text-placeholder focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60"
             />
             <button
               type="submit"

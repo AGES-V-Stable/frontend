@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { sendSupportChatMessage } from '../api/supportChat'
+import type { SupportChatResponse } from '../api/supportChat'
 import { SupportChatWidget } from './SupportChatWidget'
 
 vi.mock('../api/supportChat', () => ({
@@ -51,10 +52,13 @@ describe('SupportChatWidget', () => {
     await user.type(input, 'Como enviar para a Colômbia?')
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
 
-    expect(sendSupportChatMessage).toHaveBeenCalledWith({
-      message: 'Como enviar para a Colômbia?',
-      history: [],
-    })
+    expect(sendSupportChatMessage).toHaveBeenCalledWith(
+      {
+        message: 'Como enviar para a Colômbia?',
+        history: [],
+      },
+      expect.any(AbortSignal),
+    )
 
     expect(await screen.findByText('Wallet Cripto')).toBeInTheDocument()
     expect(screen.getByText('USDC')).toBeInTheDocument()
@@ -79,10 +83,13 @@ describe('SupportChatWidget', () => {
       screen.getByRole('button', { name: 'Como funciona a integração com Avenia e BlindPay?' }),
     )
 
-    expect(sendSupportChatMessage).toHaveBeenCalledWith({
-      message: 'Como funciona a integração com Avenia e BlindPay?',
-      history: [],
-    })
+    expect(sendSupportChatMessage).toHaveBeenCalledWith(
+      {
+        message: 'Como funciona a integração com Avenia e BlindPay?',
+        history: [],
+      },
+      expect.any(AbortSignal),
+    )
     expect(await screen.findByText('A V-Stable integra Avenia e BlindPay.')).toBeInTheDocument()
   })
 
@@ -103,5 +110,59 @@ describe('SupportChatWidget', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.',
     )
+  })
+
+  it('limits the panel width to the viewport on narrow screens', () => {
+    render(<SupportChatWidget open={true} />)
+    expect(screen.getByRole('region', { name: 'Assistente de Suporte V-Stable' })).toHaveClass(
+      'w-[calc(100vw-3rem)]',
+      'max-w-[410px]',
+    )
+    expect(screen.getByPlaceholderText('Digite sua dúvida sobre a V-Stable...')).toHaveClass(
+      'min-w-0',
+    )
+  })
+
+  it('discards a pending reply after clearing and allows a new conversation', async () => {
+    const user = userEvent.setup()
+    let resolveFirst: (value: SupportChatResponse) => void = () => {}
+    vi.mocked(sendSupportChatMessage).mockImplementationOnce(
+      () =>
+        new Promise<SupportChatResponse>((resolve) => {
+          resolveFirst = resolve
+        }),
+    )
+    vi.mocked(sendSupportChatMessage).mockResolvedValueOnce({
+      reply: 'Resposta nova',
+      provider: 'gemini',
+      suggestedQuestions: [],
+      timestamp: '2026-11-09T18:00:00Z',
+    })
+
+    render(<SupportChatWidget open={true} />)
+    const input = screen.getByPlaceholderText('Digite sua dúvida sobre a V-Stable...')
+    await user.type(input, 'Pergunta antiga')
+    await user.click(screen.getByRole('button', { name: 'Enviar' }))
+    const originalSignal = vi.mocked(sendSupportChatMessage).mock.calls[0][1]
+
+    await user.click(screen.getByRole('button', { name: 'Limpar' }))
+    expect(originalSignal?.aborted).toBe(true)
+    expect(screen.queryByText('Pergunta antiga')).not.toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Como funciona a integração com Avenia e BlindPay?' }),
+    )
+    expect(await screen.findByText('Resposta nova')).toBeInTheDocument()
+
+    await act(async () => {
+      resolveFirst({
+        reply: 'Resposta antiga',
+        provider: 'gemini',
+        suggestedQuestions: [],
+        timestamp: '2026-11-09T18:00:00Z',
+      })
+    })
+    expect(screen.queryByText('Resposta antiga')).not.toBeInTheDocument()
+    expect(screen.getByText('Resposta nova')).toBeInTheDocument()
   })
 })
