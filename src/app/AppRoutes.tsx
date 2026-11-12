@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import {
   Link,
   Navigate,
@@ -9,6 +9,7 @@ import {
   useNavigate,
   useParams,
 } from 'react-router'
+import { SupportChatWidget } from '@/features/support'
 import {
   AdminSecurityRequests,
   clearLoginToken,
@@ -127,6 +128,7 @@ function RoutedApplication() {
   const { user, company } = useSession()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const [supportChatOpen, setSupportChatOpen] = useState(false)
   const admin = isStoredAdmin()
   const icon = (src: string) => <img src={src} alt="" />
   const item = (id: string, label: string, path: string, src: string): NavigationItem => ({
@@ -164,7 +166,12 @@ function RoutedApplication() {
       ]
   items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
   const footerItems: NavigationItem[] = [
-    { id: 'support', label: 'Suporte', icon: icon(supportIcon), disabled: true },
+    {
+      id: 'support',
+      label: 'Suporte',
+      icon: icon(supportIcon),
+      onClick: () => setSupportChatOpen((open) => !open),
+    },
     { id: 'logout', label: 'Sair', icon: icon(logoutIcon), onClick: clearLoginToken },
   ]
   const activeId = pathname.startsWith(PATHS.SETTINGS)
@@ -207,6 +214,7 @@ function RoutedApplication() {
       }
     >
       <Outlet />
+      <SupportChatWidget open={supportChatOpen} onOpenChange={setSupportChatOpen} />
     </ApplicationShell>
   )
 }
