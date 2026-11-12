@@ -1,5 +1,14 @@
 import { lazy, Suspense, useState } from 'react'
-import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router'
+import {
+  Link,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router'
 import { SupportChatWidget } from '@/features/support'
 import {
   AdminSecurityRequests,
@@ -21,6 +30,7 @@ import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/Regis
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
 import {
   CompanyRoute,
+  CompanySetupRoute,
   RepresentativeRoute,
   TwoFactorRoute,
   ComplianceRoute,
@@ -81,9 +91,19 @@ function RoleGuard({ role }: { role?: 'ADMIN' | 'USER' }) {
   if (role && (isStoredAdmin() ? 'ADMIN' : 'USER') !== role) return <RoleLanding />
   if (role === 'USER' && !user?.companyId)
     return (
-      <p role="alert" className="p-8">
-        Esta conta não possui vínculo empresarial.
-      </p>
+      <div className="flex flex-col items-start gap-3 p-8">
+        <p role="alert">Esta conta não possui vínculo empresarial.</p>
+        <p className="text-sm text-slate-600">
+          Cadastre a sua empresa para começar, ou peça um convite ao gestor de uma empresa já
+          cadastrada.
+        </p>
+        <Link
+          to={PATHS.COMPANY_SETUP}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+        >
+          Cadastrar empresa
+        </Link>
+      </div>
     )
   return <Outlet />
 }
@@ -243,6 +263,7 @@ export default function AppRoutes() {
         <Route element={<RoutedApplication />}>
           <Route path={PATHS.SETTINGS} element={<Settings />} />
         </Route>
+        <Route path={PATHS.COMPANY_SETUP} element={<CompanySetupRoute />} />
       </Route>
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
       <Route path="/beneficiarios/novo" element={<LegacyRedirect to={PATHS.BENEFICIARIES_NEW} />} />

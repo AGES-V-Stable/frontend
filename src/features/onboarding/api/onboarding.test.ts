@@ -5,6 +5,7 @@ import {
   ApiError,
   clearRepresentativePersonalData,
   getRepresentativePersonalData,
+  registerCompany,
   saveRepresentativePersonalData,
   submitKyc,
   submitOnboarding,
@@ -151,6 +152,70 @@ describe('onboarding service', () => {
       await expect(submitOnboarding(representative, company)).rejects.toThrow(
         'Não foi possível concluir a solicitação. Tente novamente.',
       )
+    })
+  })
+
+  describe('registerCompany', () => {
+    it('posts only the company data with the login token and returns the new company', async () => {
+      localStorage.setItem('token', 'login-token')
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        text: async () =>
+          JSON.stringify({ userId: 'user-1', companyId: 'company-1', kycVerificationId: 'kyc-1' }),
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await registerCompany(company)
+
+      const [url, options] = fetchMock.mock.calls[0]! as [string, RequestInit]
+      expect(url).toBe('/v1/onboarding/company')
+      expect(options.method).toBe('POST')
+      expect((options.headers as Record<string, string>).Authorization).toBe('Bearer login-token')
+      expect(JSON.parse(options.body as string)).toEqual({
+        legalName: 'Empresa Ltda.',
+        cnpj: '11222333000181',
+        country: 'Brasil',
+        zipCode: '90000000',
+        state: 'RS',
+      })
+      expect(result).toEqual({
+        userId: 'user-1',
+        companyId: 'company-1',
+        kycVerificationId: 'kyc-1',
+      })
+      // A conta já existe: nenhum token novo de onboarding é gravado.
+      expect(sessionStorage.length).toBe(0)
+      localStorage.removeItem('token')
+    })
+
+    it('rejects a response without the KYC verification', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 201,
+          text: async () => JSON.stringify({ userId: 'user-1', companyId: 'company-1' }),
+        }),
+      )
+
+      await expect(registerCompany(company)).rejects.toThrow()
+    })
+
+    it('keeps the conflict status so the screen can explain it', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: false,
+          status: 409,
+          text: async () => JSON.stringify({ message: 'CNPJ already registered' }),
+        }),
+      )
+
+      await expect(registerCompany(company)).rejects.toMatchObject({
+        status: 409,
+        message: 'CNPJ already registered',
+      })
     })
   })
 

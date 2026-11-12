@@ -1,5 +1,5 @@
 import { SessionProvider } from '@/features/auth'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,7 +13,10 @@ import {
 } from '@/shared/navigation/paths'
 import { ApiError } from '@/features/onboarding/api/onboarding'
 
-const { submitOnboardingMock } = vi.hoisted(() => ({ submitOnboardingMock: vi.fn() }))
+const { submitOnboardingMock, registerCompanyMock } = vi.hoisted(() => ({
+  submitOnboardingMock: vi.fn(),
+  registerCompanyMock: vi.fn(),
+}))
 const { startDocumentUploadMock, uploadFileToS3Mock, submitDocumentResultMock } = vi.hoisted(
   () => ({
     startDocumentUploadMock: vi.fn(),
@@ -24,7 +27,7 @@ const { startDocumentUploadMock, uploadFileToS3Mock, submitDocumentResultMock } 
 
 vi.mock('@/features/onboarding/api/onboarding', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/onboarding/api/onboarding')>()
-  return { ...actual, submitOnboarding: submitOnboardingMock }
+  return { ...actual, submitOnboarding: submitOnboardingMock, registerCompany: registerCompanyMock }
 })
 
 vi.mock('@/features/onboarding/api/compliance', async (importOriginal) => {
@@ -366,5 +369,139 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Não foi possível enviar o documento. Tente novamente.',
     )
+  })
+})
+
+describe('usuário autenticado sem empresa (backend#64)', () => {
+  let hasCompany: boolean
+
+  const sessionUser = () => ({
+    id: 'u1',
+    name: 'Maria Silva',
+    email: 'maria@empresa.com',
+    companyId: hasCompany ? 'company-1' : null,
+    companyAccess: null,
+    accountType: 'USER',
+    roles: ['ROLE_USER'],
+  })
+
+  const renderAt = (path: string) =>
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <SessionProvider>
+          <AppRoutes />
+        </SessionProvider>
+      </MemoryRouter>,
+    )
+
+  async function fillCompanyForm(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByRole('textbox', { name: 'Razão Social *' }), company.razaoSocial)
+    await user.type(screen.getByRole('textbox', { name: 'CNPJ *' }), company.cnpj)
+    await user.type(screen.getByRole('textbox', { name: 'CEP *' }), company.cep)
+    await user.type(screen.getByRole('textbox', { name: 'Estado *' }), company.estado)
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+  }
+
+  beforeEach(() => {
+    hasCompany = false
+    registerCompanyMock.mockReset()
+    localStorage.setItem('token', 'login-token')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url === '/v1/users/me') return new Response(JSON.stringify(sessionUser()))
+        if (url === '/v1/companies/company-1')
+          return new Response(
+            JSON.stringify({
+              id: 'company-1',
+              legalName: company.razaoSocial,
+              cnpj: '11222333000181',
+            }),
+          )
+        throw new Error(`Unexpected test request: ${url}`)
+      }),
+    )
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+
+  it('given no company, when opening a company page, then it offers to register the company', async () => {
+    renderAt(PATHS.DASHBOARD)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Esta conta não possui vínculo empresarial.',
+    )
+    expect(screen.getByRole('link', { name: 'Cadastrar empresa' })).toHaveAttribute(
+      'href',
+      PATHS.COMPANY_SETUP,
+    )
+  })
+
+  it('registers the company, keeps the representative data for KYC and continues to compliance', async () => {
+    const user = userEvent.setup({ delay: null })
+    registerCompanyMock.mockImplementationOnce(async () => {
+      hasCompany = true
+      return { userId: 'u1', companyId: 'company-1', kycVerificationId: id }
+    })
+    renderAt(PATHS.COMPANY_SETUP)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Cadastro Institucional' }),
+    ).toBeInTheDocument()
+    await fillCompanyForm(user)
+    expect(
+      await screen.findByRole('heading', { name: 'Dados do Representante' }),
+    ).toBeInTheDocument()
+    await fillRepresentativeForm(user)
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByText('Compliance e documentos')).toBeInTheDocument()
+    expect(registerCompanyMock).toHaveBeenCalledWith(
+      expect.objectContaining({ razaoSocial: company.razaoSocial, cnpj: company.cnpj }),
+    )
+    // Ao sair do cadastro da empresa, a sessão é recarregada e passa a ter a empresa.
+    await waitFor(() =>
+      expect(vi.mocked(fetch).mock.calls.filter(([url]) => url === '/v1/users/me')).toHaveLength(2),
+    )
+    const personal = JSON.parse(
+      sessionStorage.getItem('vstable:onboarding:representative-personal-data') ?? '{}',
+    )
+    expect(personal).toMatchObject({
+      fullName: 'Maria Silva',
+      email: 'maria@empresa.com',
+      taxIdNumber: '52998224725',
+    })
+  }, 15000)
+
+  it('explains that a registered CNPJ needs an invitation instead of joining the company', async () => {
+    const user = userEvent.setup({ delay: null })
+    registerCompanyMock.mockRejectedValueOnce(new ApiError(409, 'CNPJ already registered'))
+    renderAt(PATHS.COMPANY_SETUP)
+
+    await screen.findByRole('heading', { name: 'Cadastro Institucional' })
+    await fillCompanyForm(user)
+    await screen.findByRole('heading', { name: 'Dados do Representante' })
+    await fillRepresentativeForm(user)
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Este CNPJ já está cadastrado. Para acessar uma empresa existente, peça um convite ao gestor dela.',
+    )
+    expect(screen.getByRole('heading', { name: 'Dados do Representante' })).toBeInTheDocument()
+  }, 15000)
+
+  it('sends a user who already has a company away from the company registration', async () => {
+    hasCompany = true
+
+    renderAt(PATHS.COMPANY_SETUP)
+
+    await screen.findByText(/./)
+    expect(
+      screen.queryByRole('heading', { name: 'Cadastro Institucional' }),
+    ).not.toBeInTheDocument()
+    expect(registerCompanyMock).not.toHaveBeenCalled()
   })
 })

@@ -1,5 +1,6 @@
 import {
   OnboardingResultSchema,
+  CompanyRegistrationResultSchema,
   KycResultSchema,
   PersonalDataSchema,
   CurrentOnboardingSchema,
@@ -27,6 +28,35 @@ function request<T>(path: string, options?: RequestInit): Promise<T> {
   return httpRequest<T>(`${API_BASE}${path}`, options)
 }
 
+/** Dados da empresa no formato do backend (CNPJ e CEP brasileiro só com dígitos). */
+function companyPayload(company: CompanyData) {
+  return {
+    legalName: company.razaoSocial.trim(),
+    cnpj: company.cnpj.replace(/\D/g, ''),
+    country: company.pais.trim(),
+    zipCode:
+      company.pais.trim().toLowerCase() === 'brasil'
+        ? company.cep.replace(/\D/g, '')
+        : company.cep.trim(),
+    city: company.cidade.trim() || undefined,
+    state: company.estado.trim(),
+  }
+}
+
+/**
+ * Cadastra a empresa do usuário autenticado que ainda não tem vínculo; ele vira o dono.
+ * Usa o token do login: a conta já existe, então nenhum token novo é emitido.
+ */
+export async function registerCompany(company: CompanyData) {
+  return CompanyRegistrationResultSchema.parse(
+    await request<unknown>('/onboarding/company', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(companyPayload(company)),
+    }),
+  )
+}
+
 /**
  * Registra o representante e a empresa de uma vez (etapa única no backend,
  * chamada só ao final do wizard visual). Cria o usuário, a empresa e a
@@ -41,15 +71,7 @@ export async function submitOnboarding(representative: RepresentativeData, compa
       email: representative.email.trim(),
       password: representative.password,
       confirmPassword: representative.confirmPassword,
-      legalName: company.razaoSocial.trim(),
-      cnpj: company.cnpj.replace(/\D/g, ''),
-      country: company.pais.trim(),
-      zipCode:
-        company.pais.trim().toLowerCase() === 'brasil'
-          ? company.cep.replace(/\D/g, '')
-          : company.cep.trim(),
-      city: company.cidade.trim() || undefined,
-      state: company.estado.trim(),
+      ...companyPayload(company),
     }),
   })
   // O onboarding já devolve um JWT (não existe outro passo de login antes das
