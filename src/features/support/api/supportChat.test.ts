@@ -35,6 +35,7 @@ describe('sendSupportChatMessage', () => {
         message: 'Como funciona o 2FA?',
         history: [{ role: 'user', content: 'Olá' }],
       }),
+      signal: expect.any(AbortSignal),
     })
     expect(result).toEqual(mockResponse)
   })
@@ -59,5 +60,52 @@ describe('sendSupportChatMessage', () => {
     await expect(sendSupportChatMessage({ message: 'Oi' })).rejects.toThrow(
       'Não foi possível obter resposta do assistente no momento. Tente novamente.',
     )
+  })
+
+  it('aborts a stalled request after 20 seconds and provides a timeout error', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(httpRequest).mockImplementationOnce(
+        (_path, options) =>
+          new Promise<never>((_resolve, reject) => {
+            options?.signal?.addEventListener(
+              'abort',
+              () => {
+                reject(new DOMException('Aborted', 'AbortError'))
+              },
+              { once: true },
+            )
+          }),
+      )
+
+      const request = sendSupportChatMessage({ message: 'Oi' })
+      const assertion = expect(request).rejects.toThrow(
+        'O assistente demorou mais que 20 segundos para responder. Tente novamente.',
+      )
+      await vi.advanceTimersByTimeAsync(20_000)
+      await assertion
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('propagates user-initiated cancellation to the HTTP client', async () => {
+    const controller = new AbortController()
+    vi.mocked(httpRequest).mockImplementationOnce(
+      (_path, options) =>
+        new Promise<never>((_resolve, reject) => {
+          options?.signal?.addEventListener(
+            'abort',
+            () => {
+              reject(new DOMException('Aborted', 'AbortError'))
+            },
+            { once: true },
+          )
+        }),
+    )
+
+    const request = sendSupportChatMessage({ message: 'Oi' }, controller.signal)
+    controller.abort()
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' })
   })
 })
