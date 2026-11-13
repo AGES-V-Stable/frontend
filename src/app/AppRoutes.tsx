@@ -25,6 +25,7 @@ import { BeneficiariesLanding } from '@/features/beneficiaries/pages/client/bene
 import { BeneficiaryCreate } from '@/features/beneficiaries/pages/client/beneficiaryCreate'
 import { TransferCreate } from '@/features/transfers/pages/client/transferCreate'
 import { TransferDetails } from '@/features/transfers/pages/client/transferDetails'
+import { Members } from '@/features/members/pages/Members'
 import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
@@ -163,6 +164,7 @@ function RoutedApplication() {
         item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
         item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
         item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
+        item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
       ]
   items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
   const footerItems: NavigationItem[] = [
@@ -188,7 +190,9 @@ function RoutedApplication() {
               : 'clients'
         : pathname.startsWith('/app/transferencias')
           ? 'transfers'
-          : 'beneficiaries'
+          : pathname.startsWith(PATHS.MEMBERS)
+            ? 'members'
+            : 'beneficiaries'
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -257,6 +261,7 @@ export default function AppRoutes() {
           <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
           <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />
           <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetails />} />
+          <Route path={PATHS.MEMBERS} element={<Members />} />
         </Route>
       </Route>
       <Route element={<RoleGuard />}>

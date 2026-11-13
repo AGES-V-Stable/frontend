@@ -2,6 +2,15 @@ import { getLoginToken } from '@/shared/http/authToken'
 import { z } from 'zod'
 import { httpRequest } from '@/shared/http/httpClient'
 
+/** Vínculo atual com a empresa; as permissões são calculadas pelo backend. */
+const CompanyAccessSchema = z.object({
+  membershipId: z.string(),
+  companyId: z.string(),
+  role: z.enum(['OWNER', 'OPERATOR', 'VIEWER']),
+  status: z.enum(['ACTIVE', 'REMOVED']),
+  permissions: z.array(z.string()),
+  version: z.number().int(),
+})
 export const UserSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -11,6 +20,7 @@ export const UserSchema = z.object({
   roles: z.array(z.string()),
   twoFactorEnabled: z.boolean().optional(),
   withdrawalLockedUntil: z.string().nullable().optional(),
+  companyAccess: CompanyAccessSchema.nullable().optional(),
 })
 export type User = z.infer<typeof UserSchema>
 export const CompanySchema = z.object({

@@ -60,3 +60,39 @@ it('preserves HTTP errors', async () => {
   )
   await expect(getCurrentUser()).rejects.toMatchObject({ status: 401, message: 'Não autenticado' })
 })
+it('validates the current company access returned by /me', async () => {
+  const companyAccess = {
+    membershipId: 'm1',
+    companyId: 'c1',
+    role: 'OWNER',
+    status: 'ACTIVE',
+    permissions: ['MEMBERS_READ', 'MEMBERS_MANAGE'],
+    version: 2,
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...user, companyAccess }))),
+  )
+  await expect(getCurrentUser()).resolves.toMatchObject({ companyAccess })
+})
+it('rejects a company access with an unknown role', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ...user,
+          companyAccess: {
+            membershipId: 'm1',
+            companyId: 'c1',
+            role: 'ADMIN',
+            status: 'ACTIVE',
+            permissions: [],
+            version: 1,
+          },
+        }),
+      ),
+    ),
+  )
+  await expect(getCurrentUser()).rejects.toThrow()
+})
