@@ -24,6 +24,8 @@ export const PATHS = {
   MEMBERS: '/app/membros',
   /** Usuário autenticado sem empresa cadastra a própria empresa. */
   COMPANY_SETUP: '/app/empresa/cadastrar',
+  /** Link público do convite; o token chega somente no fragmento (`#token=<token>`). */
+  COMPANY_INVITATION: '/convites/empresa',
 } as const
 
 export type Path = (typeof PATHS)[keyof typeof PATHS]

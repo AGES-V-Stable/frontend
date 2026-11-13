@@ -473,4 +473,52 @@ describe('Login destination and expired session', () => {
 
     expect(screen.queryByText(/Sua sessão expirou/)).not.toBeInTheDocument()
   })
+
+  it('given an invitation email, when the page opens, then it prefills an editable e-mail field', async () => {
+    const user = userEvent.setup()
+    renderFrom({ from: '/convites/empresa', email: 'mariana@agrosul.com.br' })
+
+    const email = screen.getByLabelText('E-mail')
+    expect(email).toHaveValue('mariana@agrosul.com.br')
+    await user.clear(email)
+    await user.type(email, 'outra@empresa.com')
+    expect(email).toHaveValue('outra@empresa.com')
+  })
+
+  it('given an email but no origin, when the login succeeds, then it prefills and goes home', async () => {
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockResolvedValueOnce({ token: 'login-token' })
+    renderFrom({ email: 'mariana@agrosul.com.br' })
+
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByText('Home page')).toBeInTheDocument()
+    expect(authService.login).toHaveBeenCalledWith({
+      email: 'mariana@agrosul.com.br',
+      password: 'senha-valida',
+    })
+  })
+
+  it('given a newly created access, when the page opens, then it asks for the normal login', () => {
+    renderFrom({
+      from: PATHS.TRANSFERS,
+      email: 'mariana@agrosul.com.br',
+      notice: 'ACCOUNT_CREATED',
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Seu acesso foi criado. Entre com seu e-mail e senha para continuar.',
+    )
+  })
+
+  it.each([{ email: 'nao-e-email' }, { notice: 'QUALQUER' }])(
+    'given the untrusted state %o, when the page opens, then it ignores it',
+    (state) => {
+      renderFrom(state)
+
+      expect(screen.getByLabelText('E-mail')).toHaveValue('')
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    },
+  )
 })

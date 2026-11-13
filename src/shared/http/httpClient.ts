@@ -15,10 +15,27 @@ export class ApiError extends Error {
 }
 
 export class HttpError extends ApiError {
-  constructor(message: string, status: number, body?: unknown, code?: string) {
+  /** Segundos indicados pelo header `Retry-After` (429/503), quando presente e válido. */
+  readonly retryAfterSeconds?: number
+  constructor(
+    message: string,
+    status: number,
+    body?: unknown,
+    code?: string,
+    retryAfterSeconds?: number,
+  ) {
     super(status, message, code, body)
     this.name = 'HttpError'
+    this.retryAfterSeconds = retryAfterSeconds
   }
+}
+
+/** Aceita os dois formatos do header: segundos (`120`) ou data HTTP. */
+export function parseRetryAfter(value: string | null, now = Date.now()): number | undefined {
+  if (!value?.trim()) return undefined
+  if (/^\d+$/.test(value.trim())) return Number(value.trim())
+  const date = Date.parse(value)
+  return Number.isNaN(date) ? undefined : Math.max(0, Math.ceil((date - now) / 1000))
 }
 
 /**
@@ -90,6 +107,7 @@ export async function httpResponse(
       response.status,
       body,
       typeof record.code === 'string' ? record.code : undefined,
+      parseRetryAfter(response.headers?.get('Retry-After') ?? null),
     )
   }
   return response

@@ -37,6 +37,7 @@ describe('PATHS configuration', () => {
       SETTINGS: '/app/configuracoes',
       MEMBERS: '/app/membros',
       COMPANY_SETUP: '/app/empresa/cadastrar',
+      COMPANY_INVITATION: '/convites/empresa',
     }
 
     const actualPaths = PATHS
