@@ -13,77 +13,73 @@ const current: ExchangeRate = {
   fetchedAt: '2026-11-12T22:45:00Z',
   status: 'CURRENT',
 }
+const stale: ExchangeRate = {
+  ...current,
+  quoteCurrency: 'USDT',
+  rate: '5.40',
+  fetchedAt: '2026-11-12T10:00:00Z',
+  status: 'STALE',
+}
+const unavailable: ExchangeRate = {
+  baseCurrency: 'BRL',
+  quoteCurrency: 'BRLA',
+  rate: null,
+  fetchedAt: null,
+  status: 'UNAVAILABLE',
+}
 
 const renderRates = (rates: ExchangeRate[]) =>
   render(<ExchangeRateCard state={{ status: 'ready', rates }} onRetry={vi.fn()} />)
-
-const item = (pair: string) => screen.getByText(pair).closest('li') as HTMLElement
+const card = () => screen.getByRole('region', { name: 'Câmbio Atual' })
+const pairSelect = () => screen.getByRole('combobox', { name: 'Par de moedas' })
 
 describe('ExchangeRateCard', () => {
-  it('identifies the pair, its direction, the reference rate and the update time', () => {
-    renderRates([current])
+  it('shows the first pair with its direction, reference rate and update time', () => {
+    renderRates([current, stale])
 
-    expect(screen.getByRole('heading', { name: 'Câmbio Atual' })).toBeInTheDocument()
-    expect(screen.getByText('Taxas de referência de mercado, sem tarifas.')).toBeInTheDocument()
-    const row = item('BRL → USDC')
-    expect(within(row).getByText('BRL para USDC')).toBeInTheDocument()
-    expect(within(row).getByText(/^1 USDC = R\$\s5,4700$/)).toBeInTheDocument()
-    expect(within(row).getByText(formatLocalDateTime(current.fetchedAt))).toHaveAttribute(
+    expect(pairSelect()).toHaveValue('BRL-USDC')
+    expect(
+      within(pairSelect())
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['BRL → USDC', 'BRL → USDT'])
+    expect(screen.getByText(/^1 USDC = R\$\s5,4700$/)).toBeInTheDocument()
+    expect(screen.getByText(formatLocalDateTime(current.fetchedAt))).toHaveAttribute(
       'datetime',
       current.fetchedAt,
     )
-    expect(row).toHaveTextContent(/Atualizado em \d{2}\/\d{2}\/2026 \d{2}:\d{2}/)
-    expect(within(row).queryByText('Cotação desatualizada')).not.toBeInTheDocument()
+    expect(card()).toHaveTextContent(/Atualizado em \d{2}\/\d{2}\/2026 \d{2}:\d{2}/)
+    expect(card()).toHaveTextContent('Taxa de referência de mercado, sem tarifas.')
+    expect(screen.queryByText('Cotação desatualizada')).not.toBeInTheDocument()
+  })
+
+  it('switches the pair shown through the dropdown', async () => {
+    renderRates([current, stale, unavailable])
+
+    await userEvent.selectOptions(pairSelect(), 'BRL-USDT')
+
+    expect(screen.getByText(/^1 USDT = R\$\s5,4000$/)).toBeInTheDocument()
+    expect(screen.getByText('Cotação desatualizada')).toBeInTheDocument()
+    expect(card()).toHaveTextContent('Atualizado em')
+
+    await userEvent.selectOptions(pairSelect(), 'BRL-BRLA')
+
+    expect(screen.getByText('Cotação indisponível')).toBeInTheDocument()
+    expect(card()).not.toHaveTextContent('Atualizado em')
+    expect(screen.queryByText('Cotação desatualizada')).not.toBeInTheDocument()
+  })
+
+  it('shows an unavailable rate without any number or date', () => {
+    renderRates([unavailable])
+
+    expect(screen.getByText('Cotação indisponível')).toBeInTheDocument()
+    expect(card()).not.toHaveTextContent(/\d/)
   })
 
   it('rounds the rate from the decimal string without floating point loss', () => {
     renderRates([{ ...current, rate: '12345678901234.56785' }])
 
     expect(screen.getByText(/^1 USDC = R\$\s12\.345\.678\.901\.234,5679$/)).toBeInTheDocument()
-  })
-
-  it('flags a stale rate explicitly, still showing its value and date', () => {
-    renderRates([{ ...current, status: 'STALE', fetchedAt: '2026-11-12T10:00:00Z' }])
-
-    const row = item('BRL → USDC')
-    expect(within(row).getByText('Cotação desatualizada')).toBeInTheDocument()
-    expect(within(row).getByText(/^1 USDC = R\$\s5,4700$/)).toHaveClass('text-slate-500')
-    expect(row).toHaveTextContent('Atualizado em')
-  })
-
-  it('shows an unavailable rate without any number or date', () => {
-    renderRates([
-      {
-        baseCurrency: 'BRL',
-        quoteCurrency: 'USDT',
-        rate: null,
-        fetchedAt: null,
-        status: 'UNAVAILABLE',
-      },
-    ])
-
-    const row = item('BRL → USDT')
-    expect(within(row).getByText('Cotação indisponível')).toBeInTheDocument()
-    expect(row).not.toHaveTextContent(/\d/)
-    expect(row).not.toHaveTextContent('Atualizado em')
-  })
-
-  it('shows every pair with its own situation', () => {
-    renderRates([
-      current,
-      { ...current, quoteCurrency: 'USDT', status: 'STALE' },
-      {
-        baseCurrency: 'BRL',
-        quoteCurrency: 'BRLA',
-        rate: null,
-        fetchedAt: null,
-        status: 'UNAVAILABLE',
-      },
-    ])
-
-    expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(within(item('BRL → USDT')).getByText('Cotação desatualizada')).toBeInTheDocument()
-    expect(within(item('BRL → BRLA')).getByText('Cotação indisponível')).toBeInTheDocument()
   })
 
   it('formats a rate quoted in a currency without an ISO code', () => {
@@ -96,23 +92,22 @@ describe('ExchangeRateCard', () => {
     renderRates([{ ...current, rate: 'abc' }])
 
     expect(screen.getByText('Cotação indisponível')).toBeInTheDocument()
+    expect(card()).not.toHaveTextContent('Atualizado em')
   })
 
-  it('explains when there are no pairs to show', () => {
+  it('explains when there are no pairs, without a dropdown', () => {
     renderRates([])
 
-    expect(screen.getByText('Nenhuma cotação disponível no momento.')).toBeInTheDocument()
+    expect(screen.getByText('Nenhuma cotação disponível')).toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 
-  it('shows a loading status and no rates while loading', () => {
+  it('shows a loading status and no dropdown while loading', () => {
     render(<ExchangeRateCard state={{ status: 'loading' }} onRetry={vi.fn()} />)
 
     expect(screen.getByRole('status')).toHaveTextContent('Carregando cotações...')
-    expect(screen.getByRole('region', { name: 'Câmbio Atual' })).toHaveAttribute(
-      'aria-busy',
-      'true',
-    )
-    expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
+    expect(card()).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 
   it('shows the request error and lets the user retry', async () => {

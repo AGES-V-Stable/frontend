@@ -14,6 +14,8 @@ export interface MetricCardProps {
   state: MetricCardState
   /** Contexto exibido abaixo do valor (período, observações). */
   footnote?: ReactNode
+  /** Controle ao lado do título, como a escolha do par no câmbio. */
+  action?: ReactNode
 }
 
 const ACCENT_BAR: Record<MetricAccent, string> = {
@@ -28,7 +30,7 @@ const VALUE_COLOR: Record<MetricAccent, string> = {
 }
 
 /** Card da linha de métricas do dashboard, com a faixa de destaque do Figma. */
-export function MetricCard({ title, accent, state, footnote }: MetricCardProps) {
+export function MetricCard({ title, accent, state, footnote, action }: MetricCardProps) {
   const titleId = useId()
   return (
     <section
@@ -37,9 +39,12 @@ export function MetricCard({ title, accent, state, footnote }: MetricCardProps) 
       className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-sage-300 bg-white px-4 pt-5 pb-4"
     >
       <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-1 ${ACCENT_BAR[accent]}`} />
-      <h2 id={titleId} className="text-sm font-medium text-slate-500">
-        {title}
-      </h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 id={titleId} className="text-sm font-medium text-slate-500">
+          {title}
+        </h2>
+        {action}
+      </div>
       {state.status === 'loading' && (
         <p role="status" className="text-sm text-slate-500">
           {state.label}

@@ -404,12 +404,12 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
             : 'Liquidações registradas • Valores consolidados em BRL'}
         </p>
       </header>
-      <div className={`grid gap-4 ${admin ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+      <div className={`grid gap-4 sm:grid-cols-2 ${admin ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
         {!admin && <ClientBalanceCard />}
         <SavingsCard admin={admin} filters={filters} />
         <VolumeCard filters={filters} admin={admin} />
+        <CurrentExchangeRates />
       </div>
-      <CurrentExchangeRates />
       <DashboardFilters admin={admin} onApply={applyFilters} />
       <div className="grid gap-6 lg:grid-cols-2">{admin ? charts : [...charts].reverse()}</div>
       <section className={card} aria-label="Últimas liquidações">

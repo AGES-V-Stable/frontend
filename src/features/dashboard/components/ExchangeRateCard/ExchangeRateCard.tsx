@@ -1,8 +1,10 @@
-import { useId } from 'react'
+import { useState } from 'react'
 
+import { MetricCard } from '@/features/dashboard/components/MetricCard'
+import type { MetricCardState } from '@/features/dashboard/components/MetricCard'
 import type { ExchangeRatesState } from '@/features/dashboard/hooks/useExchangeRates'
 import type { ExchangeRate } from '@/features/dashboard/types/exchangeRates'
-import { StatusBadge } from '@/shared/components/Table'
+import { Select } from '@/shared/components/Select'
 import { formatLocalDateTime, formatRateString } from '@/shared/utils/formatters'
 
 export interface ExchangeRateCardProps {
@@ -10,85 +12,69 @@ export interface ExchangeRateCardProps {
   onRetry: () => void
 }
 
-function RateItem({ rate }: { rate: ExchangeRate }) {
-  const pair = `${rate.baseCurrency} → ${rate.quoteCurrency}`
+const pairKey = (rate: ExchangeRate) => `${rate.baseCurrency}-${rate.quoteCurrency}`
+const UNAVAILABLE = 'Cotação indisponível'
+
+function readyValue(rate: ExchangeRate | undefined): string {
+  if (!rate) return 'Nenhuma cotação disponível'
   const value = rate.rate === null ? null : formatRateString(rate.rate, rate.baseCurrency)
+  return value === null ? UNAVAILABLE : `1 ${rate.quoteCurrency} = ${value}`
+}
+
+function Footnote({ rate }: { rate: ExchangeRate | undefined }) {
+  if (!rate || rate.status === 'UNAVAILABLE' || readyValue(rate) === UNAVAILABLE) {
+    return <p>Taxa de referência de mercado, sem tarifas.</p>
+  }
   return (
-    <li className="flex flex-col gap-1 rounded-lg border border-sage-300 px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-slate-700">
-          <span aria-hidden="true">{pair}</span>
-          <span className="sr-only">
-            {rate.baseCurrency} para {rate.quoteCurrency}
-          </span>
+    <div className="flex flex-col items-start gap-1">
+      {rate.status === 'STALE' && (
+        <span className="rounded-2xl bg-amber-50 px-2 py-0.5 font-bold text-amber-700">
+          Cotação desatualizada
         </span>
-        {rate.status === 'STALE' && <StatusBadge label="Cotação desatualizada" variant="warning" />}
-      </div>
-      {rate.status === 'UNAVAILABLE' || value === null ? (
-        <p className="text-base font-medium text-slate-500">Cotação indisponível</p>
-      ) : (
-        <>
-          <p
-            className={`text-xl font-bold break-words ${
-              rate.status === 'STALE' ? 'text-slate-500' : 'text-slate-900'
-            }`}
-          >
-            1 {rate.quoteCurrency} = {value}
-          </p>
-          <p className="text-xs text-slate-500">
-            Atualizado em{' '}
-            <time dateTime={rate.fetchedAt}>{formatLocalDateTime(rate.fetchedAt)}</time>
-          </p>
-        </>
       )}
-    </li>
+      <p>
+        Atualizado em <time dateTime={rate.fetchedAt}>{formatLocalDateTime(rate.fetchedAt)}</time>
+      </p>
+      <p>Taxa de referência de mercado, sem tarifas.</p>
+    </div>
   )
 }
 
-/** Câmbio atual (cicd#55): uma linha por par, com a situação de cada cotação. */
+/** Câmbio atual (cicd#55) na linha de métricas, com a escolha do par numa lista suspensa. */
 export function ExchangeRateCard({ state, onRetry }: ExchangeRateCardProps) {
-  const titleId = useId()
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const rates = state.status === 'ready' ? state.rates : []
+  const selected = rates.find((rate) => pairKey(rate) === selectedKey) ?? rates[0]
+
+  const cardState: MetricCardState =
+    state.status === 'loading'
+      ? { status: 'loading', label: 'Carregando cotações...' }
+      : state.status === 'error'
+        ? { status: 'error', message: state.message, onRetry }
+        : { status: 'ready', value: readyValue(selected) }
+
   return (
-    <section
-      aria-labelledby={titleId}
-      aria-busy={state.status === 'loading'}
-      className="flex flex-col gap-3 rounded-xl border border-sage-300 bg-white p-5"
-    >
-      <header className="flex flex-col gap-1">
-        <h2 id={titleId} className="text-xl font-bold text-slate-900">
-          Câmbio Atual
-        </h2>
-        <p className="text-sm text-slate-500">Taxas de referência de mercado, sem tarifas.</p>
-      </header>
-      {state.status === 'loading' && (
-        <p role="status" className="text-sm text-slate-500">
-          Carregando cotações...
-        </p>
-      )}
-      {state.status === 'error' && (
-        <div className="flex flex-col items-start gap-2">
-          <p role="alert" className="text-sm text-slate-700">
-            {state.message}
-          </p>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="cursor-pointer text-sm font-medium text-emerald-700 underline hover:decoration-2 focus-visible:outline-2 focus-visible:outline-emerald-700"
-          >
-            Tentar novamente
-          </button>
-        </div>
-      )}
-      {state.status === 'ready' &&
-        (state.rates.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhuma cotação disponível no momento.</p>
-        ) : (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {state.rates.map((rate) => (
-              <RateItem key={`${rate.baseCurrency}-${rate.quoteCurrency}`} rate={rate} />
-            ))}
-          </ul>
-        ))}
-    </section>
+    <MetricCard
+      title="Câmbio Atual"
+      accent="neutral"
+      state={cardState}
+      action={
+        selected && (
+          <div className="w-36 shrink-0">
+            <Select
+              aria-label="Par de moedas"
+              value={pairKey(selected)}
+              onChange={(event) => setSelectedKey(event.target.value)}
+              options={rates.map((rate) => ({
+                value: pairKey(rate),
+                label: `${rate.baseCurrency} → ${rate.quoteCurrency}`,
+              }))}
+              className="!py-1.5 !text-[14px]"
+            />
+          </div>
+        )
+      }
+      footnote={state.status === 'ready' ? <Footnote rate={selected} /> : undefined}
+    />
   )
 }

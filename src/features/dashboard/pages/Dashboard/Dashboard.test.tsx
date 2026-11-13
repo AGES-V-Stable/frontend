@@ -338,7 +338,7 @@ it('shows balance and transacted volume beside the accumulated savings for the c
     Array.from(row.children).map(
       (card) => within(card as HTMLElement).getByRole('heading').textContent,
     ),
-  ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado'])
+  ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado', 'Câmbio Atual'])
 })
 
 it('shows the consolidated transacted volume to the administrator, without the balance', async () => {
@@ -543,6 +543,13 @@ it.each([
 
     const card = await screen.findByRole('region', { name: 'Câmbio Atual' })
     expect(await within(card).findByText(/^1 USDC = R\$\s5,4700$/)).toBeInTheDocument()
+    // Na linha de métricas, ao lado da economia e do volume.
+    expect(card.parentElement).toBe(
+      screen.getByRole('region', { name: 'Economia Acumulada' }).parentElement,
+    )
+    fireEvent.change(within(card).getByRole('combobox', { name: 'Par de moedas' }), {
+      target: { value: 'BRL-USDT' },
+    })
     expect(within(card).getByText('Cotação indisponível')).toBeInTheDocument()
     expect(calledUrls(fetcher).filter((url) => url.startsWith('/v1/exchange-rates'))).toEqual([
       '/v1/exchange-rates',
