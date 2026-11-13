@@ -12,6 +12,12 @@ import {
   registrationCompletePath,
 } from '@/shared/navigation/paths'
 import { ApiError } from '@/features/onboarding/api/onboarding'
+import {
+  INVITATION_LINK_HASH,
+  json,
+  resolvedInvitation,
+  stubApi,
+} from '@/test/fixtures/companyInvitation'
 
 const { submitOnboardingMock, registerCompanyMock } = vi.hoisted(() => ({
   submitOnboardingMock: vi.fn(),
@@ -503,5 +509,31 @@ describe('usuário autenticado sem empresa (backend#64)', () => {
       screen.queryByRole('heading', { name: 'Cadastro Institucional' }),
     ).not.toBeInTheDocument()
     expect(registerCompanyMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('AppRoutes company invitation', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    sessionStorage.clear()
+  })
+
+  it('opens the public invitation link without requiring a session', async () => {
+    stubApi({ 'POST /v1/company-invitations/resolve': json(resolvedInvitation) })
+
+    render(
+      <MemoryRouter initialEntries={[`${PATHS.COMPANY_INVITATION}${INVITATION_LINK_HASH}`]}>
+        <SessionProvider>
+          <AppRoutes />
+        </SessionProvider>
+      </MemoryRouter>,
+    )
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Você foi convidado para acessar Cooperativa AgroSul',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Aceitar e acessar' })).toBeInTheDocument()
   })
 })

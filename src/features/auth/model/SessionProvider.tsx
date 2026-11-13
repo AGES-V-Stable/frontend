@@ -10,30 +10,33 @@ import type { Session } from './useSession'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [revision, setRevision] = useState(0)
-  const retry = useCallback(() => setRevision((value) => value + 1), [])
   const [session, setSession] = useState<Omit<Session, 'retry'>>({
     status: getLoginToken() ? 'loading' : 'anonymous',
     user: null,
     company: null,
     error: null,
   })
+  /**
+   * Recarrega usuário e empresa. O estado passa a `loading` na mesma renderização, para que
+   * guards não decidam com o contexto anterior (por exemplo, logo após aceitar um convite).
+   */
+  const retry = useCallback(() => {
+    setSession({
+      status: getLoginToken() ? 'loading' : 'anonymous',
+      user: null,
+      company: null,
+      error: null,
+    })
+    setRevision((value) => value + 1)
+  }, [])
   useEffect(() => {
-    const listener = () => {
-      setSession({
-        status: getLoginToken() ? 'loading' : 'anonymous',
-        user: null,
-        company: null,
-        error: null,
-      })
-      retry()
-    }
     const storage = (event: StorageEvent) => {
-      if (event.key === 'token' || event.key === null) listener()
+      if (event.key === 'token' || event.key === null) retry()
     }
-    window.addEventListener(SESSION_CHANGED, listener)
+    window.addEventListener(SESSION_CHANGED, retry)
     window.addEventListener('storage', storage)
     return () => {
-      window.removeEventListener(SESSION_CHANGED, listener)
+      window.removeEventListener(SESSION_CHANGED, retry)
       window.removeEventListener('storage', storage)
     }
   }, [retry])

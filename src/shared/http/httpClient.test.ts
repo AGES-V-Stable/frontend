@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { httpRequest, httpResponse, apiUrl, HttpError } from './httpClient'
+import { httpRequest, httpResponse, apiUrl, HttpError, parseRetryAfter } from './httpClient'
 import { saveLoginToken, saveAccessToken, getLoginToken, getAccessToken } from './authToken'
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -146,6 +146,38 @@ it('propagates aborts unchanged', async () => {
   const error = new DOMException('aborted', 'AbortError')
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(error))
   await expect(httpRequest('/v1/example')).rejects.toBe(error)
+})
+it('exposes the Retry-After seconds of a rate-limited response', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue(
+      new Response('{"code":"RATE_LIMITED","message":"Muitas tentativas."}', {
+        status: 429,
+        headers: { 'Retry-After': '42' },
+      }),
+    ),
+  )
+  await expect(httpRequest('/v1/example', {}, false)).rejects.toMatchObject({
+    status: 429,
+    code: 'RATE_LIMITED',
+    retryAfterSeconds: 42,
+  })
+})
+it('omits Retry-After when the header is absent', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 429 })))
+  const error = await httpRequest('/v1/example', {}, false).catch((e: unknown) => e)
+  expect(error).toBeInstanceOf(HttpError)
+  expect((error as HttpError).retryAfterSeconds).toBeUndefined()
+})
+it.each([
+  [null, undefined],
+  ['', undefined],
+  ['15', 15],
+  ['Thu, 01 Jan 1970 00:00:30 GMT', 20],
+  ['Thu, 01 Jan 1970 00:00:00 GMT', 0],
+  ['amanhã', undefined],
+])('parses Retry-After %s as %s seconds', (value, expected) => {
+  expect(parseRetryAfter(value, 10_000)).toBe(expected)
 })
 it('rejects malformed JSON', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('invalid')))

@@ -15,8 +15,18 @@ import { LoginSchema, type LoginFormData } from '@/features/auth/schemas/auth'
 
 type LoginErrors = Partial<Record<keyof LoginFormData, string>>
 
-/** Rota interna que o usuário tentava acessar quando foi enviado ao login. */
-const RedirectState = z.object({ from: z.string().regex(/^\/(?!\/)/) })
+/**
+ * Estado recebido de quem enviou ao login: a rota interna de retorno, o e-mail a pré-preencher
+ * (convite de empresa) e o aviso de acesso recém-criado. Nunca transporta tokens ou senhas.
+ */
+const RedirectState = z.object({
+  from: z
+    .string()
+    .regex(/^\/(?!\/)/)
+    .optional(),
+  email: z.string().trim().email().max(254).optional(),
+  notice: z.enum(['ACCOUNT_CREATED']).optional(),
+})
 
 interface LoginProps {
   /** Escolhe o destino após autenticar; sem ela, volta à rota de origem ou ao início. */
@@ -38,8 +48,11 @@ function validate(data: LoginFormData): LoginErrors {
 }
 
 function Login({ resolveDestination }: LoginProps) {
+  const redirect = RedirectState.safeParse(useLocation().state)
+  const from = redirect.success ? (redirect.data.from ?? null) : null
+  const notice = redirect.success ? redirect.data.notice : undefined
   const [step, setStep] = useState<'CREDENTIALS' | '2FA' | 'RECOVERY_REQUEST'>('CREDENTIALS')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(redirect.success ? (redirect.data.email ?? '') : '')
   const [password, setPassword] = useState('')
   const [challengeToken, setChallengeToken] = useState<string | undefined>()
   const [otpauthUri, setOtpauthUri] = useState<string | undefined>()
@@ -51,8 +64,6 @@ function Login({ resolveDestination }: LoginProps) {
   const [sessionExpired] = useState(wasSessionExpired)
 
   const navigate = useNavigate()
-  const redirect = RedirectState.safeParse(useLocation().state)
-  const from = redirect.success ? redirect.data.from : null
 
   useEffect(() => clearSessionExpired(), [])
 
@@ -168,6 +179,11 @@ function Login({ resolveDestination }: LoginProps) {
               </p>
             )}
           </div>
+        )}
+        {notice === 'ACCOUNT_CREATED' && step === 'CREDENTIALS' && (
+          <p role="status" className="w-[560px] text-sm text-green-700">
+            Seu acesso foi criado. Entre com seu e-mail e senha para continuar.
+          </p>
         )}
         {sessionExpired && step === 'CREDENTIALS' && (
           <p role="status" className="w-[560px] text-sm text-amber-700">

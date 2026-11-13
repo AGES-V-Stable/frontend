@@ -18,6 +18,7 @@ import {
   useSession,
 } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
+import { CompanyInvitation } from '@/features/invitations'
 import AdminClients from '@/features/clients/pages/AdminClients'
 import AdminTransfers from '@/features/transfers/pages/AdminTransfers'
 import { BeneficiaryView } from '@/features/beneficiaries/pages/admin/beneficiaryView'
@@ -277,6 +278,7 @@ export default function AppRoutes() {
       <Route path="/transferencias/:id" element={<LegacyRedirect details />} />
       <Route path="/configuracoes" element={<LegacyRedirect to={PATHS.SETTINGS} />} />
       <Route path={PATHS.LOGIN} element={<Login resolveDestination={postLoginDestination} />} />
+      <Route path={PATHS.COMPANY_INVITATION} element={<CompanyInvitation />} />
       <Route path={PATHS.REGISTER} element={<Register />} />
       <Route path={PATHS.REGISTER_COMPANY} element={<CompanyRoute />} />
       <Route path={PATHS.REGISTER_REPRESENTATIVE} element={<RepresentativeRoute />} />
