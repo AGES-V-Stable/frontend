@@ -9,7 +9,7 @@ const memberPath = (companyId: string, memberId: string) =>
   `${membersPath(companyId)}/${encodeURIComponent(memberId)}`
 
 /** Versão do recurso no formato do backend: decimal entre aspas, como `"3"`. */
-const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` })
+export const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` })
 
 /** Lê a versão de um ETag (`"3"` ou `W/"3"`); retorna null se o formato não for reconhecido. */
 export function versionFromEtag(etag: string | null): number | null {
