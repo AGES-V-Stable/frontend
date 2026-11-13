@@ -90,8 +90,26 @@ const calledUrls = (fetcher: ReturnType<typeof vi.fn>) =>
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-11-03T15:00:00Z'))
+  // jsdom does not implement the native dialog methods.
+  Object.defineProperties(HTMLDialogElement.prototype, {
+    showModal: {
+      configurable: true,
+      value(this: HTMLDialogElement) {
+        this.setAttribute('open', '')
+      },
+    },
+    close: {
+      configurable: true,
+      value(this: HTMLDialogElement) {
+        this.removeAttribute('open')
+        this.dispatchEvent(new Event('close'))
+      },
+    },
+  })
 })
 afterEach(() => {
+  Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal')
+  Reflect.deleteProperty(HTMLDialogElement.prototype, 'close')
   vi.useRealTimers()
   vi.unstubAllGlobals()
 })
@@ -317,6 +335,61 @@ it('shows balance and transacted volume beside the accumulated savings for the c
   ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado'])
 })
 
+it('submits a simulated deposit in BRL and refreshes the displayed balance', async () => {
+  let balance = '25000.00'
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === '/v1/balance/simulated-deposits') balance = '25020.50'
+    if (url.startsWith('/v1/balance')) {
+      return new Response(JSON.stringify({ availableBalanceBrl: balance }))
+    }
+    return reply(url)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  renderDashboard()
+
+  await screen.findByText('R$ 25.000,00')
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
+  const amount = within(modal).getByLabelText('Valor do crédito simulado (R$)')
+  fireEvent.change(amount, { target: { value: '20,50' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo simulado' }))
+
+  expect(await screen.findByText('R$ 25.020,50')).toBeInTheDocument()
+  expect(modal).not.toHaveAttribute('open')
+  expect(fetcher).toHaveBeenCalledWith(
+    '/v1/balance/simulated-deposits',
+    expect.objectContaining({ method: 'POST', body: JSON.stringify({ amount: '20.50' }) }),
+  )
+})
+
+it('keeps the entered amount and displays an error when the deposit is rejected', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url === '/v1/balance/simulated-deposits' ? new Response('{}', { status: 403 }) : reply(url),
+    ),
+  )
+  renderDashboard()
+
+  await screen.findByText('R$ 25.000,00')
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
+  const amount = within(modal).getByLabelText('Valor do crédito simulado (R$)')
+  fireEvent.change(amount, { target: { value: '20,50' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo simulado' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Não foi possível confirmar a adição de saldo simulado.',
+  )
+  expect(amount).toHaveValue('20,50')
+  expect(screen.getByText('R$ 25.000,00')).toBeInTheDocument()
+  fireEvent.click(within(modal).getByRole('button', { name: 'Cancelar' }))
+  expect(modal).not.toHaveAttribute('open')
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  expect(amount).toHaveValue('')
+  expect(within(modal).queryByRole('alert')).not.toBeInTheDocument()
+})
+
 it('shows the consolidated transacted volume to the administrator, without the balance', async () => {
   const fetcher = vi.fn(async (url: string) => reply(url))
   vi.stubGlobal('fetch', fetcher)
@@ -324,6 +397,7 @@ it('shows the consolidated transacted volume to the administrator, without the b
 
   expect(await screen.findByText('R$ 5.022,50')).toBeInTheDocument()
   expect(screen.queryByText('Saldo Disponível')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Adicionar saldo' })).not.toBeInTheDocument()
   expect(calledUrls(fetcher)).toContain(`/v1/admin/dashboard/transaction-volume?${DEFAULT_PERIOD}`)
   expect(calledUrls(fetcher).some((url) => url === '/v1/balance')).toBe(false)
 })
