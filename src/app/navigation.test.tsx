@@ -390,3 +390,59 @@ it('opens settings from the company menu', async () => {
     'page',
   )
 })
+
+it('opens members from the company menu with the same content as the direct route', async () => {
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  const nav = await screen.findByRole('navigation')
+  await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
+  expect(await screen.findByRole('heading', { name: 'Membros' })).toBeInTheDocument()
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
+  expect(within(nav).getByRole('button', { name: 'Membros' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  // Sem vínculo de proprietário na sessão, nenhuma lista de terceiros é consultada.
+  expect(
+    screen.getByText('A gestão de membros é exclusiva do proprietário da empresa.'),
+  ).toBeVisible()
+  expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
+})
+
+it.each(['OPERATOR', 'VIEWER'])(
+  'given a %s opening the members URL directly, then no management is offered or requested',
+  async (companyRole) => {
+    const companyAccess = {
+      membershipId: 'm2',
+      companyId: 'c1',
+      role: companyRole,
+      status: 'ACTIVE',
+      permissions: ['COMPANY_READ', 'SELF_MEMBERSHIP_READ'],
+      version: 1,
+    }
+    mock.mockImplementation(async (url: string) =>
+      url === '/v1/users/me'
+        ? new Response(JSON.stringify({ ...user, companyAccess }))
+        : backend(url),
+    )
+    saveLoginToken('login')
+    renderRoute('/app/membros')
+    expect(
+      await screen.findByText('A gestão de membros é exclusiva do proprietário da empresa.'),
+    ).toBeVisible()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Gerenciar' })).not.toBeInTheDocument()
+    expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
+  },
+)
+
+it('keeps administrators out of the company members page', async () => {
+  role = 'ADMIN'
+  saveLoginToken(
+    `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
+  )
+  renderRoute('/app/membros')
+  await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/admin/dashboard'))
+  expect(screen.queryByRole('heading', { name: 'Membros' })).not.toBeInTheDocument()
+  expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
+})

@@ -21,6 +21,7 @@ export const PATHS = {
   TRANSFERS: '/app/transferencias/nova',
   TRANSFER_DETAILS: '/app/transferencias/:id',
   SETTINGS: '/app/configuracoes',
+  MEMBERS: '/app/membros',
   /** Usuário autenticado sem empresa cadastra a própria empresa. */
   COMPANY_SETUP: '/app/empresa/cadastrar',
 } as const
