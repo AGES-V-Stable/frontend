@@ -110,4 +110,66 @@ describe('Modal', () => {
 
     expect(screen.getByRole('dialog')).toHaveFocus()
   })
+
+  it('given two stacked modals, then Escape closes only the one on top', async () => {
+    const closeBottom = vi.fn()
+    const closeTop = vi.fn()
+    render(
+      <>
+        <Modal labelledBy="bottom" onClose={closeBottom}>
+          <h2 id="bottom">Formulário</h2>
+          <button type="button">Campo de baixo</button>
+        </Modal>
+        <Modal labelledBy="top" onClose={closeTop}>
+          <h2 id="top">Aviso</h2>
+          <button type="button">Ok</button>
+        </Modal>
+      </>,
+    )
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(closeTop).toHaveBeenCalledTimes(1)
+    expect(closeBottom).not.toHaveBeenCalled()
+  })
+
+  it('given the focus outside the panel, then Tab brings it back to the first field', async () => {
+    render(
+      <>
+        <button type="button">Fora</button>
+        <Modal labelledBy="t" onClose={vi.fn()}>
+          <h2 id="t">Título</h2>
+          <button type="button">Primeiro</button>
+          <button type="button">Último</button>
+        </Modal>
+      </>,
+    )
+    screen.getByRole('button', { name: 'Fora' }).focus()
+
+    await userEvent.tab()
+
+    expect(screen.getByRole('button', { name: 'Primeiro' })).toHaveFocus()
+  })
+
+  it('skips fields of a disabled fieldset and keeps the focus on the panel when nothing is enabled', async () => {
+    render(
+      <>
+        <button type="button">Fora</button>
+        <Modal labelledBy="t" busy onClose={vi.fn()}>
+          <h2 id="t">Título</h2>
+          <fieldset disabled>
+            <input type="radio" aria-label="Operador" />
+          </fieldset>
+          <button type="button" disabled>
+            Criar convite
+          </button>
+        </Modal>
+      </>,
+    )
+    screen.getByRole('button', { name: 'Fora' }).focus()
+
+    await userEvent.tab()
+
+    expect(screen.getByRole('dialog')).toHaveFocus()
+  })
 })

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getInvitationLink, regenerateInvitationLink, revokeInvitation } from '../api/invitations'
 import { copyText } from '../model/clipboard'
 import { describeInvitationError } from '../model/invitationError'
@@ -20,6 +20,12 @@ const MANUAL_COPY_NOTICE: MemberActionOutcome = {
   message: 'Não foi possível copiar automaticamente. Selecione o link abaixo e copie manualmente.',
 }
 
+const COPY_FAILED_WITH_DIALOG_OPEN: MemberActionOutcome = {
+  tone: 'warning',
+  message:
+    'Não foi possível copiar o link automaticamente. Feche o diálogo aberto e tente de novo.',
+}
+
 /**
  * Cópia do link a partir da linha, regeneração e revogação de convites pendentes. Uma ação por
  * vez. Copiar busca o link vigente (sem gerar token novo); só "Gerar novo link" troca o token.
@@ -36,6 +42,12 @@ export function useInvitationActions(
   )
   const [error, setError] = useState<{ action: PendingAction; message: string } | null>(null)
   const [active, setActive] = useState<ActiveInvitation | null>(null)
+  // Diálogo aberto agora, lido ao fim de uma cópia pela linha: outra ação não troca nem fecha o
+  // diálogo de um convite diferente que o usuário abriu enquanto a cópia estava em andamento.
+  const activeRef = useRef<ActiveInvitation | null>(null)
+  useEffect(() => {
+    activeRef.current = active
+  })
 
   const run = useCallback(
     async (
@@ -54,7 +66,7 @@ export function useInvitationActions(
       } catch (cause) {
         const failure = describeInvitationError(cause, action)
         if (failure.stale) {
-          setActive(null)
+          setActive((current) => (current?.invitation.id === invitation.id ? null : current))
           report({ tone: 'warning', message: failure.message })
           reload()
         } else onFailure(failure.message)
@@ -73,15 +85,19 @@ export function useInvitationActions(
         'link',
         invitation,
         async () => {
-          const generated = await getInvitationLink(companyId, invitation.id)
-          if (await copyText(generated.inviteUrl))
+          const link = getInvitationLink(companyId, invitation.id)
+          // A cópia começa ainda no clique, antes de esperar a API (exigência do Safari/iOS).
+          const copied = copyText(link.then((generated) => generated.inviteUrl))
+          const generated = await link
+          if (await copied)
             report({ tone: 'success', message: `Link copiado. Envie para ${invitation.name}.` })
-          else
+          else if (activeRef.current === null)
             setActive({
               invitation: generated.invitation,
               inviteUrl: generated.inviteUrl,
               notice: MANUAL_COPY_NOTICE,
             })
+          else report(COPY_FAILED_WITH_DIALOG_OPEN)
         },
         (message) => report({ tone: 'warning', message }),
       ),
@@ -133,11 +149,13 @@ export function useInvitationActions(
     setActive({ invitation, inviteUrl: null, notice: null })
   }, [])
 
+  const clearError = useCallback(() => setError(null), [])
+
   const close = useCallback(() => {
     if (inFlight.current) return
     setError(null)
     setActive(null)
   }, [])
 
-  return { active, pending, error, open, close, copyFromRow, regenerate, revoke }
+  return { active, pending, error, open, close, clearError, copyFromRow, regenerate, revoke }
 }

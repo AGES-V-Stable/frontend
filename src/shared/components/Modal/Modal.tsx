@@ -4,6 +4,17 @@ import type { ReactNode } from 'react'
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+/** Modais abertos, do mais antigo ao mais recente: só o do topo responde ao teclado. */
+const openModals: symbol[] = []
+
+/** Campos dentro de um fieldset desabilitado casam com o seletor, mas não recebem foco. */
+function focusableIn(panel: HTMLElement | null): HTMLElement[] {
+  if (!panel) return []
+  return Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    (element) => !element.closest('fieldset:disabled'),
+  )
+}
+
 export interface ModalProps {
   /** Id do título que nomeia o diálogo. */
   labelledBy: string
@@ -39,24 +50,36 @@ export function Modal({
 
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null
+    const id = Symbol('modal')
+    openModals.push(id)
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Com modais empilhados, Escape e Tab pertencem só ao de cima.
+      if (openModals[openModals.length - 1] !== id) return
       if (event.key === 'Escape') {
         event.stopPropagation()
         closeRef.current()
         return
       }
       if (event.key !== 'Tab') return
-      const focusable = panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE)
-      if (!focusable?.length) return
+      const panel = panelRef.current
+      const focusable = focusableIn(panel)
+      const active = document.activeElement
+      if (!focusable.length) {
+        // Tudo desabilitado (ação em andamento): o foco fica no próprio painel.
+        event.preventDefault()
+        panel?.focus()
+        return
+      }
       const first = focusable[0]!
       const last = focusable[focusable.length - 1]!
-      if (
-        event.shiftKey &&
-        (document.activeElement === first || !panelRef.current?.contains(document.activeElement))
-      ) {
+      if (!panel?.contains(active)) {
+        // O foco saiu do painel (ex.: o botão focado ficou desabilitado): volta para dentro.
+        event.preventDefault()
+        ;(event.shiftKey ? last : first).focus()
+      } else if (event.shiftKey && (active === first || active === panel)) {
         event.preventDefault()
         last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && active === last) {
         event.preventDefault()
         first.focus()
       }
@@ -64,6 +87,7 @@ export function Modal({
     document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
+      openModals.splice(openModals.indexOf(id), 1)
       previouslyFocused?.focus?.()
     }
   }, [])

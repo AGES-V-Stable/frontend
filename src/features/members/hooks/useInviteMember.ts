@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { ApiError } from '@/shared/http/httpClient'
 import { createInvitation, getInvitationLink } from '../api/invitations'
 import { describeInvitationError, existingInvitationId } from '../model/invitationError'
 import type { InvitationFailure } from '../model/invitationError'
@@ -51,6 +52,9 @@ export function useInviteMember(companyId: string, onChanged: () => void) {
       } catch (cause) {
         const existingId = existingInvitationId(cause)
         if (existingId) await showExisting(existingId)
+        // Sem o id do convite existente, repetir só geraria o mesmo 409: orienta a copiar pela lista.
+        else if (cause instanceof ApiError && cause.code === 'INVITATION_ALREADY_EXISTS')
+          setFailure(EXISTING_WITHOUT_LINK)
         else setFailure(describeInvitationError(cause, 'create'))
       } finally {
         inFlight.current = false

@@ -75,9 +75,9 @@ export function describeInvitationError(
   const fallback = { message: FALLBACK_MESSAGES[action], stale: false }
   if (!(error instanceof ApiError)) return fallback
   const code = error.code ?? ''
-  if (action === 'create' && code in EMAIL_MESSAGES)
+  if (action === 'create' && Object.hasOwn(EMAIL_MESSAGES, code))
     return { message: EMAIL_MESSAGES[code]!, stale: false, field: 'email' }
-  if (action !== 'create' && code in STALE_MESSAGES)
+  if (action !== 'create' && Object.hasOwn(STALE_MESSAGES, code))
     return { message: STALE_MESSAGES[code]!, stale: true }
   if (error.status === 403 || FORBIDDEN_CODES.has(code))
     return {

@@ -189,6 +189,7 @@ function MemberManagement({ companyId, viewer }: { companyId: string; viewer: Me
 
       {invitations.active && (
         <ManageInvitationDialog
+          key={invitations.active.invitation.id}
           invitation={invitations.active.invitation}
           inviteUrl={invitations.active.inviteUrl}
           notice={invitations.active.notice}
@@ -196,6 +197,7 @@ function MemberManagement({ companyId, viewer }: { companyId: string; viewer: Me
           error={invitations.error}
           onRegenerate={invitations.regenerate}
           onRevoke={() => void invitations.revoke()}
+          onClearError={invitations.clearError}
           onClose={invitations.close}
         />
       )}

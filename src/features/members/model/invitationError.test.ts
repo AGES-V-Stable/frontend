@@ -6,6 +6,17 @@ const httpError = (status: number, code?: string, body?: unknown, retryAfter?: n
   new HttpError('Mensagem do servidor', status, body, code, retryAfter)
 
 describe('describeInvitationError', () => {
+  it.each(['constructor', 'toString', '__proto__'])(
+    'given the code %s, then it is not mistaken for a known invitation code',
+    (code) => {
+      expect(describeInvitationError(httpError(409, code), 'link')).toEqual({
+        message: 'Não foi possível obter o link do convite. Tente novamente.',
+        stale: false,
+      })
+      expect(describeInvitationError(httpError(409, code), 'create').field).toBeUndefined()
+    },
+  )
+
   it.each([
     ['MEMBER_ALREADY_EXISTS', 'Este e-mail já pertence a um membro desta empresa.'],
     [

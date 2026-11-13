@@ -20,6 +20,8 @@ export interface ManageInvitationDialogProps {
   /** Resolve true quando o novo link foi gerado. */
   onRegenerate: () => Promise<boolean>
   onRevoke: () => void
+  /** Descarta o erro da última tentativa; chamado ao trocar de etapa. */
+  onClearError: () => void
   onClose: () => void
 }
 
@@ -34,11 +36,16 @@ export function ManageInvitationDialog({
   error,
   onRegenerate,
   onRevoke,
+  onClearError,
   onClose,
 }: ManageInvitationDialogProps) {
   const titleId = useId()
   const descriptionId = useId()
-  const [step, setStep] = useState<Step>('manage')
+  const [step, setStepState] = useState<Step>('manage')
+  const setStep = (next: Step) => {
+    onClearError()
+    setStepState(next)
+  }
   const busy = pending !== null
   const stepError =
     (step === 'confirm-regenerate' && error?.action === 'regenerate') ||

@@ -19,6 +19,7 @@ function renderDialog(props: Partial<ManageInvitationDialogProps> = {}) {
   const handlers = {
     onRegenerate: vi.fn().mockResolvedValue(true),
     onRevoke: vi.fn(),
+    onClearError: vi.fn(),
     onClose: vi.fn(),
   }
   render(
@@ -136,5 +137,14 @@ describe('ManageInvitationDialog', () => {
     expect(screen.getByRole('textbox', { name: 'Link do convite' })).toHaveValue(
       'https://app.example/convites/empresa#token=opaque-token',
     )
+  })
+
+  it('discards the error of a previous attempt when moving between steps', async () => {
+    const { onClearError } = renderDialog()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Gerar novo link' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Manter link atual' }))
+
+    expect(onClearError).toHaveBeenCalledTimes(2)
   })
 })
