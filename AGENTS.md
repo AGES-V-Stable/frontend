@@ -40,3 +40,25 @@ npm run build
 ```
 
 O CI executa essas verificações em pull requests para `main` e em pushes para `main`. `npm run format` formata o repositório inteiro; evite usá-lo para uma mudança localizada se isso alterar arquivos fora do escopo. Se uma verificação não puder ser executada, informe qual e por quê, sem afirmar que passou.
+
+## Skills de UX/UI e acessibilidade
+
+`.claude/` está no `.gitignore`, então as skills não vêm com o repositório. Para avaliar ou corrigir interface, instale-as no projeto:
+
+```bash
+npx skills add pbakaus/impeccable --skill impeccable --agent claude-code
+npx skills add wshobson/agents --skill wcag-audit-patterns --agent claude-code
+npx skills add addyosmani/agent-skills --skill frontend-ui-engineering --agent claude-code
+npx skills add heydamir/unslop --skill unslop --agent claude-code
+```
+
+| Skill                     | Use para                                                                                                                                |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `impeccable`              | Avaliar com `critique` (UX) e `audit` (checagem técnica); corrigir textos, mensagens de erro e casos de borda com `clarify` e `harden`. |
+| `wcag-audit-patterns`     | Auditar e corrigir os critérios da WCAG 2.2 AA.                                                                                         |
+| `frontend-ui-engineering` | Implementar correções de interface acessíveis e responsivas.                                                                            |
+| `unslop`                  | Apontar elementos decorativos sem função.                                                                                               |
+
+- A V-Stable é uma interface de operação: preserve a identidade visual e os componentes existentes. Não use `impeccable` nem `unslop` para redesenhar telas ou propor outra direção visual.
+- Não rode `impeccable init`, `document` ou `hooks on`; eles criam `PRODUCT.md`, `DESIGN.md` e um hook no projeto.
+- Versões conferidas em 04/11/2026: `impeccable` `5af4319`, `wcag-audit-patterns` `7e2fb55`, `frontend-ui-engineering` `301b02b`, `unslop` `a6f121e`.
