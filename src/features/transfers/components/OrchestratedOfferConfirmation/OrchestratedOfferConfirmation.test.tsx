@@ -33,7 +33,9 @@ vi.mock('@/shared/components/TwoFactorAuth', () => ({
       <button type="button" disabled={loading} onClick={() => onVerify('654321')}>
         Autorizar 654321
       </button>
-      <button type="button" onClick={onBack}>Voltar</button>
+      <button type="button" onClick={onBack}>
+        Voltar
+      </button>
     </div>
   ),
 }))
@@ -75,7 +77,9 @@ describe('OrchestratedOfferConfirmation', () => {
   })
 
   it('prevents confirming expired offers', () => {
-    render(<OrchestratedOfferConfirmation offer={{ ...offer, expiresAt: '2020-01-01T00:00:00Z' }} />)
+    render(
+      <OrchestratedOfferConfirmation offer={{ ...offer, expiresAt: '2020-01-01T00:00:00Z' }} />,
+    )
     expect(screen.getByRole('alert')).toHaveTextContent('expirou')
     expect(screen.queryByRole('button', { name: 'Confirmar oferta' })).not.toBeInTheDocument()
     expect(confirm).not.toHaveBeenCalled()
