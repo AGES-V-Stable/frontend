@@ -244,25 +244,24 @@ function RoutedApplication() {
     },
     { id: 'logout', label: 'Sair', icon: icon(logoutIcon), onClick: clearLoginToken },
   ]
-  const activeId = pathname === PATHS.MOCK_TOP_UP
-    ? 'mock-top-up'
-    : pathname.startsWith(PATHS.SETTINGS)
-      ? 'settings'
-      : pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
-        ? 'dashboard'
-        : admin
-          ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
-            ? 'admin-transfers'
-            : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
-              ? 'admin-beneficiaries'
-              : pathname.startsWith(PATHS.ADMIN_SECURITY)
-                ? 'security-requests'
-                : 'clients'
-          : pathname.startsWith('/app/transferencias')
-            ? 'transfers'
-            : pathname.startsWith(PATHS.MEMBERS)
-              ? 'members'
-              : 'beneficiaries'
+  const activeId = pathname.startsWith(PATHS.SETTINGS)
+    ? 'settings'
+    : pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
+      ? 'dashboard'
+      : admin
+        ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
+          ? 'admin-transfers'
+          : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
+            ? 'admin-beneficiaries'
+            : pathname.startsWith(PATHS.ADMIN_SECURITY)
+              ? 'security-requests'
+              : 'clients'
+        : pathname.startsWith('/app/transferencias')
+          ? 'transfers'
+          : pathname.startsWith(PATHS.MEMBERS)
+            ? 'members'
+            : 'beneficiaries'
+  const selectedId = pathname === PATHS.MOCK_TOP_UP ? 'mock-top-up' : activeId
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -292,7 +291,7 @@ function RoutedApplication() {
         <NavBar
           logo={<img src={logo} alt="V-Stable" className="h-[60px] w-[149px] object-contain" />}
           items={items}
-          activeId={activeId}
+          activeId={selectedId}
           account={account}
           footerItems={footerItems}
         />
