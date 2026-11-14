@@ -579,7 +579,9 @@ describe('Members — autorização', () => {
       accessRole = role
       renderMembers()
 
-      expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Seu acesso à empresa' }),
+      ).toBeInTheDocument()
       expect(await screen.findByText('Marina Costa')).toBeInTheDocument()
       expect(screen.getByText(role === 'OPERATOR' ? 'Operador' : 'Visualizador')).toBeInTheDocument()
       expect(screen.getByText('Ativo')).toBeInTheDocument()
@@ -598,7 +600,9 @@ describe('Members — autorização', () => {
     accessRemoved = true
     renderMembers()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Seu acesso a esta empresa foi removido')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Seu acesso a esta empresa foi removido',
+    )
     expect(screen.getByText('Acesso removido')).toBeInTheDocument()
     expect(screen.queryByText('Ana Souza')).not.toBeInTheDocument()
     expect(calls('GET', LIST_URL)).toHaveLength(0)
@@ -610,7 +614,9 @@ describe('Members — autorização', () => {
     selfLookupFailure = true
     renderMembers()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível consultar seu vínculo')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível consultar seu vínculo',
+    )
     expect(screen.queryByText('Ana Souza')).not.toBeInTheDocument()
     selfLookupFailure = false
     await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
