@@ -43,11 +43,14 @@ describe('balance API', () => {
   })
 
   it('sends a fresh idempotency key with every mock credit request', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' })),
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' })),
+      ),
     )
     vi.stubGlobal('fetch', fetchMock)
-    const randomUUID = vi.fn()
+    const randomUUID = vi
+      .fn()
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
     vi.stubGlobal('crypto', { randomUUID })
@@ -60,14 +63,18 @@ describe('balance API', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock.mock.calls[0][0]).toBe('/v1/balance/mock-top-ups')
-    expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({
-      method: 'POST',
-      body: JSON.stringify({ amountBrl: '10.25' }),
-    }))
-    expect(new Headers(fetchMock.mock.calls[0][1].headers).get('Idempotency-Key'))
-      .toBe('00000000-0000-4000-8000-000000000001')
-    expect(new Headers(fetchMock.mock.calls[1][1].headers).get('Idempotency-Key'))
-      .toBe('00000000-0000-4000-8000-000000000002')
+    expect(fetchMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ amountBrl: '10.25' }),
+      }),
+    )
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get('Idempotency-Key')).toBe(
+      '00000000-0000-4000-8000-000000000001',
+    )
+    expect(new Headers(fetchMock.mock.calls[1][1].headers).get('Idempotency-Key')).toBe(
+      '00000000-0000-4000-8000-000000000002',
+    )
     expect(randomUUID).toHaveBeenCalledTimes(2)
   })
 
