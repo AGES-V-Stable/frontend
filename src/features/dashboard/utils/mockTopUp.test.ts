@@ -17,28 +17,7 @@ describe('normalizeMockTopUp', () => {
 
   it.each([
     '',
-    'R('rejects invalid amount %s', (input) => {
-    expect(normalizeMockTopUp(input)).toBeNull()
-  })
-})
-
-describe('projectedMockBalance', () => {
-  it('sums decimal cents exactly', () => {
-    expect(projectedMockBalance('0.00', '10.25')).toBe('10.25')
-    expect(projectedMockBalance('10.25', '2.50')).toBe('12.75')
-  })
-
-  it('does not lose cents near the technical limit', () => {
-    expect(projectedMockBalance('9999999999999.98', '0.01')).toBe('9999999999999.99')
-    expect(projectedMockBalance('9999999999999.99', '0.01')).toBeNull()
-  })
-
-  it('rejects malformed API values and zero credits', () => {
-    expect(projectedMockBalance('nope', '1.00')).toBeNull()
-    expect(projectedMockBalance('1.00', '0.00')).toBeNull()
-  })
-})
-,
+    'R$',
     '0',
     '0,00',
     '-1',
