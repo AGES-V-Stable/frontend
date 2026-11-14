@@ -31,9 +31,7 @@ export async function getMembers(
 
 /** Consulta apenas o próprio vínculo, inclusive quando o acesso foi revogado. */
 export async function getOwnMember(companyId: string, signal?: AbortSignal): Promise<Member> {
-  return MemberSchema.parse(
-    await httpRequest<unknown>(`${membersPath(companyId)}/me`, { signal }),
-  )
+  return MemberSchema.parse(await httpRequest<unknown>(`${membersPath(companyId)}/me`, { signal }))
 }
 
 /** Altera o perfil de um membro ativo; a versão listada vai em If-Match. */
