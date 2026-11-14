@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HttpError } from '@/shared/http/httpClient'
-import { getMembers, getOwnMember, removeMember, updateMemberRole, versionFromEtag } from './members'
+import {
+  getMembers,
+  getOwnMember,
+  removeMember,
+  updateMemberRole,
+  versionFromEtag,
+} from './members'
 
 const member = {
   id: 'm-2',
