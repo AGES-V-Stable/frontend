@@ -29,6 +29,8 @@ import { BeneficiaryCreate } from '@/features/beneficiaries/pages/client/benefic
 import { TransferCreate } from '@/features/transfers/pages/client/transferCreate'
 import { TransferDetails } from '@/features/transfers/pages/client/transferDetails'
 import { Members } from '@/features/members/pages/Members'
+import { MockTopUp } from '@/features/dashboard/pages/MockTopUp/MockTopUp'
+import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
 import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
@@ -222,6 +224,9 @@ function RoutedApplication() {
         [item('members', 'Membros', PATHS.MEMBERS, clientsIcon)]
       : [
           item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
+          ...(canAddSimulatedBalance(user)
+            ? [item('mock-top-up', 'Adicionar saldo', PATHS.MOCK_TOP_UP, homeIcon)]
+            : []),
           item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
           // O item abre a criação de transferência: só aparece para quem pode criar.
           ...(hasCompanyPermission(user, 'TRANSFER_CREATE')
@@ -256,6 +261,7 @@ function RoutedApplication() {
           : pathname.startsWith(PATHS.MEMBERS)
             ? 'members'
             : 'beneficiaries'
+  const selectedId = pathname === PATHS.MOCK_TOP_UP ? 'mock-top-up' : activeId
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -285,7 +291,7 @@ function RoutedApplication() {
         <NavBar
           logo={<img src={logo} alt="V-Stable" className="h-[60px] w-[149px] object-contain" />}
           items={items}
-          activeId={activeId}
+          activeId={selectedId}
           account={account}
           footerItems={footerItems}
         />
@@ -331,6 +337,7 @@ export default function AppRoutes() {
       <Route element={<RoleGuard role="USER" />}>
         <Route element={<RoutedApplication />}>
           <Route path={PATHS.DASHBOARD} element={<DashboardRoute />} />
+          <Route path={PATHS.MOCK_TOP_UP} element={<MockTopUp />} />
           <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
           <Route
             element={

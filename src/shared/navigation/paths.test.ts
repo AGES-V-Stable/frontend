@@ -15,6 +15,7 @@ describe('PATHS configuration', () => {
     const expectedPaths = {
       HOME: '/',
       DASHBOARD: '/app/dashboard',
+      MOCK_TOP_UP: '/app/saldo/adicionar',
       ADMIN_DASHBOARD: '/admin/dashboard',
       LOGIN: '/login',
       REGISTER: '/register',
