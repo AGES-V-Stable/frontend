@@ -391,7 +391,25 @@ describe('Members — perda de acesso do proprietário', () => {
     const details = await screen.findByRole('region', { name: 'Seu acesso à empresa' })
     expect(within(details).getByText('Visualizador')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(calls('GET', /^\/v1\/users\/me$/)).toHaveLength(2)
+    // Carga inicial, consulta automática após o 403 (sem mudança) e a atualização pedida.
+    expect(calls('GET', /^\/v1\/users\/me$/)).toHaveLength(3)
+  })
+
+  it('given the owner was demoted, when the list is refused, then the context reloads by itself and shows the own access', async () => {
+    interceptor = (_, url) => {
+      if (!LIST_URL.test(url)) return undefined
+      // O perfil mudou no servidor depois que a sessão foi carregada.
+      accessRole = 'VIEWER'
+      return apiError(403, 'OWNER_REQUIRED')
+    }
+    renderMembers()
+
+    const details = await screen.findByRole('region', { name: 'Seu acesso à empresa' })
+    expect(within(details).getByText('Visualizador')).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Adicionar membro' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(calls('GET', LIST_URL)).toHaveLength(1)
   })
 })
 
@@ -732,6 +750,8 @@ describe('Members — consulta do próprio acesso', () => {
     renderMembers()
 
     expect(await screen.findByText('Carregando seu acesso...')).toBeInTheDocument()
+    // A consulta parte de um efeito, logo após o aviso de carregamento aparecer.
+    await waitFor(() => expect(calls('GET', /\/members\/me$/)).toHaveLength(1))
     await act(async () => release(json(newMember('m1', 'Marina Costa', 'OPERATOR'))))
 
     expect(await screen.findByRole('region', { name: 'Seu acesso à empresa' })).toBeInTheDocument()

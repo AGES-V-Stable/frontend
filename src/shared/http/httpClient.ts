@@ -1,5 +1,5 @@
 import { env } from '@/shared/schemas/env'
-import { getAccessToken, getLoginToken, invalidateToken } from './authToken'
+import { getAccessToken, getLoginToken, invalidateToken, notifyAccessDenied } from './authToken'
 
 export class ApiError extends Error {
   readonly status: number
@@ -45,6 +45,17 @@ export function parseRetryAfter(value: string | null, now = Date.now()): number 
 const TOKEN_REJECTION_CODES = new Set(['TOKEN_EXPIRED', 'TOKEN_INVALID', 'UNAUTHENTICATED'])
 const isRejectedToken = (code: unknown) =>
   typeof code !== 'string' || TOKEN_REJECTION_CODES.has(code)
+
+/**
+ * 403 causados por mudança de perfil ou de vínculo com a empresa. A sessão é avisada para
+ * recarregar o contexto, de modo que ações e dados sem permissão saiam da tela sem novo login.
+ */
+const ACCESS_CHANGE_CODES = new Set([
+  'PERMISSION_DENIED',
+  'OWNER_REQUIRED',
+  'COMPANY_ACCESS_DENIED',
+  'COMPANY_ACCESS_REVOKED',
+])
 
 export function apiUrl(path: string): string {
   return `${env.VITE_API_URL}${path}`
@@ -100,6 +111,8 @@ export async function httpResponse(
     const record =
       typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
     if (response.status === 401 && token && isRejectedToken(record.code)) invalidateToken(token)
+    if (response.status === 403 && token && ACCESS_CHANGE_CODES.has(String(record.code)))
+      notifyAccessDenied()
     throw new HttpError(
       typeof record.message === 'string'
         ? record.message

@@ -3,6 +3,8 @@ export { clearLoginToken, saveLoginToken } from '@/shared/http/authToken'
 export { useSession } from './model/useSession'
 export { isStoredAdmin } from './model/storedAccount'
 export type { User } from './api/user'
+export { hasCompanyPermission } from './model/companyPermissions'
+export type { CompanyPermission } from './model/companyPermissions'
 export {
   twoFactorService,
   reconfigure2fa,

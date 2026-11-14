@@ -13,10 +13,12 @@ import { SupportChatWidget } from '@/features/support'
 import {
   AdminSecurityRequests,
   clearLoginToken,
+  hasCompanyPermission,
   isStoredAdmin,
   Settings,
   useSession,
 } from '@/features/auth'
+import type { CompanyPermission } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import { CompanyInvitation } from '@/features/invitations'
 import AdminClients from '@/features/clients/pages/AdminClients'
@@ -127,6 +129,42 @@ function RoleGuard({ role }: { role?: 'ADMIN' | 'USER' }) {
   }
   return <Outlet />
 }
+/** Rotas que iniciam uma ação: só entram perfis com a capacidade, inclusive por URL direta. */
+function PermissionGuard({
+  permission,
+  message,
+}: {
+  permission: CompanyPermission
+  message: string
+}) {
+  const { user } = useSession()
+  if (hasCompanyPermission(user, permission)) return <Outlet />
+  return (
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col items-start gap-3 px-4 py-8 md:px-8">
+      <p role="alert" className="font-medium text-slate-900">
+        {message}
+      </p>
+      <p className="text-sm text-slate-600">
+        Para alterar seu perfil de acesso, entre em contato com o proprietário da empresa.
+      </p>
+      <Link
+        to={PATHS.MEMBERS}
+        className="rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary"
+      >
+        Ver meu acesso
+      </Link>
+    </div>
+  )
+}
+/** Quem só consulta transferências volta ao dashboard ao fechar, e não ao formulário de criação. */
+function TransferDetailsRoute() {
+  const { user } = useSession()
+  return (
+    <TransferDetails
+      closeTo={hasCompanyPermission(user, 'TRANSFER_CREATE') ? PATHS.TRANSFERS : PATHS.DASHBOARD}
+    />
+  )
+}
 function LegacyRedirect({ to, details = false }: { to?: string; details?: boolean }) {
   const { id } = useParams()
   const { search, hash } = useLocation()
@@ -185,7 +223,10 @@ function RoutedApplication() {
       : [
           item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
           item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
-          item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
+          // O item abre a criação de transferência: só aparece para quem pode criar.
+          ...(hasCompanyPermission(user, 'TRANSFER_CREATE')
+            ? [item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon)]
+            : []),
           item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
         ]
   items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
@@ -291,9 +332,27 @@ export default function AppRoutes() {
         <Route element={<RoutedApplication />}>
           <Route path={PATHS.DASHBOARD} element={<DashboardRoute />} />
           <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
-          <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
-          <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />
-          <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetails />} />
+          <Route
+            element={
+              <PermissionGuard
+                permission="BENEFICIARY_WRITE"
+                message="Seu perfil de acesso não permite cadastrar beneficiários."
+              />
+            }
+          >
+            <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
+          </Route>
+          <Route
+            element={
+              <PermissionGuard
+                permission="TRANSFER_CREATE"
+                message="Seu perfil de acesso não permite realizar transferências."
+              />
+            }
+          >
+            <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />
+          </Route>
+          <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetailsRoute />} />
           <Route path={PATHS.MEMBERS} element={<Members />} />
         </Route>
       </Route>
