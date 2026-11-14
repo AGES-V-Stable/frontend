@@ -41,7 +41,8 @@ export function OrchestratedOfferConfirmation({
   const [execution, setExecution] = useState<TransferExecution | null>(null)
   const sending = useRef(false)
   const offerExpired =
-    !offer.expiresAt || !Number.isFinite(Date.parse(offer.expiresAt)) ||
+    !offer.expiresAt ||
+    !Number.isFinite(Date.parse(offer.expiresAt)) ||
     Date.parse(offer.expiresAt) <= Date.now()
 
   async function handleConfirm(totpCode: string) {
@@ -52,7 +53,10 @@ export function OrchestratedOfferConfirmation({
       setError('Informe o código TOTP de 6 dígitos.')
       return
     }
-    if (isRequote && (!execution?.requote || Date.parse(execution.requote.expiresAt) <= Date.now())) {
+    if (
+      isRequote &&
+      (!execution?.requote || Date.parse(execution.requote.expiresAt) <= Date.now())
+    ) {
       setError('A nova cotação expirou. Atualize o estado da transferência.')
       return
     }
@@ -62,20 +66,21 @@ export function OrchestratedOfferConfirmation({
     setError(null)
     setCode('')
     try {
-      const result = isRequote && execution?.requote
-        ? await confirmRequote(
+      const result =
+        isRequote && execution?.requote
+          ? await confirmRequote(
             execution.executionId,
             {
               sourceAmount: execution.requote.source.amount,
               targetAmount: execution.requote.target.amount,
             },
-            totpCode,
-          )
-        : await confirmOffer(
-            offer.offerId,
-            { sourceAmount: offer.sourceAmount, targetAmount: offer.targetAmount },
-            totpCode,
-          )
+              totpCode,
+            )
+          : await confirmOffer(
+              offer.offerId,
+              { sourceAmount: offer.sourceAmount, targetAmount: offer.targetAmount },
+              totpCode,
+            )
       setExecution(result)
       setOpened(false)
     } catch (cause) {
@@ -103,7 +108,9 @@ export function OrchestratedOfferConfirmation({
   }
 
   if (!execution && offerExpired) {
-    return <p role="alert">Esta oferta expirou. Solicite uma nova cotação antes de confirmar.</p>
+    return (
+      <p role="alert">Esta oferta expirou. Solicite uma nova cotação antes de confirmar.</p>
+    )
   }
 
   return (
@@ -135,7 +142,11 @@ export function OrchestratedOfferConfirmation({
         </div>
       )}
 
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
       {!opened &&
         (!execution || (execution.status === 'REQUOTE_REQUIRED' && execution.requote)) && (
           <Button
