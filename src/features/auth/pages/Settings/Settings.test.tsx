@@ -114,7 +114,7 @@ describe('Settings Page - Fluxo de Reconfigurar 2FA (State Machine)', () => {
     expect(
       screen.getByRole('region', { name: 'Configuração do aplicativo autenticador' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('NEWSECRET789')).toBeInTheDocument()
+    expect(screen.getByText('NEWS ECRE T789')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Confirmar e Ativar 2FA' })).toBeInTheDocument()
   })
 

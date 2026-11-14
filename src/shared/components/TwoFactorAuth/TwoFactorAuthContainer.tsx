@@ -56,6 +56,11 @@ function extractSecret(uri?: string): string | undefined {
   }
 }
 
+/** Só para exibição: separa a chave em blocos de 4 para facilitar a digitação manual. */
+function groupSecret(secret: string): string {
+  return secret.match(/.{1,4}/g)?.join(' ') ?? secret
+}
+
 /** Calcula o estado exato e sincronizado do ciclo TOTP de 30 segundos (RFC 6238) */
 function getTotpCycleState() {
   const now = Date.now()
@@ -251,8 +256,8 @@ export function TwoFactorAuthContainer({
                   Adicione a conta manualmente utilizando esta chave secreta:
                 </span>
                 <div className="flex items-center justify-between gap-2 rounded-md border border-sage-300 bg-white px-2.5 py-1.5">
-                  <code className="select-all break-all font-mono text-xs font-semibold tracking-wider text-slate-900">
-                    {effectiveSecret}
+                  <code className="min-w-0 select-all break-words font-mono text-xs font-semibold tracking-wider text-slate-900">
+                    {groupSecret(effectiveSecret)}
                   </code>
                   <button
                     type="button"
