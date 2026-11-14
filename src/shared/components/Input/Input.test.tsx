@@ -44,6 +44,23 @@ describe('Input', () => {
     expect(screen.getByLabelText('Valor')).toHaveStyle({ paddingLeft: 'calc(1.25rem + 3ch)' })
   })
 
+  it('includes the prefix in the accessible description of the field', () => {
+    // Given um campo de valor com moeda e erro
+    render(
+      <Input
+        label="Valor de Destino"
+        prefix="US$"
+        error="Valor inválido"
+        value=""
+        onChange={vi.fn()}
+      />,
+    )
+
+    // Then o leitor de tela ouve a moeda e o erro junto com o rótulo
+    const input = screen.getByLabelText('Valor de Destino')
+    expect(input).toHaveAccessibleDescription('US$ Valor inválido')
+  })
+
   it('keeps the plain markup and padding when there is no prefix', () => {
     render(<Input label="Valor" value="" onChange={vi.fn()} />)
 
