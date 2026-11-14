@@ -247,8 +247,8 @@ function RoutedApplication() {
   const activeId = pathname === PATHS.MOCK_TOP_UP
     ? 'mock-top-up'
     : pathname.startsWith(PATHS.SETTINGS)
-    ? 'settings'
-    : pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
+      ? 'settings'
+      : pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
       ? 'dashboard'
       : admin
         ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
