@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useSession } from '@/features/auth'
 import { Button } from '@/shared/components/Button'
-import { getOwnMember, MEMBERS_PAGE_SIZE } from '../../api/members'
+import { MEMBERS_PAGE_SIZE } from '../../api/members'
 import { InviteMemberDialog } from '../../components/InviteMemberDialog'
 import { ManageInvitationDialog } from '../../components/ManageInvitationDialog'
 import { ManageMemberDialog } from '../../components/ManageMemberDialog'
 import { MemberTable } from '../../components/MemberTable'
+import { OwnAccess } from '../../components/OwnAccess'
 import { useInvitationActions } from '../../hooks/useInvitationActions'
 import { useInviteMember } from '../../hooks/useInviteMember'
 import { useManageMember } from '../../hooks/useManageMember'
@@ -13,146 +15,92 @@ import type { MemberActionOutcome } from '../../hooks/useManageMember'
 import { useMemberList } from '../../hooks/useMemberList'
 import { canManageMembers, ROLE_LABELS } from '../../model/permissions'
 import type { MemberViewer } from '../../model/permissions'
-import type { Member } from '../../schemas/members'
+import type { CompanyRole, Member } from '../../schemas/members'
 
-/** Exibe somente o vínculo do próprio usuário, sem consultar a lista privada do OWNER. */
-function OwnMemberAccess({ companyId }: { companyId: string }) {
-  const { company } = useSession()
-  const [revision, setRevision] = useState(0)
-  const [member, setMember] = useState<Member | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    getOwnMember(companyId, controller.signal)
-      .then((value) => {
-        if (controller.signal.aborted) return
-        setMember(value)
-        setError(false)
-      })
-      .catch(() => {
-        if (controller.signal.aborted) return
-        setMember(null)
-        setError(true)
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
-    return () => controller.abort()
-  }, [companyId, revision])
-
-  const reload = () => {
-    setMember(null)
-    setError(false)
-    setLoading(true)
-    setRevision((current) => current + 1)
-  }
-
-  return (
-    <section className="rounded-lg border border-sage-300 bg-white p-6 text-sm text-slate-700">
-      <h2 className="text-lg font-semibold text-slate-900">Seu acesso à empresa</h2>
-      {loading && (
-        <p role="status" className="mt-3">
-          Carregando seu acesso...
-        </p>
-      )}
-      {!loading && error && (
-        <div className="mt-3 flex flex-col items-start gap-3">
-          <p role="alert">Não foi possível consultar seu vínculo com a empresa.</p>
-          <Button
-            type="button"
-            label="Tentar novamente"
-            variant="secondary"
-            onClick={reload}
-            className="!w-auto"
-          />
-        </div>
-      )}
-      {!loading && member && (
-        <>
-          {member.status === 'REMOVED' ? (
-            <p role="alert" className="mt-3 text-red-700">
-              Seu acesso a esta empresa foi removido. Entre em contato com o proprietário.
-            </p>
-          ) : (
-            <p className="mt-3">Você está acessando como membro desta empresa.</p>
-          )}
-          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <dt className="font-medium">Nome</dt>
-              <dd>{member.name}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">E-mail</dt>
-              <dd>{member.email}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">Empresa</dt>
-              <dd>{company?.tradeName || company?.legalName || 'Empresa vinculada'}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">Perfil</dt>
-              <dd>{ROLE_LABELS[member.role]}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">Status</dt>
-              <dd>{member.status === 'ACTIVE' ? 'Ativo' : 'Acesso removido'}</dd>
-            </div>
-          </dl>
-          <p className="mt-4 text-slate-500">
-            Para alterar o seu perfil de acesso, fale com o proprietário.
-          </p>
-        </>
-      )}
-    </section>
-  )
+interface PageHeaderProps {
+  companyName: string | null
+  /** Perfil de quem está usando a tela, exibido ao lado do título. */
+  role?: CompanyRole
+  action?: ReactNode
 }
 
-function PageHeader({ owner }: { owner: boolean }) {
+function PageHeader({ companyName, role, action }: PageHeaderProps) {
   return (
-    <header className="flex flex-col gap-1">
-      <h1 className="text-2xl font-bold text-slate-900">Membros</h1>
-      <p className="text-xs text-slate-500">
-        {owner
-          ? 'Gerencie quem acessa a conta da empresa e o perfil de acesso de cada pessoa.'
-          : 'Consulte seu perfil e o estado do seu vínculo empresarial.'}
-      </p>
+    <header className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold text-slate-900">Membros da empresa</h1>
+        <p className="text-xs text-slate-500">
+          Gerencie quem pode acessar e operar a conta da {companyName ?? 'empresa'}.
+        </p>
+      </div>
+      {(role || action) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {role && (
+            <span className="rounded-full border border-sage-300 bg-white px-3 py-1 text-xs font-medium text-slate-700">
+              <span className="sr-only">Seu perfil de acesso: </span>
+              {ROLE_LABELS[role]}
+            </span>
+          )}
+          {action}
+        </div>
+      )}
     </header>
   )
 }
 
 export function Members() {
-  const { status, user } = useSession()
+  const { status, user, company } = useSession()
   const access = user?.companyAccess
   const viewer = useMemo<MemberViewer | null>(
     () => (user && access ? { userId: user.id, membershipId: access.membershipId } : null),
     [user, access],
   )
+  const managedCompanyId = canManageMembers(user) ? (user?.companyId ?? null) : null
+  const companyName = company?.tradeName || company?.legalName || null
   if (status !== 'authenticated') {
     return <p role="status">Carregando seu acesso...</p>
   }
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-8 md:px-8">
-      <PageHeader owner={canManageMembers(user)} />
-      {canManageMembers(user) && user?.companyId && viewer ? (
-        <MemberManagement companyId={user.companyId} viewer={viewer} />
-      ) : access?.companyId ? (
-        <OwnMemberAccess key={access.companyId} companyId={access.companyId} />
+      {managedCompanyId && viewer ? (
+        <MemberManagement companyId={managedCompanyId} companyName={companyName} viewer={viewer} />
+      ) : access ? (
+        <>
+          <PageHeader
+            companyName={companyName}
+            role={access.status === 'ACTIVE' ? access.role : undefined}
+          />
+          <OwnAccess
+            companyId={access.companyId}
+            companyName={companyName}
+            role={access.role}
+            removed={access.status === 'REMOVED'}
+          />
+        </>
       ) : (
-        <section
-          role="alert"
-          className="rounded-lg border border-sage-300 bg-white p-6 text-sm text-slate-700"
-        >
-          Não existe vínculo empresarial para esta conta.
-        </section>
+        <>
+          <PageHeader companyName={companyName} />
+          <section className="rounded-lg border border-sage-300 bg-white p-6 text-sm text-slate-700">
+            <p>A gestão de membros é exclusiva do proprietário da empresa.</p>
+            <p className="mt-1 text-slate-500">
+              Para alterar o seu perfil de acesso, fale com o proprietário.
+            </p>
+          </section>
+        </>
       )}
     </div>
   )
 }
 
-function MemberManagement({ companyId, viewer }: { companyId: string; viewer: MemberViewer }) {
-  const { data, loading, failed, page, setPage, reload } = useMemberList(companyId)
+interface MemberManagementProps {
+  companyId: string
+  companyName: string | null
+  viewer: MemberViewer
+}
+
+function MemberManagement({ companyId, companyName, viewer }: MemberManagementProps) {
+  const { retry: refreshSession } = useSession()
+  const { data, loading, failed, denied, page, setPage, reload } = useMemberList(companyId)
   const [selected, setSelected] = useState<Member | null>(null)
   const [outcome, setOutcome] = useState<MemberActionOutcome | null>(null)
 
@@ -190,15 +138,52 @@ function MemberManagement({ companyId, viewer }: { companyId: string; viewer: Me
     setInviting(false)
   }
 
+  // Perda de acesso: nenhum dado ou ação de gestão permanece na tela, nem a lista já carregada.
+  if (denied)
+    return (
+      <>
+        <PageHeader companyName={companyName} />
+        <div
+          role="alert"
+          className="flex flex-col items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm"
+        >
+          <p className="font-medium text-red-700">
+            Você não tem mais acesso à gestão de membros desta empresa.
+          </p>
+          <p className="text-slate-700">
+            O seu perfil ou o seu vínculo com a empresa foi alterado. Atualize para ver o seu acesso
+            atual.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            label="Atualizar meu acesso"
+            onClick={refreshSession}
+            className="!w-auto"
+          />
+        </div>
+      </>
+    )
+
+  // Somente o proprietário, sem membros ativos nem convites pendentes.
+  const ownerOnly = data?.summary.peopleCount === 1
+
   return (
     <>
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          label="Adicionar membro"
-          onClick={openInvite}
-          className="sm:!w-auto"
-        />
+      <PageHeader
+        companyName={companyName}
+        role="OWNER"
+        action={
+          <Button type="button" label="Adicionar membro" onClick={openInvite} className="!w-auto" />
+        }
+      />
+
+      <div className="rounded-lg bg-blue-50 p-4 text-sm">
+        <p className="font-medium text-slate-900">Uma empresa, uma conta</p>
+        <p className="mt-1 text-slate-600">
+          Os membros utilizam a conta empresarial conforme suas permissões. A gestão dos acessos
+          continua com o proprietário.
+        </p>
       </div>
 
       {outcome && (
@@ -233,17 +218,6 @@ function MemberManagement({ companyId, viewer }: { companyId: string; viewer: Me
         </p>
       )}
 
-      {data?.summary.peopleCount === 1 &&
-        data.items[0]?.kind === 'MEMBER' &&
-        data.items[0].member.role === 'OWNER' && (
-          <section className="rounded-lg border border-sage-300 bg-white p-6">
-            <h2 className="text-lg font-semibold text-slate-900">Sua equipe começa aqui</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Convide a primeira pessoa para compartilhar o acesso à empresa.
-            </p>
-          </section>
-        )}
-
       {data && (
         <MemberTable
           items={data.items}
@@ -274,7 +248,32 @@ function MemberManagement({ companyId, viewer }: { companyId: string; viewer: Me
                 }
               : undefined
           }
+          footer={
+            ownerOnly && (
+              <section className="flex flex-col items-center gap-3 rounded-lg bg-slate-50 p-8 text-center">
+                <h2 className="text-lg font-medium text-slate-900">Sua equipe começa aqui</h2>
+                <p className="text-sm text-slate-600">
+                  Adicione um membro para compartilhar o acesso à empresa.
+                  <br />
+                  Cada pessoa utiliza seu próprio login.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  label="Adicionar primeiro membro"
+                  onClick={openInvite}
+                  className="!w-auto"
+                />
+              </section>
+            )
+          }
         />
+      )}
+
+      {data && (
+        <p className="text-xs text-slate-500">
+          Membros com acesso não são automaticamente representantes legais da empresa.
+        </p>
       )}
 
       {selected && (

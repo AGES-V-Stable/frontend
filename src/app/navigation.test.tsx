@@ -13,6 +13,25 @@ const user = {
   companyId: 'c1',
   accountType: 'USER',
   roles: ['ROLE_USER'],
+  // Proprietário com todas as capacidades; cada teste troca o vínculo quando precisa.
+  companyAccess: {
+    membershipId: 'm1',
+    companyId: 'c1',
+    role: 'OWNER',
+    status: 'ACTIVE',
+    permissions: [
+      'COMPANY_READ',
+      'BALANCE_READ',
+      'BENEFICIARY_READ',
+      'TRANSFER_READ',
+      'SELF_MEMBERSHIP_READ',
+      'BENEFICIARY_WRITE',
+      'TRANSFER_CREATE',
+      'MEMBERS_READ',
+      'MEMBERS_MANAGE',
+    ],
+    version: 1,
+  },
 }
 const company = { id: 'c1', legalName: 'Empresa de Teste', tradeName: null, cnpj: '12345678000190' }
 const beneficiary = {
@@ -47,6 +66,7 @@ beforeEach(() => {
           ...user,
           accountType: role,
           companyId: role === 'ADMIN' ? null : 'c1',
+          companyAccess: role === 'ADMIN' ? null : user.companyAccess,
           roles: [role === 'ADMIN' ? 'ROLE_ADMIN' : 'ROLE_USER'],
         }),
       )
@@ -392,63 +412,180 @@ it('opens settings from the company menu', async () => {
 })
 
 it('opens members from the company menu with the same content as the direct route', async () => {
+  mock.mockImplementation(async (url: string) =>
+    url === '/v1/users/me'
+      ? new Response(JSON.stringify({ ...user, companyAccess: null }))
+      : backend(url),
+  )
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')
   const nav = await screen.findByRole('navigation')
   await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
-  expect(await screen.findByRole('heading', { name: 'Membros' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Membros da empresa' })).toBeInTheDocument()
   expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
   expect(within(nav).getByRole('button', { name: 'Membros' })).toHaveAttribute(
     'aria-current',
     'page',
   )
-  // Sem vínculo empresarial, o usuário não consulta a lista de terceiros.
-  expect(screen.getByText('Não existe vínculo empresarial para esta conta.')).toBeVisible()
+  // Sem vínculo de proprietário na sessão, nenhuma lista de terceiros é consultada.
+  expect(
+    screen.getByText('A gestão de membros é exclusiva do proprietário da empresa.'),
+  ).toBeVisible()
   expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
 })
 
+const ownMembership = (companyRole: string, status = 'ACTIVE') => ({
+  id: 'm2',
+  userId: 'u1',
+  companyId: 'c1',
+  name: 'Marina Costa',
+  email: 'marina@example.com',
+  role: companyRole,
+  status,
+  version: 1,
+  joinedAt: '2026-11-01T12:00:00Z',
+  removedAt: status === 'REMOVED' ? '2026-11-12T12:00:00Z' : null,
+})
+/** Sessão de um membro convidado; removido, a conta fica sem empresa. */
+function mockMember(companyRole: string, status = 'ACTIVE') {
+  const companyAccess = {
+    membershipId: 'm2',
+    companyId: 'c1',
+    role: companyRole,
+    status,
+    permissions: status === 'ACTIVE' ? ['COMPANY_READ', 'SELF_MEMBERSHIP_READ'] : [],
+    version: 1,
+  }
+  mock.mockImplementation(async (url: string) => {
+    if (url === '/v1/users/me')
+      return new Response(
+        JSON.stringify({
+          ...user,
+          companyId: status === 'ACTIVE' ? 'c1' : null,
+          companyAccess,
+        }),
+      )
+    if (url === '/v1/companies/c1/members/me')
+      return new Response(JSON.stringify(ownMembership(companyRole, status)))
+    return backend(url)
+  })
+}
+const memberRequests = () =>
+  mock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('/members'))
+
 it.each(['OPERATOR', 'VIEWER'])(
-  'given a %s opening the members URL directly, then no management is offered or requested',
+  'given a %s, then the menu and the direct URL show only the own access, without management',
   async (companyRole) => {
+    mockMember(companyRole)
+    saveLoginToken('login')
+    renderRoute('/app/beneficiarios')
+    const nav = await screen.findByRole('navigation')
+    // O título empresarial da tela 16 pertence às telas de membros.
+    expect(screen.queryByText('V-Stable • Conta empresarial')).not.toBeInTheDocument()
+
+    await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
+
+    expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeVisible()
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
+    expect(await screen.findByRole('region', { name: 'Seu acesso à empresa' })).toBeVisible()
+    expect(screen.getByText('Você está acessando como membro')).toBeVisible()
+    expect(screen.getByText('V-Stable • Conta empresarial')).toBeVisible()
+    expect(screen.getByText('Marina Costa • MC')).toBeVisible()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Gerenciar' })).not.toBeInTheDocument()
+    expect(memberRequests()).toEqual(['/v1/companies/c1/members/me'])
+  },
+)
+
+it.each(['OPERATOR', 'VIEWER'])(
+  'given a %s opening the members URL directly, then it shows the same own access as the menu',
+  async (companyRole) => {
+    mockMember(companyRole)
+    saveLoginToken('login')
+    renderRoute('/app/membros')
+
+    expect(await screen.findByRole('region', { name: 'Seu acesso à empresa' })).toBeVisible()
+    expect(screen.getByText('Você está acessando como membro')).toBeVisible()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Adicionar|Gerenciar/ })).not.toBeInTheDocument()
+    expect(memberRequests()).toEqual(['/v1/companies/c1/members/me'])
+  },
+)
+
+it.each(['/app/membros', '/app/beneficiarios'])(
+  'given the owner arriving from %s, then the direct URL and the menu show the same member list',
+  async (path) => {
     const companyAccess = {
-      membershipId: 'm2',
+      membershipId: 'm1',
       companyId: 'c1',
-      role: companyRole,
+      role: 'OWNER',
       status: 'ACTIVE',
-      permissions: ['COMPANY_READ', 'SELF_MEMBERSHIP_READ'],
+      permissions: ['COMPANY_READ', 'MEMBERS_READ', 'MEMBERS_MANAGE'],
       version: 1,
     }
     mock.mockImplementation(async (url: string) => {
       if (url === '/v1/users/me') return new Response(JSON.stringify({ ...user, companyAccess }))
-      if (url === '/v1/companies/c1/members/me')
+      if (url.startsWith('/v1/companies/c1/members?'))
         return new Response(
           JSON.stringify({
-            id: 'm2',
-            userId: user.id,
-            companyId: 'c1',
-            name: user.name,
-            email: user.email,
-            role: companyRole,
-            status: 'ACTIVE',
-            version: 1,
-            joinedAt: '2026-11-14T12:00:00Z',
-            removedAt: null,
+            items: [{ kind: 'MEMBER', member: { ...ownMembership('OWNER'), id: 'm1' } }],
+            page: 0,
+            size: 20,
+            totalElements: 1,
+            totalPages: 1,
+            summary: { activeMembers: 1, pendingInvitations: 0, peopleCount: 1 },
           }),
         )
       return backend(url)
     })
     saveLoginToken('login')
-    renderRoute('/app/membros')
-    expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeVisible()
-    expect(await screen.findByText('Marina Costa')).toBeVisible()
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Gerenciar' })).not.toBeInTheDocument()
-    expect(
-      mock.mock.calls.filter(([url]) => String(url) === '/v1/companies/c1/members/me'),
-    ).toHaveLength(1)
-    expect(mock.mock.calls.some(([url]) => String(url).includes('/members?'))).toBe(false)
+    renderRoute(path)
+    const nav = await screen.findByRole('navigation')
+    if (path !== '/app/membros')
+      await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
+
+    expect(await screen.findByRole('heading', { name: 'Sua equipe começa aqui' })).toBeVisible()
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
+    expect(within(screen.getByRole('table')).getByText('Proprietário da empresa')).toBeVisible()
+    expect(screen.getByText('V-Stable • Conta empresarial')).toBeVisible()
+    expect(screen.getByText('Marina Costa • MC')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Adicionar membro' })).toBeEnabled()
+    expect(memberRequests()).toEqual(['/v1/companies/c1/members?page=0&size=20'])
   },
 )
+
+it('given a removed membership, then the members URL shows the lost access without loading the company', async () => {
+  mockMember('OPERATOR', 'REMOVED')
+  saveLoginToken('login')
+  renderRoute('/app/membros')
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Seu acesso a esta empresa foi removido.',
+  )
+  expect(await screen.findByText('Acesso removido')).toBeVisible()
+  const nav = screen.getByRole('navigation')
+  expect(within(nav).getByRole('button', { name: 'Membros' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  expect(within(nav).queryByRole('button', { name: 'Transferências' })).not.toBeInTheDocument()
+  expect(mock.mock.calls.some(([url]) => url === '/v1/companies/c1')).toBe(false)
+  expect(memberRequests()).toEqual(['/v1/companies/c1/members/me'])
+})
+
+it('given a removed membership, then company pages report the lost access and lead to the own access', async () => {
+  mockMember('OPERATOR', 'REMOVED')
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Seu acesso à empresa foi removido.')
+  expect(mock.mock.calls.some(([url]) => String(url).includes('/beneficiaries'))).toBe(false)
+
+  await userEvent.click(screen.getByRole('link', { name: 'Ver meu acesso' }))
+
+  expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeVisible()
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
+})
 
 it('keeps administrators out of the company members page', async () => {
   role = 'ADMIN'
@@ -457,6 +594,200 @@ it('keeps administrators out of the company members page', async () => {
   )
   renderRoute('/app/membros')
   await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/admin/dashboard'))
-  expect(screen.queryByRole('heading', { name: 'Membros' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Membros da empresa' })).not.toBeInTheDocument()
   expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
+})
+
+const ACTIVE_PERMISSIONS = [
+  'COMPANY_READ',
+  'BALANCE_READ',
+  'BENEFICIARY_READ',
+  'TRANSFER_READ',
+  'SELF_MEMBERSHIP_READ',
+]
+const OPERATION_PERMISSIONS = ['BENEFICIARY_WRITE', 'TRANSFER_CREATE']
+/** Sessão conforme a matriz de capacidades do backend. `current` pode mudar durante o teste. */
+function mockProfile(initial: 'OWNER' | 'OPERATOR' | 'VIEWER' | 'REMOVED') {
+  const state = { current: initial }
+  mock.mockImplementation(async (url: string) => {
+    if (url !== '/v1/users/me') return backend(url)
+    const profile = state.current
+    const removed = profile === 'REMOVED'
+    return new Response(
+      JSON.stringify({
+        ...user,
+        companyId: removed ? null : 'c1',
+        companyAccess: {
+          membershipId: 'm2',
+          companyId: 'c1',
+          role: removed ? 'OPERATOR' : profile,
+          status: removed ? 'REMOVED' : 'ACTIVE',
+          permissions: removed
+            ? ['SELF_MEMBERSHIP_READ']
+            : [
+                ...ACTIVE_PERMISSIONS,
+                ...(profile === 'VIEWER' ? [] : OPERATION_PERMISSIONS),
+                ...(profile === 'OWNER' ? ['MEMBERS_READ', 'MEMBERS_MANAGE'] : []),
+              ],
+          version: 1,
+        },
+      }),
+    )
+  })
+  return state
+}
+const requested = (fragment: string) =>
+  mock.mock.calls.some(([url]) => String(url).includes(fragment))
+const sessionLoads = () => mock.mock.calls.filter(([url]) => url === '/v1/users/me').length
+/** Uma requisição autenticada qualquer é recusada pelo backend com o código informado. */
+async function refuse(code: string, reloadsContext = true) {
+  const loadsBefore = sessionLoads()
+  mock.mockResolvedValueOnce(new Response(JSON.stringify({ code }), { status: 403 }))
+  await act(async () => {
+    await httpRequest('/v1/refused').catch(() => undefined)
+    // Aguarda a consulta do contexto disparada pela recusa, sem depender de temporização.
+    if (reloadsContext) await waitFor(() => expect(sessionLoads()).toBe(loadsBefore + 1))
+  })
+}
+
+it('given a viewer, then it reads the company data without any action to create a beneficiary or a transfer', async () => {
+  mockProfile('VIEWER')
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  const nav = await screen.findByRole('navigation')
+
+  expect(await screen.findByText('Atlas')).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Novo beneficiário' })).not.toBeInTheDocument()
+  expect(within(nav).queryByRole('button', { name: 'Transferências' })).not.toBeInTheDocument()
+  expect(within(nav).getByRole('button', { name: 'Membros' })).toBeEnabled()
+
+  await userEvent.click(within(nav).getByRole('button', { name: 'Dashboard' }))
+  expect(await screen.findByText('R$ 25.000,00')).toBeVisible()
+})
+
+it.each([
+  ['/app/beneficiarios/novo', 'Seu perfil de acesso não permite cadastrar beneficiários.'],
+  ['/app/transferencias/nova', 'Seu perfil de acesso não permite realizar transferências.'],
+  ['/transferencias/nova', 'Seu perfil de acesso não permite realizar transferências.'],
+])('given a viewer opening %s directly, then the action does not start', async (path, message) => {
+  mockProfile('VIEWER')
+  saveLoginToken('login')
+  renderRoute(path)
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(message)
+  expect(screen.queryByRole('heading', { name: 'Cadastrar beneficiário' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Realizar transferência' })).not.toBeInTheDocument()
+  expect(requested('/beneficiaries')).toBe(false)
+  expect(requested('/v1/quotes')).toBe(false)
+
+  await userEvent.click(screen.getByRole('link', { name: 'Ver meu acesso' }))
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
+})
+
+it.each(['OWNER', 'OPERATOR'] as const)(
+  'given the %s profile, then it starts the beneficiary registration and the transfer',
+  async (profile) => {
+    mockProfile(profile)
+    saveLoginToken('login')
+    renderRoute('/app/beneficiarios')
+    const nav = await screen.findByRole('navigation')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Novo beneficiário' }))
+    expect(await screen.findByRole('heading', { name: 'Cadastrar beneficiário' })).toBeVisible()
+
+    await userEvent.click(within(nav).getByRole('button', { name: 'Transferências' }))
+    expect(await screen.findByRole('heading', { name: 'Realizar transferência' })).toBeVisible()
+    expect(screen.queryByText(/Seu perfil de acesso não permite/)).not.toBeInTheDocument()
+  },
+)
+
+it('given an operator, then no company profile opens the platform administration', async () => {
+  mockProfile('OPERATOR')
+  saveLoginToken('login')
+  renderRoute('/admin/clientes-pme')
+
+  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/dashboard')
+  expect(screen.queryByText('Clientes PME')).not.toBeInTheDocument()
+  expect(requested('/v1/companies/summaries')).toBe(false)
+})
+
+it('given the profile was changed to viewer, when an action is refused, then the context reloads and the actions leave the screen without a new login', async () => {
+  const profile = mockProfile('OPERATOR')
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  const nav = await screen.findByRole('navigation')
+  expect(await screen.findByRole('button', { name: 'Novo beneficiário' })).toBeVisible()
+
+  profile.current = 'VIEWER'
+  await refuse('PERMISSION_DENIED')
+
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Novo beneficiário' })).not.toBeInTheDocument(),
+  )
+  expect(within(nav).queryByRole('button', { name: 'Transferências' })).not.toBeInTheDocument()
+  expect(screen.getByText('Atlas')).toBeVisible()
+  expect(getLoginToken()).toBe('login')
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/beneficiarios')
+})
+
+it('given the profile was changed while registering a beneficiary, when the action is refused, then the form is withdrawn', async () => {
+  const profile = mockProfile('OPERATOR')
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios/novo')
+  expect(await screen.findByRole('heading', { name: 'Cadastrar beneficiário' })).toBeVisible()
+
+  profile.current = 'VIEWER'
+  await refuse('PERMISSION_DENIED')
+
+  expect(
+    await screen.findByText('Seu perfil de acesso não permite cadastrar beneficiários.'),
+  ).toBeVisible()
+  expect(screen.queryByRole('heading', { name: 'Cadastrar beneficiário' })).not.toBeInTheDocument()
+})
+
+it('given the membership was revoked, when a request is refused, then the company data leaves the screen and the lost access is reported', async () => {
+  const profile = mockProfile('OPERATOR')
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  await screen.findByText('Atlas')
+
+  profile.current = 'REMOVED'
+  await refuse('COMPANY_ACCESS_REVOKED')
+
+  expect(await screen.findByText('Seu acesso à empresa foi removido.')).toBeVisible()
+  expect(screen.queryByText('Atlas')).not.toBeInTheDocument()
+  expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+  expect(getLoginToken()).toBe('login')
+})
+
+it('given a refusal without any change in the access, then the context is checked once and the page is kept', async () => {
+  mockProfile('OPERATOR')
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+  await screen.findByText('Atlas')
+  const requestsBefore = mock.mock.calls.length
+
+  await refuse('PERMISSION_DENIED')
+
+  await waitFor(() => expect(sessionLoads()).toBe(2))
+  expect(screen.getByText('Atlas')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Novo beneficiário' })).toBeVisible()
+  // Recusa + nova consulta do contexto: nenhuma tela é recarregada nem repete a requisição.
+  expect(mock.mock.calls).toHaveLength(requestsBefore + 2)
+})
+
+it('given an administrator, when a request is refused, then the company context is not consulted', async () => {
+  role = 'ADMIN'
+  saveLoginToken(
+    `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
+  )
+  renderRoute('/admin/clientes-pme')
+  await screen.findByRole('navigation')
+
+  await refuse('PERMISSION_DENIED', false)
+
+  expect(sessionLoads()).toBe(1)
+  expect(screen.getByText('Painel administrativo')).toBeVisible()
+  expect(screen.getByTestId('location')).toHaveTextContent('/admin/clientes-pme')
 })

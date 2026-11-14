@@ -124,7 +124,12 @@ const costLine = (cost: TransferCost) => {
   return percentage ? `${percentage} • ${amount}` : amount
 }
 
-export function TransferDetails() {
+export interface TransferDetailsProps {
+  /** Destino ao fechar; quem não cria transferências volta para outra página. */
+  closeTo?: string
+}
+
+export function TransferDetails({ closeTo = PATHS.TRANSFERS }: TransferDetailsProps = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [reloadCount, setReloadCount] = useState(0)
@@ -158,7 +163,7 @@ export function TransferDetails() {
     return () => controller.abort()
   }, [id, requestKey])
 
-  const handleClose = () => navigate(PATHS.TRANSFERS)
+  const handleClose = () => navigate(closeTo)
 
   async function handleDownload(details: TransferDetailsData) {
     if (downloadInFlight.current) return

@@ -29,10 +29,13 @@ export async function getMembers(
   )
 }
 
-/** Consulta apenas o próprio vínculo, inclusive quando o acesso foi revogado. */
-export async function getOwnMember(companyId: string, signal?: AbortSignal): Promise<Member> {
+/** Vínculo do próprio usuário com a empresa, ativo ou removido; nunca expõe terceiros. */
+export async function getOwnMembership(companyId: string, signal?: AbortSignal): Promise<Member> {
   return MemberSchema.parse(await httpRequest<unknown>(`${membersPath(companyId)}/me`, { signal }))
 }
+
+/** Compatibilidade com os consumidores já integrados pela frontend #106. */
+export const getOwnMember = getOwnMembership
 
 /** Altera o perfil de um membro ativo; a versão listada vai em If-Match. */
 export async function updateMemberRole(

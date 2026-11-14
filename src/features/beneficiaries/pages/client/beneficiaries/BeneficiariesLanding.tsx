@@ -1,4 +1,4 @@
-import { useSession } from '@/features/auth'
+import { hasCompanyPermission, useSession } from '@/features/auth'
 import { useNavigate } from 'react-router'
 import { Button } from '@/shared/components/Button'
 import { BeneficiaryList } from '@/features/beneficiaries/components/BeneficiaryList'
@@ -8,6 +8,7 @@ export function BeneficiariesLanding() {
   const navigate = useNavigate()
   const { user } = useSession()
   const companyId = user?.companyId
+  const canCreate = hasCompanyPermission(user, 'BENEFICIARY_WRITE')
 
   return (
     <>
@@ -16,16 +17,20 @@ export function BeneficiariesLanding() {
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-bold text-slate-900">Beneficiários</h1>
             <p className="text-xs text-slate-500">
-              Cadastre e gerencie os beneficiários das suas transferências internacionais.
+              {canCreate
+                ? 'Cadastre e gerencie os beneficiários das suas transferências internacionais.'
+                : 'Consulte os beneficiários das transferências internacionais da empresa.'}
             </p>
           </div>
-          <div className="md:w-[220px]">
-            <Button
-              label="Novo beneficiário"
-              onClick={() => navigate(PATHS.BENEFICIARIES_NEW)}
-              className="h-12 font-medium"
-            />
-          </div>
+          {canCreate && (
+            <div className="md:w-[220px]">
+              <Button
+                label="Novo beneficiário"
+                onClick={() => navigate(PATHS.BENEFICIARIES_NEW)}
+                className="h-12 font-medium"
+              />
+            </div>
+          )}
         </header>
 
         {companyId ? (
