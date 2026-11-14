@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from '@/features/auth'
 import { Button } from '@/shared/components/Button'
-import { MEMBERS_PAGE_SIZE } from '../../api/members'
+import { getOwnMember, MEMBERS_PAGE_SIZE } from '../../api/members'
 import { InviteMemberDialog } from '../../components/InviteMemberDialog'
 import { ManageInvitationDialog } from '../../components/ManageInvitationDialog'
 import { ManageMemberDialog } from '../../components/ManageMemberDialog'
@@ -11,9 +11,76 @@ import { useInviteMember } from '../../hooks/useInviteMember'
 import { useManageMember } from '../../hooks/useManageMember'
 import type { MemberActionOutcome } from '../../hooks/useManageMember'
 import { useMemberList } from '../../hooks/useMemberList'
-import { canManageMembers } from '../../model/permissions'
+import { canManageMembers, ROLE_LABELS } from '../../model/permissions'
 import type { MemberViewer } from '../../model/permissions'
 import type { Member } from '../../schemas/members'
+
+/** Exibe somente o vínculo do próprio usuário, sem consultar a lista privada do OWNER. */
+function OwnMemberAccess({ companyId }: { companyId: string }) {
+  const { company } = useSession()
+  const [revision, setRevision] = useState(0)
+  const [member, setMember] = useState<Member | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    getOwnMember(companyId, controller.signal)
+      .then((value) => {
+        if (controller.signal.aborted) return
+        setMember(value)
+        setError(false)
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return
+        setMember(null)
+        setError(true)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+    return () => controller.abort()
+  }, [companyId, revision])
+
+  const reload = () => {
+    setMember(null)
+    setError(false)
+    setLoading(true)
+    setRevision((current) => current + 1)
+  }
+
+  return (
+    <section className="rounded-lg border border-sage-300 bg-white p-6 text-sm text-slate-700">
+      <h2 className="text-lg font-semibold text-slate-900">Seu acesso à empresa</h2>
+      {loading && <p role="status" className="mt-3">Carregando seu acesso...</p>}
+      {!loading && error && (
+        <div className="mt-3 flex flex-col items-start gap-3">
+          <p role="alert">Não foi possível consultar seu vínculo com a empresa.</p>
+          <Button type="button" label="Tentar novamente" variant="secondary" onClick={reload} className="!w-auto" />
+        </div>
+      )}
+      {!loading && member && (
+        <>
+          {member.status === 'REMOVED' ? (
+            <p role="alert" className="mt-3 text-red-700">
+              Seu acesso a esta empresa foi removido. Entre em contato com o proprietário.
+            </p>
+          ) : (
+            <p className="mt-3">Você está acessando como membro desta empresa.</p>
+          )}
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div><dt className="font-medium">Nome</dt><dd>{member.name}</dd></div>
+            <div><dt className="font-medium">E-mail</dt><dd>{member.email}</dd></div>
+            <div><dt className="font-medium">Empresa</dt><dd>{company?.tradeName || company?.legalName || 'Empresa vinculada'}</dd></div>
+            <div><dt className="font-medium">Perfil</dt><dd>{ROLE_LABELS[member.role]}</dd></div>
+            <div><dt className="font-medium">Status</dt><dd>{member.status === 'ACTIVE' ? 'Ativo' : 'Acesso removido'}</dd></div>
+          </dl>
+          <p className="mt-4 text-slate-500">Para alterar o seu perfil de acesso, fale com o proprietário.</p>
+        </>
+      )}
+    </section>
+  )
+}
 
 function PageHeader() {
   return (
@@ -38,12 +105,11 @@ export function Members() {
       <PageHeader />
       {canManageMembers(user) && user?.companyId && viewer ? (
         <MemberManagement companyId={user.companyId} viewer={viewer} />
+      ) : access?.companyId ? (
+        <OwnMemberAccess key={access.companyId} companyId={access.companyId} />
       ) : (
-        <section className="rounded-lg border border-sage-300 bg-white p-6 text-sm text-slate-700">
-          <p>A gestão de membros é exclusiva do proprietário da empresa.</p>
-          <p className="mt-1 text-slate-500">
-            Para alterar o seu perfil de acesso, fale com o proprietário.
-          </p>
+        <section role="alert" className="rounded-lg border border-sage-300 bg-white p-6 text-sm text-slate-700">
+          Não existe vínculo empresarial para esta conta.
         </section>
       )}
     </div>
