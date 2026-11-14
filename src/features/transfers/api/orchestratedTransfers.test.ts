@@ -54,13 +54,10 @@ describe('orchestrated transfer API', () => {
   it('posts confirmed values and the six-digit code to the exact endpoint', async () => {
     http.mockResolvedValue(execution)
     await expect(confirmOffer(offerId, amounts, '123456')).resolves.toMatchObject(execution)
-    expect(http).toHaveBeenCalledExactlyOnceWith(
-      `/v1/quotes/offers/${offerId}/confirm`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ ...amounts, totpCode: '123456' }),
-      },
-    )
+    expect(http).toHaveBeenCalledExactlyOnceWith(`/v1/quotes/offers/${offerId}/confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ ...amounts, totpCode: '123456' }),
+    })
   })
 
   it('fetches execution state using the authenticated transport', async () => {
