@@ -4,6 +4,7 @@ import {
   confirmOffer,
   confirmRequote,
   getTransferExecution,
+  requestOrchestratedQuote,
   requireTotp,
 } from './orchestratedTransfers'
 
@@ -33,6 +34,61 @@ const execution = {
 describe('orchestrated transfer API', () => {
   beforeEach(() => {
     http.mockReset()
+  })
+
+  it('requests the winner selected by the backend without starting any financial operation', async () => {
+    const request = {
+      beneficiaryId: offerId,
+      direction: 'PAYOUT' as const,
+      sourceCurrency: 'BRL' as const,
+      targetCurrency: 'USD',
+      sourcePaymentMethod: 'pix' as const,
+      targetPaymentMethod: 'wire',
+      amount: 1000,
+      amountSide: 'SOURCE' as const,
+      token: 'USDC',
+      blockchainNetwork: 'polygon',
+      coverFees: false,
+    }
+    const winningOffer = {
+      quoteRequestId: executionId,
+      offer: {
+        offerId,
+        provider: 'BLINDPAY',
+        sourceAmount: 1000,
+        targetAmount: 180.25,
+        exchangeRate: 0.18025,
+        totalFee: 2.5,
+        expiresAt: '2099-01-01T00:00:00Z',
+      },
+    }
+    http.mockResolvedValue(winningOffer)
+    const result = await requestOrchestratedQuote(request)
+    expect(result.offer).toEqual(winningOffer.offer)
+    expect(http).toHaveBeenCalledTimes(1)
+    expect(http).toHaveBeenCalledWith('/v1/quotes', {
+      method: 'POST',
+      body: JSON.stringify(request),
+      signal: undefined,
+    })
+    expect(JSON.parse(String(http.mock.calls[0]![1]?.body))).not.toHaveProperty('totpCode')
+  })
+
+  it('does not allow a missing winner to be passed to the confirmation component', async () => {
+    const request = {
+      beneficiaryId: offerId,
+      direction: 'PAYOUT' as const,
+      sourceCurrency: 'BRL' as const,
+      targetCurrency: 'USD',
+      sourcePaymentMethod: 'pix' as const,
+      targetPaymentMethod: 'wire',
+      amount: 1000,
+      amountSide: 'TARGET' as const,
+      coverFees: true,
+    }
+    http.mockResolvedValue({ quoteRequestId: executionId, offer: null })
+    await expect(requestOrchestratedQuote(request)).rejects.toThrow()
+    expect(http).toHaveBeenCalledTimes(1)
   })
 
   it('rejects invalid TOTP before contacting a financial endpoint', async () => {

@@ -111,9 +111,32 @@ describe('OrchestratedOfferConfirmation', () => {
     render(<OrchestratedOfferConfirmation offer={offer} />)
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar oferta' }))
     await userEvent.click(screen.getByRole('button', { name: 'Autorizar 123456' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Consulte o estado')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não envie outra confirmação')
+    expect(screen.getByRole('status')).toHaveTextContent('Nova autorização bloqueada')
+    expect(screen.getByRole('button', { name: 'Confirmar oferta' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Autorizar 654321' })).not.toBeInTheDocument()
     expect(confirm).toHaveBeenCalledTimes(1)
     expect(requote).not.toHaveBeenCalled()
+  })
+
+  it('blocks a second confirmation after an uncertain 502 provider error', async () => {
+    confirm.mockRejectedValueOnce(new HttpError('upstream status unknown', 502))
+    render(<OrchestratedOfferConfirmation offer={offer} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar oferta' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Autorizar 123456' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Nova autorização bloqueada')
+    expect(screen.getByRole('button', { name: 'Confirmar oferta' })).toBeDisabled()
+    expect(confirm).toHaveBeenCalledTimes(1)
+  })
+
+  it('blocks retries on 409 when a peer may have confirmed the offer', async () => {
+    confirm.mockRejectedValue(new HttpError('already confirmed by another user', 409))
+    render(<OrchestratedOfferConfirmation offer={offer} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar oferta' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Autorizar 123456' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Nova autorização bloqueada')
+    expect(screen.getByRole('button', { name: 'Confirmar oferta' })).toBeDisabled()
+    expect(confirm).toHaveBeenCalledTimes(1)
   })
 
   it('reports an already used TOTP without exposing server details', async () => {
