@@ -119,7 +119,7 @@ describe('OrchestratedOfferConfirmation', () => {
     expect(requote).not.toHaveBeenCalled()
   })
 
-  it('blocks a second confirmation after a 502 from the provider, but not after invalid TOTP', async () => {
+  it('blocks a second confirmation after an uncertain 502 provider error', async () => {
     confirm.mockRejectedValueOnce(new HttpError('upstream status unknown', 502))
     render(<OrchestratedOfferConfirmation offer={offer} />)
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar oferta' }))
@@ -128,7 +128,6 @@ describe('OrchestratedOfferConfirmation', () => {
     expect(screen.getByRole('button', { name: 'Confirmar oferta' })).toBeDisabled()
     expect(confirm).toHaveBeenCalledTimes(1)
   })
-
 
   it('blocks retries on 409 because another member may have already confirmed the offer', async () => {
     confirm.mockRejectedValue(new HttpError('already confirmed by another user', 409))
