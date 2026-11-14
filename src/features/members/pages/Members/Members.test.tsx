@@ -307,6 +307,15 @@ describe('Members — listagem do proprietário', () => {
     expect(within(row('Carlos Lima')).getByRole('button', { name: 'Gerenciar' })).toBeEnabled()
   })
 
+  it('given only the owner is registered, then it offers to invite the first member', async () => {
+    members = [members[0]!]
+    invitations = []
+    renderMembers()
+
+    expect(await screen.findByText('Sua equipe começa aqui')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Adicionar membro' })).toBeEnabled()
+  })
+
   it('given the owner row, then it never offers to demote or remove themselves', async () => {
     renderMembers()
 
