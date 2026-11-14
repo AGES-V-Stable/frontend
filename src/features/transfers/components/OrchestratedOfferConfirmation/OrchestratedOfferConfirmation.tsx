@@ -10,6 +10,11 @@ import {
 } from '@/features/transfers/api/orchestratedTransfers'
 import type { TransferExecution } from '@/features/transfers/api/orchestratedTransfers'
 
+/** Only explicit client rejections guarantee that no financial operation was accepted. */
+function isDefinitiveRejection(error: unknown): boolean {
+  return error instanceof HttpError && [400, 401, 403, 404, 409, 422, 423].includes(error.status)
+}
+
 function safeError(error: unknown): string {
   if (error instanceof HttpError) {
     if (error.status === 401) return 'Código TOTP incorreto, expirado ou já utilizado.'
@@ -18,7 +23,7 @@ function safeError(error: unknown): string {
     if (error.status === 409 || error.status === 422)
       return 'A cotação mudou, expirou ou não pode mais ser confirmada. Consulte o estado da transferência.'
   }
-  return 'Não foi possível confirmar a operação. Consulte o estado antes de tentar novamente.'
+  return 'Não foi possível confirmar o resultado da operação. Não envie outra confirmação; consulte o histórico de transferências ou a equipe de suporte.'
 }
 
 export interface OrchestratedOfferConfirmationProps {
@@ -38,6 +43,7 @@ export function OrchestratedOfferConfirmation({
   const [opened, setOpened] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [requiresReconciliation, setRequiresReconciliation] = useState(false)
   const [execution, setExecution] = useState<TransferExecution | null>(null)
   const sending = useRef(false)
   const [initialTime] = useState(() => Date.now())
@@ -47,7 +53,7 @@ export function OrchestratedOfferConfirmation({
     Date.parse(offer.expiresAt) <= initialTime
 
   async function handleConfirm(totpCode: string) {
-    if (sending.current || disabled) return
+    if (sending.current || disabled || requiresReconciliation) return
     const isRequote = execution?.status === 'REQUOTE_REQUIRED'
     if (!isRequote && execution) return
     if (!isRequote && (offerExpired || Date.parse(offer.expiresAt ?? '') <= Date.now())) {
@@ -87,10 +93,16 @@ export function OrchestratedOfferConfirmation({
               totpCode,
             )
       setExecution(result)
+      setRequiresReconciliation(false)
       setOpened(false)
     } catch (cause) {
       setError(safeError(cause))
-      // A falha pode ocorrer após efeito remoto: nunca repetir automaticamente.
+      if (!isDefinitiveRejection(cause)) {
+        // Em falha ambígua (rede, 5xx ou resposta inválida), pode existir ticket remoto.
+        // Impede uma segunda submissão manual até que haja conciliação do resultado.
+        setRequiresReconciliation(true)
+        setOpened(false)
+      }
     } finally {
       sending.current = false
       setBusy(false)
@@ -104,6 +116,7 @@ export function OrchestratedOfferConfirmation({
     setError(null)
     try {
       setExecution(await getTransferExecution(execution.executionId))
+      setRequiresReconciliation(false)
     } catch {
       setError('Não foi possível consultar o estado. A confirmação não será repetida.')
     } finally {
@@ -150,12 +163,17 @@ export function OrchestratedOfferConfirmation({
           {error}
         </p>
       )}
+      {requiresReconciliation && (
+        <p role="status" className="text-sm text-amber-900">
+          Nova autorização bloqueada até que a operação anterior seja verificada.
+        </p>
+      )}
       {!opened &&
         (!execution || (execution.status === 'REQUOTE_REQUIRED' && execution.requote)) && (
           <Button
             type="button"
             label={execution ? 'Aceitar nova cotação' : 'Confirmar oferta'}
-            disabled={disabled || busy}
+            disabled={disabled || busy || requiresReconciliation}
             onClick={() => setOpened(true)}
           />
         )}
@@ -174,7 +192,7 @@ export function OrchestratedOfferConfirmation({
             if (!busy) setOpened(false)
           }}
           loading={busy}
-          disabled={disabled}
+          disabled={disabled || requiresReconciliation}
           submitLabel="Autorizar operação"
         />
       )}
