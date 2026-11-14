@@ -63,11 +63,10 @@ describe('balance API', () => {
     expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ amountBrl: '10.25' }),
-      headers: expect.objectContaining({
-        'Idempotency-Key': '00000000-0000-4000-8000-000000000001',
-      }),
     }))
-    expect(fetchMock.mock.calls[1][1].headers['Idempotency-Key'])
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get('Idempotency-Key'))
+      .toBe('00000000-0000-4000-8000-000000000001')
+    expect(new Headers(fetchMock.mock.calls[1][1].headers).get('Idempotency-Key'))
       .toBe('00000000-0000-4000-8000-000000000002')
     expect(randomUUID).toHaveBeenCalledTimes(2)
   })
