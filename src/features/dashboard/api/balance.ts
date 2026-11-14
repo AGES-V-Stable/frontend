@@ -33,6 +33,9 @@ export async function addMockTopUp(amountBrl: string): Promise<{
   return MockTopUpResponseSchema.parse(
     await httpRequest<unknown>('/v1/balance/mock-top-ups', {
       method: 'POST',
+      // Uma nova tentativa lógica usa uma nova chave; a mesma chave pode ser
+      // reutilizada pela camada de transporte caso implemente retry controlado.
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
       body: JSON.stringify({ amountBrl }),
     }),
   )

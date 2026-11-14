@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { addSimulatedBalance, getBalance } from '@/features/dashboard/api/balance'
+import { addMockTopUp, addSimulatedBalance, getBalance } from '@/features/dashboard/api/balance'
 import { saveLoginToken } from '@/shared/http/authToken'
 import { ApiError } from '@/shared/http/httpClient'
 
@@ -40,6 +40,46 @@ describe('balance API', () => {
 
     await expect(getBalance()).rejects.toMatchObject({ status })
     await expect(getBalance()).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('sends a fresh idempotency key with every mock credit request', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' }),
+          ),
+        ),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    const randomUUID = vi
+      .fn()
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
+    vi.stubGlobal('crypto', { randomUUID })
+
+    await expect(addMockTopUp('10.25')).resolves.toEqual({
+      creditedAmountBrl: '10.25',
+      availableBalanceBrl: '12.75',
+    })
+    await addMockTopUp('10.25')
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[0][0]).toBe('/v1/balance/mock-top-ups')
+    expect(fetchMock.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ amountBrl: '10.25' }),
+      }),
+    )
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get('Idempotency-Key')).toBe(
+      '00000000-0000-4000-8000-000000000001',
+    )
+    expect(new Headers(fetchMock.mock.calls[1][1].headers).get('Idempotency-Key')).toBe(
+      '00000000-0000-4000-8000-000000000002',
+    )
+    expect(randomUUID).toHaveBeenCalledTimes(2)
   })
 
   it('posts the simulated deposit and returns the updated balance', async () => {
