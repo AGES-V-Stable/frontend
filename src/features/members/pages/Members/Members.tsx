@@ -223,6 +223,17 @@ function MemberManagement({ companyId, viewer }: { companyId: string; viewer: Me
         </p>
       )}
 
+      {data?.summary.peopleCount === 1 &&
+        data.items[0]?.kind === 'MEMBER' &&
+        data.items[0].member.role === 'OWNER' && (
+          <section className="rounded-lg border border-sage-300 bg-white p-6">
+            <h2 className="text-lg font-semibold text-slate-900">Sua equipe começa aqui</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Convide a primeira pessoa para compartilhar o acesso à empresa.
+            </p>
+          </section>
+        )}
+
       {data && (
         <MemberTable
           items={data.items}
