@@ -32,6 +32,35 @@ export const InvitationSchema = z.object({
 })
 export type Invitation = z.infer<typeof InvitationSchema>
 
+/** Resposta de criação, consulta do link e regeneração de um convite. */
+export const GeneratedInvitationSchema = z.object({
+  invitation: InvitationSchema,
+  /** Link vigente: é um segredo, mantido apenas em memória e nunca armazenado nem registrado. */
+  inviteUrl: z.url({ protocol: /^https?$/ }),
+})
+export type GeneratedInvitation = z.infer<typeof GeneratedInvitationSchema>
+
+/** Mesmas regras do backend (InvitationCreateRequest), aplicadas antes do envio. */
+export const InvitationFormSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Informe o nome da pessoa.')
+    .min(2, 'O nome deve ter pelo menos 2 caracteres.')
+    .max(255, 'O nome deve ter até 255 caracteres.')
+    .regex(/^\P{Cc}*$/u, 'O nome não pode ter caracteres de controle.'),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, 'Informe o e-mail da pessoa.')
+    .max(255, 'O e-mail deve ter até 255 caracteres.')
+    .pipe(z.email('Informe um e-mail válido.')),
+  // O proprietário nunca é criado por convite.
+  role: z.enum(['OPERATOR', 'VIEWER'], { error: 'Escolha o perfil de acesso.' }),
+})
+export type InvitationForm = z.infer<typeof InvitationFormSchema>
+
 export const MemberListItemSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('MEMBER'), member: MemberSchema }),
   z.object({ kind: z.literal('INVITATION'), invitation: InvitationSchema }),

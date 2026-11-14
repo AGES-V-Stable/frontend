@@ -2,7 +2,7 @@ import { StatusBadge, Table, TableActionButton } from '@/shared/components/Table
 import type { ColumnDefinition, PaginationProps } from '@/shared/components/Table'
 import { canManageMember, ROLE_LABELS } from '../../model/permissions'
 import type { MemberViewer } from '../../model/permissions'
-import type { Member, MemberListItem } from '../../schemas/members'
+import type { Invitation, Member, MemberListItem } from '../../schemas/members'
 
 export interface MemberTableProps {
   items: MemberListItem[]
@@ -10,6 +10,11 @@ export interface MemberTableProps {
   viewer: MemberViewer
   pagination?: PaginationProps
   onManage: (member: Member) => void
+  /** Copia o link vigente do convite pendente, sem gerar um novo. */
+  onCopyInvitationLink: (invitation: Invitation) => void
+  onManageInvitation: (invitation: Invitation) => void
+  /** Convite cujo link está sendo buscado para cópia. */
+  copyingInvitationId?: string | null
 }
 
 const person = (item: MemberListItem) => (item.kind === 'MEMBER' ? item.member : item.invitation)
@@ -20,6 +25,9 @@ export function MemberTable({
   viewer,
   pagination,
   onManage,
+  onCopyInvitationLink,
+  onManageInvitation,
+  copyingInvitationId = null,
 }: MemberTableProps) {
   const isViewer = (item: MemberListItem) =>
     item.kind === 'MEMBER' &&
@@ -59,7 +67,24 @@ export function MemberTable({
       label: 'Ações',
       align: 'right',
       render: (item) => {
-        if (item.kind !== 'MEMBER') return null
+        if (item.kind === 'INVITATION') {
+          if (item.invitation.status !== 'PENDING') return null
+          const copying = copyingInvitationId === item.invitation.id
+          return (
+            <span className="flex flex-wrap justify-end gap-2">
+              <TableActionButton
+                label={copying ? 'Copiando...' : 'Copiar link'}
+                disabled={copyingInvitationId !== null}
+                onClick={() => onCopyInvitationLink(item.invitation)}
+              />
+              <TableActionButton
+                label="Gerenciar convite"
+                disabled={copying}
+                onClick={() => onManageInvitation(item.invitation)}
+              />
+            </span>
+          )
+        }
         if (item.member.role === 'OWNER')
           return <span className="text-sm text-slate-500">Proprietário da empresa</span>
         if (!canManageMember(item.member, viewer)) return null

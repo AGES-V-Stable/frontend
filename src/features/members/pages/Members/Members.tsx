@@ -2,8 +2,12 @@ import { useCallback, useMemo, useState } from 'react'
 import { useSession } from '@/features/auth'
 import { Button } from '@/shared/components/Button'
 import { MEMBERS_PAGE_SIZE } from '../../api/members'
+import { InviteMemberDialog } from '../../components/InviteMemberDialog'
+import { ManageInvitationDialog } from '../../components/ManageInvitationDialog'
 import { ManageMemberDialog } from '../../components/ManageMemberDialog'
 import { MemberTable } from '../../components/MemberTable'
+import { useInvitationActions } from '../../hooks/useInvitationActions'
+import { useInviteMember } from '../../hooks/useInviteMember'
 import { useManageMember } from '../../hooks/useManageMember'
 import type { MemberActionOutcome } from '../../hooks/useManageMember'
 import { useMemberList } from '../../hooks/useMemberList'
@@ -71,8 +75,31 @@ function MemberManagement({ companyId, viewer }: { companyId: string; viewer: Me
     setSelected(null)
   }
 
+  const [inviting, setInviting] = useState(false)
+  const invite = useInviteMember(companyId, reload)
+  const invitations = useInvitationActions(companyId, setOutcome, reload)
+  const openInvite = () => {
+    invite.reset()
+    setOutcome(null)
+    setInviting(true)
+  }
+  const closeInvite = () => {
+    // Fechar não revoga o convite criado; o link é descartado da memória.
+    invite.reset()
+    setInviting(false)
+  }
+
   return (
     <>
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          label="Adicionar membro"
+          onClick={openInvite}
+          className="sm:!w-auto"
+        />
+      </div>
+
       {outcome && (
         <div
           role={outcome.tone === 'success' ? 'status' : 'alert'}
@@ -111,6 +138,17 @@ function MemberManagement({ companyId, viewer }: { companyId: string; viewer: Me
           peopleCount={data.summary.peopleCount}
           viewer={viewer}
           onManage={open}
+          onCopyInvitationLink={(invitation) => {
+            setOutcome(null)
+            void invitations.copyFromRow(invitation)
+          }}
+          onManageInvitation={(invitation) => {
+            setOutcome(null)
+            invitations.open(invitation)
+          }}
+          copyingInvitationId={
+            invitations.pending?.action === 'link' ? invitations.pending.invitationId : null
+          }
           pagination={
             data.totalPages > 1
               ? {
@@ -135,6 +173,32 @@ function MemberManagement({ companyId, viewer }: { companyId: string; viewer: Me
           onSave={(role) => void save(selected, role)}
           onRemove={() => void remove(selected)}
           onClose={close}
+        />
+      )}
+
+      {inviting && (
+        <InviteMemberDialog
+          pending={invite.pending}
+          failure={invite.failure}
+          result={invite.result}
+          onSubmit={(form) => void invite.submit(form)}
+          onEmailEdit={invite.clearFailure}
+          onClose={closeInvite}
+        />
+      )}
+
+      {invitations.active && (
+        <ManageInvitationDialog
+          key={invitations.active.invitation.id}
+          invitation={invitations.active.invitation}
+          inviteUrl={invitations.active.inviteUrl}
+          notice={invitations.active.notice}
+          pending={invitations.pending?.action ?? null}
+          error={invitations.error}
+          onRegenerate={invitations.regenerate}
+          onRevoke={() => void invitations.revoke()}
+          onClearError={invitations.clearError}
+          onClose={invitations.close}
         />
       )}
     </>

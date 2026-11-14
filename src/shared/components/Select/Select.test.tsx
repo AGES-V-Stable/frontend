@@ -52,7 +52,7 @@ describe('Select', () => {
 
     const select = screen.getByLabelText('Empresa')
     expect(select).toHaveAttribute('aria-invalid', 'false')
-    expect(select.className).toContain('border-sage-300')
+    expect(select.className).toContain('border-sage-500')
     expect(select.className).toContain('focus-visible:outline-primary')
   })
 
