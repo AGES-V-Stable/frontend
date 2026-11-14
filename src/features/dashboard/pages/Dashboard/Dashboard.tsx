@@ -1,6 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
-import { addSimulatedBalance } from '@/features/dashboard/api/balance'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import type { ZodType } from 'zod'
 import {
@@ -15,7 +13,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useSession } from '@/features/auth'
 import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
+import { SimulatedDepositDialog } from '@/features/dashboard/components/SimulatedDepositDialog'
+import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
+import { Button } from '@/shared/components/Button'
 import { MetricCard } from '@/features/dashboard/components/MetricCard'
 import { SettlementDrawer } from '@/features/dashboard/components/SettlementDrawer'
 import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
@@ -111,92 +113,32 @@ const card = 'rounded-xl border border-sage-300 bg-white p-5'
 
 function ClientBalanceCard() {
   const { state, retry } = useBalance()
-  const dialog = useRef<HTMLDialogElement>(null)
-  const [amount, setAmount] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (submitting || state.status !== 'ready') return
-
-    const normalizedAmount = amount.trim().replace(',', '.')
-    if (!/^\d{1,13}(\.\d{1,2})?$/.test(normalizedAmount) || !/[1-9]/.test(normalizedAmount)) {
-      setError('Informe um valor positivo com até duas casas decimais.')
-      return
-    }
-
-    setSubmitting(true)
-    setError(null)
-    try {
-      await addSimulatedBalance(normalizedAmount)
-      dialog.current?.close()
-      retry()
-    } catch {
-      setError('Não foi possível confirmar a adição de saldo simulado.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
+  const { user } = useSession()
+  const [depositing, setDepositing] = useState(false)
+  // Só o proprietário com vínculo ativo pode creditar; para os demais o backend sempre recusaria.
+  const canDeposit = canAddSimulatedBalance(user)
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <BalanceCard state={state} onRetry={retry} />
-      <button
-        type="button"
-        disabled={state.status !== 'ready'}
-        onClick={() => dialog.current?.showModal()}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 transition-colors enabled:cursor-pointer enabled:hover:border-primary enabled:hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
-      >
-        Adicionar saldo
-      </button>
-      <dialog
-        ref={dialog}
-        aria-labelledby="simulated-deposit-title"
-        className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-white p-6 shadow-xl backdrop:bg-black/40"
-        onCancel={(event) => {
-          if (submitting) event.preventDefault()
-        }}
-        onClose={() => {
-          setAmount('')
-          setError(null)
-        }}
-      >
-        <h2 id="simulated-deposit-title" className="mb-4 text-lg font-semibold">
-          Adicionar saldo simulado
-        </h2>
-        <form onSubmit={handleSubmit} className="flex flex-col items-start gap-3">
-          <label htmlFor="simulated-deposit-amount">Valor do crédito simulado (R$)</label>
-          <input
-            id="simulated-deposit-amount"
-            type="text"
-            inputMode="decimal"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            disabled={submitting}
-            placeholder="0,00"
-            className="w-full rounded-md border border-slate-300 px-3 py-2"
-          />
-          <div className="flex w-full flex-wrap gap-3">
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={() => dialog.current?.close()}
-              className="grow rounded-md border border-slate-300 px-4 py-2 whitespace-nowrap"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || state.status !== 'ready'}
-              className="grow rounded-md border border-slate-300 px-4 py-2 whitespace-nowrap disabled:opacity-50"
-            >
-              {submitting ? 'Adicionando...' : 'Adicionar saldo simulado'}
-            </button>
-          </div>
-          {error && <p role="alert">{error}</p>}
-        </form>
-      </dialog>
+      {canDeposit && (
+        <Button
+          type="button"
+          variant="secondary"
+          label="Adicionar saldo"
+          disabled={state.status !== 'ready'}
+          onClick={() => setDepositing(true)}
+        />
+      )}
+      {depositing && (
+        <SimulatedDepositDialog
+          onDeposited={() => {
+            setDepositing(false)
+            retry()
+          }}
+          onClose={() => setDepositing(false)}
+        />
+      )}
     </div>
   )
 }
