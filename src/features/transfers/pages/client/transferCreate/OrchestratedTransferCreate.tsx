@@ -13,21 +13,37 @@ type BeneficiaryState =
 
 const TOKENS = ['USDC', 'USDT'] as const
 const NETWORKS = ['polygon', 'ethereum', 'base'] as const
+const BANK_RAILS = [
+  { value: 'international_swift', label: 'SWIFT internacional' },
+  { value: 'wire', label: 'Wire' },
+  { value: 'ach', label: 'ACH' },
+  { value: 'sepa', label: 'SEPA' },
+  { value: 'pix', label: 'PIX' },
+  { value: 'ted', label: 'TED' },
+  { value: 'rtp', label: 'RTP' },
+] as const
 const FIELD_CLASS =
   'w-full rounded-lg border border-sage-300 bg-white px-3 py-3 text-sm text-slate-900'
 
-/** The backend uses an explicit, supported payment rail for bank beneficiaries. */
-function routeFor(beneficiary: Beneficiary) {
-  if (beneficiary.receivingMethod === 'BANK_ACCOUNT' && beneficiary.currency) {
+/** The beneficiary API does not yet expose the registered paymentRail.
+ * Require the user to specify it instead of silently assuming all bank accounts use SWIFT.
+ * The backend enforces that the requested rail matches the one actually registered.
+ */
+function routeFor(beneficiary: Beneficiary, bankRail: string) {
+  if (beneficiary.receivingMethod === 'BANK_ACCOUNT' && beneficiary.currency && bankRail) {
     return {
-      targetPaymentMethod: 'international_swift',
+      targetPaymentMethod: bankRail,
       targetCurrency: beneficiary.currency.toUpperCase(),
       bank: true,
     }
   }
-  if (beneficiary.receivingMethod === 'CRYPTO_WALLET' && beneficiary.currency) {
+  if (
+    beneficiary.receivingMethod === 'CRYPTO_WALLET' &&
+    beneficiary.currency &&
+    beneficiary.blockchainNetwork
+  ) {
     return {
-      targetPaymentMethod: beneficiary.blockchainNetwork?.toLowerCase() ?? 'blockchain',
+      targetPaymentMethod: beneficiary.blockchainNetwork.toLowerCase(),
       targetCurrency: beneficiary.currency.toUpperCase(),
       bank: false,
     }
@@ -44,6 +60,7 @@ export function OrchestratedTransferCreate() {
   const companyId = user?.companyId
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryState>({ status: 'loading' })
   const [beneficiaryId, setBeneficiaryId] = useState('')
+  const [bankRail, setBankRail] = useState('')
   const [amountText, setAmountText] = useState('')
   const [amountSide, setAmountSide] = useState<'SOURCE' | 'TARGET'>('SOURCE')
   const [token, setToken] = useState<(typeof TOKENS)[number]>('USDC')
@@ -93,7 +110,8 @@ export function OrchestratedTransferCreate() {
     beneficiaries.status === 'ready'
       ? beneficiaries.items.find((item) => item.id === beneficiaryId)
       : undefined
-  const route = beneficiary ? routeFor(beneficiary) : null
+  const needsBankRail = beneficiary?.receivingMethod === 'BANK_ACCOUNT'
+  const route = beneficiary ? routeFor(beneficiary, bankRail) : null
   const amount = parseDecimalInput(amountText)
   const validAmount = amount !== null && Number.isFinite(amount) && amount >= 0.01
   const canQuote = Boolean(companyId && route && validAmount && !loadingQuote)
@@ -148,8 +166,8 @@ export function OrchestratedTransferCreate() {
       <header>
         <h1 className="text-xl font-bold text-slate-900">Cotação e transferência</h1>
         <p className="text-sm text-slate-600">
-          Compare as ofertas disponíveis. Uma operação só será iniciada após sua autorização por
-          TOTP.
+          Se existir uma única oferta válida, ela será selecionada. Caso existam várias rotas
+          compatíveis, o backend seleciona a mais vantajosa. A execução exige autorização TOTP.
         </p>
       </header>
 
@@ -166,6 +184,7 @@ export function OrchestratedTransferCreate() {
           onChange={(event) => {
             invalidateQuote()
             setBeneficiaryId(event.target.value)
+            setBankRail('')
           }}
         >
           <option value="">Selecione o beneficiário</option>
@@ -180,7 +199,34 @@ export function OrchestratedTransferCreate() {
         {beneficiaries.status === 'error' && (
           <p role="alert">Não foi possível carregar os beneficiários.</p>
         )}
-        {beneficiary && !route && (
+        {needsBankRail && (
+          <>
+            <label htmlFor="orchestrated-bank-rail" className="text-sm font-medium text-slate-900">
+              Modalidade bancária cadastrada
+            </label>
+            <select
+              id="orchestrated-bank-rail"
+              className={FIELD_CLASS}
+              value={bankRail}
+              onChange={(event) => {
+                invalidateQuote()
+                setBankRail(event.target.value)
+              }}
+            >
+              <option value="">Selecione a modalidade cadastrada</option>
+              {BANK_RAILS.map((option) => (
+                <option value={option.value} key={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-600">
+              Selecione a modalidade usada no cadastro do beneficiário. O backend confere a
+              compatibilidade; não é uma seleção do provedor financeiro.
+            </p>
+          </>
+        )}
+        {beneficiary && !route && !needsBankRail && (
           <p role="alert">
             Este beneficiário não possui uma rota de pagamento compatível para cotação.
           </p>
@@ -304,8 +350,13 @@ export function OrchestratedTransferCreate() {
       {quote && (
         <section className="flex flex-col gap-4" aria-label="Oferta selecionada">
           <div className="rounded-xl border border-sage-300 bg-white p-6">
-            <h2 className="text-lg font-semibold text-slate-900">Melhor oferta encontrada</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Oferta selecionada automaticamente
+            </h2>
             <p className="text-sm text-slate-600">Provedor: {quote.offer.provider}</p>
+            <p className="text-xs text-slate-600">
+              Única oferta válida, ou a melhor entre as ofertas compatíveis com este pagamento.
+            </p>
             <dl className="mt-3 grid gap-2 text-sm">
               <div>
                 <dt>Valor de origem</dt>
