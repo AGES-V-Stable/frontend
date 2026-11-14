@@ -15,8 +15,8 @@
 @theme {
   /* ---------- Emerald (marca) ---------- */
   --color-emerald-50: #ecfdf5; /* fundo de badge de sucesso */
-  --color-emerald-600: #059669; /* cor principal */
-  --color-emerald-700: #047857; /* hover do botao primario */
+  --color-emerald-700: #047857; /* cor principal (5,48:1 sobre branco, WCAG 1.4.3) */
+  --color-emerald-800: #065f46; /* hover do botao primario */
 
   /* ---------- Verdes (sidebar) ---------- */
   --color-green-100: #ccf2e8; /* contador da sidebar */
@@ -64,6 +64,6 @@
   --color-gray-666: #666666; /* item inativo da sidebar */
 
   /* ---------- Apelidos de marca ---------- */
-  --color-primary: var(--color-emerald-600);
-  --color-primary-hover: var(--color-emerald-700);
+  --color-primary: var(--color-emerald-700);
+  --color-primary-hover: var(--color-emerald-800);
 }
