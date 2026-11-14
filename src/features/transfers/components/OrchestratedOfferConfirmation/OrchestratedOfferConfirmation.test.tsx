@@ -76,6 +76,12 @@ describe('OrchestratedOfferConfirmation', () => {
     getExecution.mockReset()
   })
 
+  it('keeps a disabled financial action inaccessible', () => {
+    render(<OrchestratedOfferConfirmation offer={offer} disabled />)
+    expect(screen.getByRole('button', { name: 'Confirmar oferta' })).toBeDisabled()
+    expect(confirm).not.toHaveBeenCalled()
+  })
+
   it('prevents confirming expired offers', () => {
     render(
       <OrchestratedOfferConfirmation offer={{ ...offer, expiresAt: '2020-01-01T00:00:00Z' }} />,
