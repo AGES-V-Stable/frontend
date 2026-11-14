@@ -32,7 +32,7 @@ describe('TwoFactorAuthContainer', () => {
       screen.getByRole('region', { name: 'Configuração do aplicativo autenticador' }),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('QR Code para configuração de dois fatores')).toBeInTheDocument()
-    expect(screen.getByText('JBSWY3DPEHPK3PXP')).toBeInTheDocument()
+    expect(screen.getByText('JBSW Y3DP EHPK 3PXP')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copiar chave secreta' })).toBeInTheDocument()
   })
 
@@ -84,15 +84,31 @@ describe('TwoFactorAuthContainer', () => {
     expect(screen.getByText('Copiar')).toBeInTheDocument()
   })
 
+  it('shows the secret in groups of 4 but copies it without spaces', async () => {
+    // Given a área de transferência disponível e a chave JBSWY3DPEHPK3PXP
+    const writeTextMock = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText: writeTextMock } })
+    render(<TwoFactorAuthContainer otpauthUri={sampleUri} />)
+
+    // When o usuário clica em Copiar
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copiar chave secreta' }))
+    })
+
+    // Then a tela mostra os blocos, e a cópia leva a chave original, sem espaços
+    expect(screen.getByText('JBSW Y3DP EHPK 3PXP')).toBeInTheDocument()
+    expect(writeTextMock).toHaveBeenCalledWith('JBSWY3DPEHPK3PXP')
+  })
+
   it('utiliza a prop secret explícita quando informada', () => {
     render(<TwoFactorAuthContainer otpauthUri={sampleUri} secret="CUSTOMSECRET123" />)
 
-    expect(screen.getByText('CUSTOMSECRET123')).toBeInTheDocument()
+    expect(screen.getByText('CUST OMSE CRET 123')).toBeInTheDocument()
   })
 
   it('extrai o segredo mesmo de uma URI com formato não padrão através do fallback de regex', () => {
     render(<TwoFactorAuthContainer otpauthUri="invalid-url-scheme:totp?secret=FALLBACKSECRET123" />)
-    expect(screen.getByText('FALLBACKSECRET123')).toBeInTheDocument()
+    expect(screen.getByText('FALL BACK SECR ET12 3')).toBeInTheDocument()
   })
 
   it('lida graciosamente com falha na área de transferência', async () => {

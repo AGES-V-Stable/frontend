@@ -16,7 +16,7 @@ export function BeneficiariesLanding() {
         <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-bold text-slate-900">Beneficiários</h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-600">
               {canCreate
                 ? 'Cadastre e gerencie os beneficiários das suas transferências internacionais.'
                 : 'Consulte os beneficiários das transferências internacionais da empresa.'}
@@ -36,7 +36,7 @@ export function BeneficiariesLanding() {
         {companyId ? (
           <BeneficiaryList title="Meus beneficiários" subtitle="" forceCompanyId={companyId} />
         ) : (
-          <p className="text-sm text-gray-500">Carregando dados da conta...</p>
+          <p className="text-sm text-slate-600">Carregando dados da conta...</p>
         )}
       </div>
     </>

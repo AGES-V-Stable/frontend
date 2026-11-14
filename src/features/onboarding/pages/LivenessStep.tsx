@@ -192,13 +192,13 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
   return (
     <div className="p-8 flex flex-col items-center gap-6 max-w-md mx-auto">
       <h1 className="text-2xl font-bold">Verificação facial</h1>
-      <p className="text-sm text-gray-600 text-center">
+      <p className="text-sm text-slate-600 text-center">
         Para concluir a etapa de compliance, precisamos confirmar sua identidade com uma verificação
         facial rápida.
       </p>
 
       {isPending && !isVerified && (
-        <p className="text-sm text-gray-600 text-center">
+        <p className="text-sm text-slate-600 text-center">
           Complete a verificação na aba que abrimos e depois clique em "Verificar conclusão".
         </p>
       )}
@@ -210,7 +210,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
       )}
 
       {errorMessage && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-red-700">
           {errorMessage}
         </p>
       )}

@@ -263,7 +263,7 @@ function ChartCard({
         </div>
         {result.data && points && points.length > 0 && (
           <p
-            className={`rounded-lg px-4 py-3 font-mono font-medium ${savings ? 'bg-emerald-50 text-primary' : 'bg-blue-50 text-sky-600'}`}
+            className={`rounded-lg px-4 py-3 font-mono font-medium ${savings ? 'bg-emerald-50 text-primary' : 'bg-blue-50 text-sky-700'}`}
           >
             {money(result.data.total)}
           </p>
@@ -429,7 +429,7 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
             </span>
           )}
         </div>
-        <p className="text-lg font-semibold text-slate-500">
+        <p className="text-lg font-semibold text-slate-600">
           {admin
             ? 'Visão consolidada da operação, performance financeira e liquidações dos beneficiários.'
             : 'Liquidações registradas • Valores consolidados em BRL'}

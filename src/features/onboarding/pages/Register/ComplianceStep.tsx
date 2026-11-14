@@ -36,7 +36,7 @@ interface ValidationErrors {
 function validate(data: ComplianceFormData): ValidationErrors {
   const errors: ValidationErrors = {}
   if (!data.tipoDocumento) {
-    errors.tipoDocumento = 'Selecione o tipo de documento'
+    errors.tipoDocumento = 'Selecione o tipo de documento.'
     return errors
   }
 
@@ -44,8 +44,8 @@ function validate(data: ComplianceFormData): ValidationErrors {
   if (data.documentos.length !== expectedCount) {
     errors.documentos =
       expectedCount === 2
-        ? 'Envie frente e verso do documento (2 arquivos)'
-        : 'Envie o arquivo do documento'
+        ? 'Envie frente e verso do documento (2 arquivos).'
+        : 'Envie o arquivo do documento.'
   }
   return errors
 }
@@ -86,7 +86,7 @@ export default function ComplianceStep({
           return
         }
         if (file.size > MAX_FILE_SIZE_BYTES) {
-          newErrors.push(`"${file.name}": tamanho excede 10 MB.`)
+          newErrors.push(`"${file.name}": tamanho acima de 10 MB. Envie um arquivo menor.`)
           return
         }
         const isDuplicate = form.documentos.some(
@@ -215,9 +215,9 @@ export default function ComplianceStep({
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
                   {isDoubleSided(form.tipoDocumento)
-                    ? 'Envie frente e verso (2 arquivos) — '
-                    : 'Envie o documento (1 arquivo) — '}
-                  PDF, JPG, JPEG ou PNG, máx. 10 MB por arquivo
+                    ? 'Envie frente e verso (2 arquivos). '
+                    : 'Envie o documento (1 arquivo). '}
+                  PDF, JPG, JPEG ou PNG, máx. 10 MB por arquivo.
                 </p>
               </div>
               <input
@@ -271,7 +271,7 @@ export default function ComplianceStep({
             )}
 
             {serverError && (
-              <p role="alert" className="mb-4 text-sm text-red-600">
+              <p role="alert" className="mb-4 text-sm text-red-700">
                 {serverError}
               </p>
             )}

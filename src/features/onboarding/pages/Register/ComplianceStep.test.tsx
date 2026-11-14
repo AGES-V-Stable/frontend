@@ -45,7 +45,7 @@ describe('ComplianceStep', () => {
 
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
-    expect(screen.getByText('Selecione o tipo de documento')).toBeInTheDocument()
+    expect(screen.getByText('Selecione o tipo de documento.')).toBeInTheDocument()
   })
 
   it('requires exactly two files for a double-sided document (RG)', async () => {
@@ -60,7 +60,7 @@ describe('ComplianceStep', () => {
     )
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
-    expect(screen.getByText('Envie frente e verso do documento (2 arquivos)')).toBeInTheDocument()
+    expect(screen.getByText('Envie frente e verso do documento (2 arquivos).')).toBeInTheDocument()
     expect(onContinue).not.toHaveBeenCalled()
   })
 
@@ -76,7 +76,7 @@ describe('ComplianceStep', () => {
     ])
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
-    expect(screen.getByText('Envie o arquivo do documento')).toBeInTheDocument()
+    expect(screen.getByText('Envie o arquivo do documento.')).toBeInTheDocument()
     expect(onContinue).not.toHaveBeenCalled()
   })
 
@@ -125,7 +125,9 @@ describe('ComplianceStep', () => {
     const input = screen.getByTestId('file-input')
     await user.upload(input, makeFile('grande.pdf', 11 * 1024 * 1024, 'application/pdf'))
 
-    expect(screen.getByText(/"grande.pdf": tamanho excede 10 MB/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/"grande.pdf": tamanho acima de 10 MB. Envie um arquivo menor./),
+    ).toBeInTheDocument()
     expect(screen.queryByText('grande.pdf')).not.toBeInTheDocument()
   })
 

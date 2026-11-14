@@ -33,9 +33,9 @@ export const authService = {
       )
     } catch (error) {
       if (error instanceof ApiError && error.status === 423)
-        throw new ApiError(423, 'Usuário bloqueado', error.code)
+        throw new ApiError(423, 'Usuário bloqueado.', error.code)
       if (error instanceof ApiError && error.status === 401) {
-        throw new ApiError(401, 'E-mail ou senha inválidos', error.code)
+        throw new ApiError(401, 'E-mail ou senha inválidos.', error.code)
       }
       throw error
     }
@@ -85,7 +85,7 @@ export const authService = {
       )
     } catch (error) {
       if (error instanceof ApiError && error.status === 423)
-        throw new ApiError(423, 'Usuário bloqueado', error.code)
+        throw new ApiError(423, 'Usuário bloqueado.', error.code)
       if (error instanceof ApiError && error.status === 410)
         throw new ApiError(410, 'Sessão expirada. Faça login novamente.', error.code)
       if (error instanceof ApiError && error.status === 401) {

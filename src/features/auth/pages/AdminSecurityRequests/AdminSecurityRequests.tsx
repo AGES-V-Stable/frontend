@@ -94,13 +94,13 @@ export function AdminSecurityRequests() {
             Solicitações de Segurança (Reset de 2FA)
           </h1>
         </div>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-600">
           Analise e aprove pedidos de recuperação de acesso para usuários que perderam seu
           autenticador e códigos de emergência.
         </p>
       </div>
 
-      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900 flex items-start gap-3">
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 flex items-start gap-3">
         <span className="text-base shrink-0" aria-hidden="true"></span>
         <p>
           <strong>Regra de Proteção (Bloqueio de 48h):</strong> Ao aprovar uma solicitação, o 2FA do
@@ -176,7 +176,7 @@ export function AdminSecurityRequests() {
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-slate-500 text-sm">
+        <div className="p-8 text-center text-slate-600 text-sm">
           Carregando solicitações de segurança...
         </div>
       ) : filteredRequests.length === 0 ? (
@@ -194,7 +194,7 @@ export function AdminSecurityRequests() {
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <span className="font-bold text-slate-900 text-base">{req.userName}</span>
                   {req.companyName && (
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                    <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
                       {req.companyName}
                     </span>
                   )}
@@ -215,7 +215,7 @@ export function AdminSecurityRequests() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
+                <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
                   <span>
                     <strong>E-mail:</strong> {req.userEmail}
                   </span>
@@ -234,7 +234,7 @@ export function AdminSecurityRequests() {
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 mt-1">
+                <p className="text-sm text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 mt-1">
                   <strong>Motivo:</strong> {req.reason}
                 </p>
               </div>

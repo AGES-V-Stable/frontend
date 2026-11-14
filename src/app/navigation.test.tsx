@@ -347,6 +347,20 @@ it('provides a retry when identity loading fails', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
   await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
 })
+it('lets the user sign out when identity loading fails', async () => {
+  // Given a conta não carrega
+  saveLoginToken('login')
+  mock.mockRejectedValueOnce(new TypeError('offline'))
+  renderRoute()
+  expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar')
+
+  // When o usuário escolhe sair
+  await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
+
+  // Then o token sai e o Login abre
+  await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
+  expect(getLoginToken()).toBeNull()
+})
 it('reacts to logout and clears cached account identity', async () => {
   saveLoginToken('login')
   renderRoute()

@@ -95,10 +95,10 @@ function Login({ resolveDestination }: LoginProps) {
     } catch (error) {
       setErrors({
         email:
-          error instanceof Error && error.message === 'Usuário bloqueado'
-            ? 'Usuário bloqueado'
-            : 'E-mail ou senha inválidos',
-        password: 'E-mail ou senha inválidos',
+          error instanceof Error && error.message === 'Usuário bloqueado.'
+            ? 'Usuário bloqueado.'
+            : 'E-mail ou senha inválidos.',
+        password: 'E-mail ou senha inválidos.',
       })
       setSubmitting(false)
       return
@@ -200,7 +200,7 @@ function Login({ resolveDestination }: LoginProps) {
               title="Autenticação em duas etapas"
               description={
                 otpauthUri
-                  ? 'Escaneie o QR Code abaixo com seu aplicativo autenticador ou insira o código de 6 dígitos gerado:'
+                  ? 'Escaneie o QR Code abaixo com seu aplicativo autenticador ou insira o código de 6 dígitos gerado.'
                   : 'Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta.'
               }
               value={totpCode}

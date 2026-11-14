@@ -85,7 +85,7 @@ export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
                 disabled={!otpauthUri}
                 allowRecovery={false}
                 title="Configuração de Segurança em Duas Etapas (2FA)"
-                description="Abra seu aplicativo autenticador no celular (Google Authenticator, Microsoft Authenticator, etc.) e escaneie o QR Code abaixo:"
+                description="Abra seu aplicativo autenticador no celular (Google Authenticator, Microsoft Authenticator, etc.) e escaneie o QR Code abaixo."
                 value={totpCode}
                 onChange={(code) => {
                   setTotpCode(code)

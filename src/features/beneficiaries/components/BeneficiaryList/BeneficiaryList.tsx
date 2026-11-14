@@ -129,7 +129,7 @@ export function BeneficiaryList({ title, subtitle, forceCompanyId }: Beneficiary
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
       <header>
         <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
-        {subtitle && <p className="mt-1 text-xs text-slate-500">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-xs text-slate-600">{subtitle}</p>}
       </header>
 
       <BeneficiaryFilters
