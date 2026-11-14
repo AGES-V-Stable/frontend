@@ -226,7 +226,7 @@ describe('AdminTransfers page', () => {
     expect(await within(dialog).findByText('Tech Corp')).toBeInTheDocument()
     expect(getTransfersById).toHaveBeenCalledWith('t1', expect.any(AbortSignal))
 
-    await user.click(screen.getByRole('button', { name: 'Fechar drawer' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Fechar' }))
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Busca')).toHaveTextContent(/^$/)

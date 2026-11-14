@@ -72,10 +72,10 @@ export const Drawer = ({ open, title, onClose, children, actions = [] }: DrawerP
       aria-modal="true"
       aria-labelledby="drawer-title"
     >
-      {/* Overlay */}
-      <button
-        type="button"
-        aria-label="Fechar drawer"
+      {/* Overlay: fecha com o clique do mouse; fica fora do Tab e do leitor de tela, que usam "Fechar" e Esc. */}
+      <div
+        aria-hidden="true"
+        data-testid="drawer-overlay"
         onClick={onClose}
         className="absolute inset-0 cursor-default bg-black/30"
       />
