@@ -51,20 +51,24 @@ describe('useMemberList — isolamento de empresa', () => {
       ({ companyId }: { companyId: string }) => useMemberList(companyId),
       { initialProps: { companyId: 'company-a' } },
     )
-    await waitFor(() => expect(result.current.data?.items[0]).toMatchObject({
-      kind: 'MEMBER',
-      member: { name: 'Pessoa da Empresa A' },
-    }))
+    await waitFor(() =>
+      expect(result.current.data?.items[0]).toMatchObject({
+        kind: 'MEMBER',
+        member: { name: 'Pessoa da Empresa A' },
+      }),
+    )
 
     rerender({ companyId: 'company-b' })
     expect(result.current.loading).toBe(true)
     expect(result.current.data).toBeNull()
 
     await act(async () => resolveSecond(second))
-    await waitFor(() => expect(result.current.data?.items[0]).toMatchObject({
-      kind: 'MEMBER',
-      member: { name: 'Pessoa da Empresa B' },
-    }))
+    await waitFor(() =>
+      expect(result.current.data?.items[0]).toMatchObject({
+        kind: 'MEMBER',
+        member: { name: 'Pessoa da Empresa B' },
+      }),
+    )
   })
 
   it('ignores a late response from the previous company, even when fetch does not honor abort', async () => {
@@ -85,10 +89,12 @@ describe('useMemberList — isolamento de empresa', () => {
     )
 
     rerender({ companyId: 'company-b' })
-    await waitFor(() => expect(result.current.data?.items[0]).toMatchObject({
-      kind: 'MEMBER',
-      member: { name: 'Pessoa da Empresa B' },
-    }))
+    await waitFor(() =>
+      expect(result.current.data?.items[0]).toMatchObject({
+        kind: 'MEMBER',
+        member: { name: 'Pessoa da Empresa B' },
+      }),
+    )
 
     await act(async () => resolveFirst(first))
     expect(result.current.data?.items[0]).toMatchObject({
@@ -102,9 +108,12 @@ describe('useMemberList — isolamento de empresa', () => {
     let resolveReload!: (value: typeof first) => void
     vi.mocked(getMembers)
       .mockResolvedValueOnce(first)
-      .mockImplementationOnce(() => new Promise<typeof first>((resolve) => {
-        resolveReload = resolve
-      }))
+      .mockImplementationOnce(
+        () =>
+          new Promise<typeof first>((resolve) => {
+            resolveReload = resolve
+          }),
+      )
 
     const { result } = renderHook(() => useMemberList('company-a'))
     await waitFor(() => expect(result.current.data).toEqual(first))
