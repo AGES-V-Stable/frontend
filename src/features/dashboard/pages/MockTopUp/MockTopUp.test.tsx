@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MockTopUp } from './MockTopUp'
@@ -59,16 +59,17 @@ describe('MockTopUp', () => {
     render(<MockTopUp />)
     expect(screen.getByRole('heading', { name: 'Adicionar saldo' })).toBeVisible()
     expect(screen.getByText(/nenhum pagamento ou transferência real/)).toBeVisible()
-    expect(screen.getByText('R$ 2,50')).toBeVisible()
+    expect(screen.getByText(/R\$\s*2,50/)).toBeVisible()
   })
 
   it('shows precise projected amount and posts the pt-BR amount once', async () => {
     addCredit.mockResolvedValue({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' })
     render(<MockTopUp />)
     await userEvent.type(amount(), '10,25')
-    expect(screen.getByText('R$ 12,75')).toBeVisible()
+    expect(screen.getByText(/R\$\s*12,75/)).toBeVisible()
     await userEvent.click(submit())
-    expect(addCredit).toHaveBeenCalledExactlyOnceWith('10.25')
+    expect(addCredit).toHaveBeenCalledTimes(1)
+    expect(addCredit).toHaveBeenCalledWith('10.25')
     expect(await screen.findByRole('status')).toHaveTextContent('12,75')
     expect(retry).toHaveBeenCalledTimes(1)
   })
