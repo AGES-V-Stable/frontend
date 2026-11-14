@@ -43,7 +43,7 @@ export function BeneficiaryFilters({
   }
 
   const inputClassName =
-    'h-11 w-full rounded-md border border-sage-300 bg-white px-3 text-sm text-slate-900 outline-none placeholder:text-gray-500 focus:border-primary focus:ring-2 focus:ring-primary/20'
+    'h-11 w-full rounded-md border border-sage-300 bg-white px-3 text-sm text-slate-900 placeholder:text-gray-500 focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
   return (
     <form
@@ -98,13 +98,13 @@ export function BeneficiaryFilters({
         <button
           type="button"
           onClick={handleClear}
-          className="h-11 rounded-md border border-primary px-6 text-sm font-medium text-primary transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="h-11 rounded-md border border-primary px-6 text-sm font-medium text-primary transition-colors hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           Limpar
         </button>
         <button
           type="submit"
-          className="h-11 rounded-md bg-primary px-6 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="h-11 rounded-md bg-primary px-6 text-sm font-medium text-white transition-colors hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           Filtrar
         </button>
