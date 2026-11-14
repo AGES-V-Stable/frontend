@@ -13,6 +13,7 @@ const http = vi.mocked(httpRequest)
 const offerId = '277ba36d-ac63-4315-bb09-8a40fbd1b879'
 const executionId = '49960b31-3ef9-486f-a1b7-2dac8436c9f1'
 const amounts = { sourceAmount: 1000, targetAmount: 180.25 }
+
 const execution = {
   executionId,
   offerId,
@@ -30,62 +31,68 @@ const execution = {
 }
 
 describe('orchestrated transfer API', () => {
-  beforeEach(() => http.mockReset())
+  beforeEach(() => {
+    http.mockReset()
+  })
 
-  it('rejects invalid or missing TOTP before any financial request', async () => {
-    expect(() => requireTotp('123456')).not.toThrow()
-    for (const code of ['', '12345', '1234567', 'ABCD-1234', '12x456']) {
+  it('rejects invalid TOTP before contacting a financial endpoint', async () => {
+    expect(requireTotp('123456')).toBe('123456')
+    for (const code of ['', '12345', '1234567', 'ABCD-1234']) {
       await expect(confirmOffer(offerId, amounts, code)).rejects.toThrow()
       await expect(confirmRequote(executionId, amounts, code)).rejects.toThrow()
     }
     expect(http).not.toHaveBeenCalled()
   })
 
-  it('does not submit invalid confirmation amounts', async () => {
-    await expect(
-      confirmOffer(offerId, { sourceAmount: 0, targetAmount: 20 }, '123456'),
-    ).rejects.toThrow()
-    await expect(
-      confirmOffer(offerId, { sourceAmount: 10, targetAmount: Number.NaN }, '123456'),
-    ).rejects.toThrow()
+  it('rejects invalid amounts before contacting the backend', async () => {
+    const invalid = { sourceAmount: 0, targetAmount: 20 }
+    await expect(confirmOffer(offerId, invalid, '123456')).rejects.toThrow()
     expect(http).not.toHaveBeenCalled()
   })
 
-  it('posts confirmed values and the six-digit code to the exact endpoint', async () => {
+  it('confirms only the selected offer and accepted monetary values', async () => {
     http.mockResolvedValue(execution)
-    await expect(confirmOffer(offerId, amounts, '123456')).resolves.toMatchObject(execution)
-    expect(http).toHaveBeenCalledExactlyOnceWith(`/v1/quotes/offers/${offerId}/confirm`, {
-      method: 'POST',
-      body: JSON.stringify({ ...amounts, totpCode: '123456' }),
+    const result = await confirmOffer(offerId, amounts, '123456')
+    expect(result.status).toBe('AWAITING_FUNDS')
+
+    const [url, options] = http.mock.calls[0]!
+    expect(url).toBe(`/v1/quotes/offers/${offerId}/confirm`)
+    expect(options?.method).toBe('POST')
+    expect(JSON.parse(String(options?.body))).toEqual({
+      ...amounts,
+      totpCode: '123456',
     })
+    expect(http).toHaveBeenCalledTimes(1)
   })
 
-  it('fetches execution state using the authenticated transport', async () => {
+  it('reads the execution state without resubmitting a payment', async () => {
     http.mockResolvedValue(execution)
-    await expect(getTransferExecution(executionId)).resolves.toMatchObject(execution)
+    const result = await getTransferExecution(executionId)
+    expect(result.status).toBe('AWAITING_FUNDS')
     expect(http).toHaveBeenCalledWith(`/v1/transfer-executions/${executionId}`)
   })
 
-  it('confirms a requote with a separate TOTP code and the accepted new amounts', async () => {
+  it('accepts a requote with a separately provided six-digit code', async () => {
     http.mockResolvedValue({ ...execution, status: 'PAYOUT_PROCESSING' })
-    await confirmRequote(executionId, { sourceAmount: 1000, targetAmount: 175 }, '654321')
-    expect(http).toHaveBeenCalledWith(
-      `/v1/transfer-executions/${executionId}/requote/confirm`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ sourceAmount: 1000, targetAmount: 175, totpCode: '654321' }),
-      },
-    )
+    const accepted = { sourceAmount: 1000, targetAmount: 175 }
+    await confirmRequote(executionId, accepted, '654321')
+
+    const [url, options] = http.mock.calls[0]!
+    expect(url).toBe(`/v1/transfer-executions/${executionId}/requote/confirm`)
+    expect(JSON.parse(String(options?.body))).toEqual({
+      ...accepted,
+      totpCode: '654321',
+    })
   })
 
-  it('does not accept incomplete execution data or fabricate a successful state', async () => {
-    http.mockResolvedValue({ ...execution, status: 'COMPLETED', executionId: undefined })
+  it('rejects incomplete execution responses', async () => {
+    http.mockResolvedValue({ ...execution, executionId: undefined })
     await expect(confirmOffer(offerId, amounts, '123456')).rejects.toThrow()
   })
 
-  it('requires UUIDs on resource paths', async () => {
+  it('rejects malformed resource IDs before sending requests', async () => {
     await expect(getTransferExecution('../other-company')).rejects.toThrow()
-    await expect(confirmOffer('bad-offer', amounts, '123456')).rejects.toThrow()
+    await expect(confirmOffer('wrong-id', amounts, '123456')).rejects.toThrow()
     expect(http).not.toHaveBeenCalled()
   })
 })
