@@ -92,7 +92,7 @@ describe('MockTopUp', () => {
     await userEvent.click(submit())
     expect(await screen.findByRole('alert')).toHaveTextContent('não está disponível')
     expect(amount()).toHaveValue('10,25')
-    expect(screen.getByText('R$ 2,50')).toBeVisible()
+    expect(screen.getByText(/R\$\s*2,50/)).toBeVisible()
     expect(retry).not.toHaveBeenCalled()
   })
 
