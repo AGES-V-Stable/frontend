@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { addSimulatedBalance, getBalance } from '@/features/dashboard/api/balance'
+import { addMockTopUp, addSimulatedBalance, getBalance } from '@/features/dashboard/api/balance'
 import { saveLoginToken } from '@/shared/http/authToken'
 import { ApiError } from '@/shared/http/httpClient'
 
@@ -58,4 +58,35 @@ describe('balance API', () => {
       }),
     )
   })
+  it('sends the exact mock-top-up contract with the saved login token', async () => {
+    saveLoginToken('login')
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(addMockTopUp('10.25')).resolves.toEqual({
+      creditedAmountBrl: '10.25',
+      availableBalanceBrl: '12.75',
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/v1/balance/mock-top-ups',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ amountBrl: '10.25' }),
+        headers: expect.objectContaining({ Authorization: 'Bearer login' }),
+      }),
+    )
+  })
+
+  it('rejects malformed mock-top-up responses without inventing a credit', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ availableBalanceBrl: '12.75' }))),
+    )
+    await expect(addMockTopUp('10.25')).rejects.toThrow()
+  })
+
 })
