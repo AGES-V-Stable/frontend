@@ -402,10 +402,8 @@ it('opens members from the company menu with the same content as the direct rout
     'aria-current',
     'page',
   )
-  // Sem vínculo de proprietário na sessão, nenhuma lista de terceiros é consultada.
-  expect(
-    screen.getByText('A gestão de membros é exclusiva do proprietário da empresa.'),
-  ).toBeVisible()
+  // Sem vínculo empresarial, o usuário não consulta a lista de terceiros.
+  expect(screen.getByText('Não existe vínculo empresarial para esta conta.')).toBeVisible()
   expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
 })
 
@@ -420,19 +418,35 @@ it.each(['OPERATOR', 'VIEWER'])(
       permissions: ['COMPANY_READ', 'SELF_MEMBERSHIP_READ'],
       version: 1,
     }
-    mock.mockImplementation(async (url: string) =>
-      url === '/v1/users/me'
-        ? new Response(JSON.stringify({ ...user, companyAccess }))
-        : backend(url),
-    )
+    mock.mockImplementation(async (url: string) => {
+      if (url === '/v1/users/me') return new Response(JSON.stringify({ ...user, companyAccess }))
+      if (url === '/v1/companies/c1/members/me')
+        return new Response(
+          JSON.stringify({
+            id: 'm2',
+            userId: user.id,
+            companyId: 'c1',
+            name: user.name,
+            email: user.email,
+            role: companyRole,
+            status: 'ACTIVE',
+            version: 1,
+            joinedAt: '2026-11-14T12:00:00Z',
+            removedAt: null,
+          }),
+        )
+      return backend(url)
+    })
     saveLoginToken('login')
     renderRoute('/app/membros')
-    expect(
-      await screen.findByText('A gestão de membros é exclusiva do proprietário da empresa.'),
-    ).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeVisible()
+    expect(await screen.findByText('Marina Costa')).toBeVisible()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Gerenciar' })).not.toBeInTheDocument()
-    expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
+    expect(
+      mock.mock.calls.filter(([url]) => String(url) === '/v1/companies/c1/members/me'),
+    ).toHaveLength(1)
+    expect(mock.mock.calls.some(([url]) => String(url).includes('/members?'))).toBe(false)
   },
 )
 

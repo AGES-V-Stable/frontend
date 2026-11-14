@@ -91,7 +91,12 @@ function RoleGuard({ role }: { role?: 'ADMIN' | 'USER' }) {
   if (status === 'anonymous')
     return <Navigate to={PATHS.LOGIN} replace state={{ from: pathname + search }} />
   if (role && (isStoredAdmin() ? 'ADMIN' : 'USER') !== role) return <RoleLanding />
-  if (role === 'USER' && !user?.companyId)
+  // Um vínculo removido continua visível em "Meu acesso", sem liberar as demais páginas.
+  const ownRemovedAccess =
+    pathname === PATHS.MEMBERS &&
+    user?.companyAccess?.status === 'REMOVED' &&
+    Boolean(user.companyAccess.companyId)
+  if (role === 'USER' && !user?.companyId && !ownRemovedAccess)
     return (
       <div className="flex flex-col items-start gap-3 p-8">
         <p role="alert">Esta conta não possui vínculo empresarial.</p>
