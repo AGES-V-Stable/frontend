@@ -129,7 +129,7 @@ describe('OrchestratedOfferConfirmation', () => {
     expect(confirm).toHaveBeenCalledTimes(1)
   })
 
-  it('blocks retries on 409 because another member may have already confirmed the offer', async () => {
+  it('blocks retries on 409 when a peer may have confirmed the offer', async () => {
     confirm.mockRejectedValue(new HttpError('already confirmed by another user', 409))
     render(<OrchestratedOfferConfirmation offer={offer} />)
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar oferta' }))
