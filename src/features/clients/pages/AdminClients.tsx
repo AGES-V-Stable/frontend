@@ -118,6 +118,7 @@ function AdminClients() {
             <Table
               title="Todos os clientes"
               entityLabel="clientes"
+              rowLabel={(client) => client.empresa}
               totalRecords={filteredClients.length}
               columns={columns}
               data={filteredClients.slice((currentPage - 1) * 4, currentPage * 4)}

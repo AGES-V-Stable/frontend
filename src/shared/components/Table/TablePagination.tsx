@@ -1,5 +1,6 @@
 import type { PaginationProps } from '@/shared/components/Table/types'
 import { Button } from '@/shared/components/Button'
+import { getRecordRange } from '@/shared/components/Table/recordRange'
 
 export function TablePagination({
   compact = false,
@@ -26,9 +27,12 @@ export function TablePagination({
     }
   }
 
-  const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
-  const endRecord =
-    totalRecords === 0 ? 0 : Math.min(startRecord + displayedRecords - 1, totalRecords)
+  const { start: startRecord, end: endRecord } = getRecordRange({
+    currentPage,
+    itemsPerPage,
+    displayedRecords,
+    totalRecords,
+  })
 
   return (
     <div

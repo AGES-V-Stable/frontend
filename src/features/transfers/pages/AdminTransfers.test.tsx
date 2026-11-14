@@ -180,7 +180,7 @@ describe('AdminTransfers page', () => {
       expect(screen.getByText('Atlas Imports LLC')).toBeInTheDocument()
     })
 
-    const detailButtons = screen.getAllByRole('button', { name: 'Ver detalhes' })
+    const detailButtons = screen.getAllByRole('button', { name: /^Ver detalhes: .+ para .+$/ })
     expect(detailButtons.length).toBeGreaterThan(0)
 
     await user.click(detailButtons[0])

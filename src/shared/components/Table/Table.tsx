@@ -3,6 +3,7 @@ import type { TableProps, ColumnDefinition } from '@/shared/components/Table/typ
 import { StatusBadge } from '@/shared/components/Table/StatusBadge'
 import { TableActionButton } from '@/shared/components/Table/TableActionButton'
 import { TablePagination } from '@/shared/components/Table/TablePagination'
+import { getRecordRange } from '@/shared/components/Table/recordRange'
 
 function getCellValue<T>(item: T, key: string): ReactNode {
   const value = (item as unknown as Record<string, unknown>)[key]
@@ -19,7 +20,16 @@ export function Table<T>({
   pagination,
   emptyMessage,
   entityLabel = 'registros',
+  rowLabel,
 }: TableProps<T>) {
+  // Resumo anunciado ao leitor de tela quando a página ou o filtro mudam a lista.
+  const range = pagination && data.length > 0 ? getRecordRange(pagination) : undefined
+  const summary = range
+    ? `Mostrando ${range.start}-${range.end} de ${pagination!.totalRecords} ${pagination!.entityLabel ?? entityLabel}`
+    : totalRecords !== undefined
+      ? `${totalRecords} ${entityLabel}`
+      : ''
+
   const renderCellContent = (item: T, column: ColumnDefinition<T>) => {
     if (column.render) {
       return column.render(item)
@@ -40,6 +50,7 @@ export function Table<T>({
               <TableActionButton
                 key={idx}
                 label={action.label}
+                accessibleLabel={rowLabel ? `${action.label}: ${rowLabel(item)}` : undefined}
                 onClick={() => action.onClick(item)}
               />
             ))}
@@ -54,6 +65,9 @@ export function Table<T>({
 
   return (
     <div className="bg-white w-full flex flex-col pt-6 pb-6 rounded-lg overflow-x-auto">
+      <p role="status" className="sr-only">
+        {summary}
+      </p>
       {(title || totalRecords !== undefined) && (
         <div className="px-6 mb-6 font-['IBM_Plex_Sans'] text-slate-900 font-medium text-[18px]">
           {title}{' '}

@@ -49,4 +49,7 @@ export interface TableProps<T> {
   // Message to display when data is empty
   emptyMessage?: ReactNode
   entityLabel?: string
+
+  // Identifica a linha no nome acessível das ações (ex.: "Ver detalhes: Tech Corp")
+  rowLabel?: (item: T) => string
 }
