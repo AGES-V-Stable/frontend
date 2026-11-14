@@ -123,12 +123,15 @@ function PageHeader({ owner }: { owner: boolean }) {
 }
 
 export function Members() {
-  const { user } = useSession()
+  const { status, user } = useSession()
   const access = user?.companyAccess
   const viewer = useMemo<MemberViewer | null>(
     () => (user && access ? { userId: user.id, membershipId: access.membershipId } : null),
     [user, access],
   )
+  if (status !== 'authenticated') {
+    return <p role="status">Carregando seu acesso...</p>
+  }
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-8 md:px-8">
       <PageHeader owner={canManageMembers(user)} />
