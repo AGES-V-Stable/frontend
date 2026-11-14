@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --write src/features/transfers/pages/client/transferCreate/OrchestratedTransferCreate.tsx && echo __FORMATTED_BEGIN__ && cat src/features/transfers/pages/client/transferCreate/OrchestratedTransferCreate.tsx && echo __FORMATTED_END__ && prettier --check .",
+    "format:check": "prettier --check .",
     "format:fix": "prettier --write .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
