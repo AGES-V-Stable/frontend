@@ -43,3 +43,16 @@ export function describeSimulatedDepositError(error: unknown): string {
   if (error.status === 400) return 'Informe um valor positivo com até duas casas decimais.'
   return FALLBACK
 }
+
+/**
+ * An ambiguous failure may happen after the backend has committed the mock credit:
+ * a disconnected client, server error or malformed success response is not proof of rollback.
+ * Only explicit validation/authorization rejections and the known balance-limit conflict
+ * guarantee that the requested amount was not added.
+ */
+export function isUncertainSimulatedDepositOutcome(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return true
+  if (error.code === 'INVALID_RESPONSE' || error.code === 'NETWORK_ERROR') return true
+  if ([400, 401, 403, 404, 422].includes(error.status)) return false
+  return !(error.status === 409 && error.code === 'BALANCE_LIMIT_EXCEEDED')
+}

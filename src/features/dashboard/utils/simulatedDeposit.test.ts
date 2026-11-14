@@ -4,6 +4,7 @@ import type { User } from '@/features/auth'
 import {
   canAddSimulatedBalance,
   describeSimulatedDepositError,
+  isUncertainSimulatedDepositOutcome,
   normalizeDepositAmount,
 } from '@/features/dashboard/utils/simulatedDeposit'
 import { ApiError, HttpError } from '@/shared/http/httpClient'
@@ -93,5 +94,22 @@ describe('describeSimulatedDepositError', () => {
 
   it('falls back for an unexpected error', () => {
     expect(describeSimulatedDepositError(new Error('boom'))).toContain('Não foi possível confirmar')
+  })
+})
+
+describe('isUncertainSimulatedDepositOutcome', () => {
+  it.each([
+    [new HttpError('network', 0, {}, 'NETWORK_ERROR'), true],
+    [new HttpError('upstream error', 502), true],
+    [new HttpError('invalid JSON', 200, {}, 'INVALID_RESPONSE'), true],
+    [new HttpError('unknown conflict', 409), true],
+    [new Error('unexpected parser error'), true],
+    [new HttpError('invalid amount', 400), false],
+    [new HttpError('no access', 403), false],
+    [new HttpError('feature off', 404), false],
+    [new HttpError('invalid request', 422), false],
+    [new HttpError('limit reached', 409, {}, 'BALANCE_LIMIT_EXCEEDED'), false],
+  ])('classifies %s as uncertain=%s', (failure, expected) => {
+    expect(isUncertainSimulatedDepositOutcome(failure)).toBe(expected)
   })
 })
