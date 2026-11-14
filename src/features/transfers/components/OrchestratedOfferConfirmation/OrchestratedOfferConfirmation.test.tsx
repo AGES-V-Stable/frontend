@@ -138,6 +138,38 @@ describe('OrchestratedOfferConfirmation', () => {
     expect(confirm).toHaveBeenCalledTimes(1)
   })
 
+  it('never sends a financial request when the requote already expired', async () => {
+    confirm.mockResolvedValue({
+      ...execution,
+      status: 'REQUOTE_REQUIRED',
+      requote: {
+        source: { amount: 1000, currency: 'BRL' },
+        target: { amount: 175, currency: 'USD' },
+        expiresAt: '2020-01-01T00:00:00Z',
+      },
+    })
+    render(<OrchestratedOfferConfirmation offer={offer} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar oferta' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Autorizar 123456' }))
+    await screen.findByText(/REQUOTE_REQUIRED/)
+    await userEvent.click(screen.getByRole('button', { name: 'Aceitar nova cotação' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Autorizar 654321' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('expirou')
+    expect(requote).not.toHaveBeenCalled()
+  })
+
+  it('does not repeat a payment when refreshing execution status fails', async () => {
+    confirm.mockResolvedValue(execution)
+    getExecution.mockRejectedValue(new Error('connection lost'))
+    render(<OrchestratedOfferConfirmation offer={offer} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar oferta' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Autorizar 123456' }))
+    await screen.findByText(/AWAITING_FUNDS/)
+    await userEvent.click(screen.getByRole('button', { name: 'Atualizar estado' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('não será repetida')
+    expect(confirm).toHaveBeenCalledTimes(1)
+  })
+
   it('requires explicit fresh confirmation for a worse payout quote', async () => {
     const changed = {
       ...execution,
