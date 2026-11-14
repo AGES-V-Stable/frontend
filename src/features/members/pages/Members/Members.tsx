@@ -52,7 +52,11 @@ function OwnMemberAccess({ companyId }: { companyId: string }) {
   return (
     <section className="rounded-lg border border-sage-300 bg-white p-6 text-sm text-slate-700">
       <h2 className="text-lg font-semibold text-slate-900">Seu acesso à empresa</h2>
-      {loading && <p role="status" className="mt-3">Carregando seu acesso...</p>}
+      {loading && (
+        <p role="status" className="mt-3">
+          Carregando seu acesso...
+        </p>
+      )}
       {!loading && error && (
         <div className="mt-3 flex flex-col items-start gap-3">
           <p role="alert">Não foi possível consultar seu vínculo com a empresa.</p>
