@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { HttpError } from '@/shared/http/httpClient'
-import { getMembers, removeMember, updateMemberRole, versionFromEtag } from './members'
+import {
+  getMembers,
+  getOwnMember,
+  removeMember,
+  updateMemberRole,
+  versionFromEtag,
+} from './members'
 
 const member = {
   id: 'm-2',
@@ -65,6 +71,24 @@ describe('members API', () => {
       vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...list, items: [{ kind: 'X' }] }))),
     )
     await expect(getMembers('c1')).rejects.toThrow()
+  })
+
+  it('loads only the own membership with an encoded company id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(member)))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await getOwnMember('c/1')
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/v1/companies/c%2F1/members/me')
+    expect(result).toMatchObject({ id: 'm-2', role: 'OPERATOR', status: 'ACTIVE' })
+  })
+
+  it('rejects an invalid own-membership response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...member, role: 'ADMIN' }))),
+    )
+    await expect(getOwnMember('c1')).rejects.toThrow()
   })
 
   it('sends only the new role with the listed version in If-Match and keeps the ETag version', async () => {

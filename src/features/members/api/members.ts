@@ -34,6 +34,9 @@ export async function getOwnMembership(companyId: string, signal?: AbortSignal):
   return MemberSchema.parse(await httpRequest<unknown>(`${membersPath(companyId)}/me`, { signal }))
 }
 
+/** Compatibilidade com os consumidores já integrados pela frontend #106. */
+export const getOwnMember = getOwnMembership
+
 /** Altera o perfil de um membro ativo; a versão listada vai em If-Match. */
 export async function updateMemberRole(
   companyId: string,
