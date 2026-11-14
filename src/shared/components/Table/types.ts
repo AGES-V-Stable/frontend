@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { StatusVariant } from '@/shared/components/Table/StatusBadge'
 
 export type ColumnAlign = 'left' | 'center' | 'right'
 export type CellType = 'text' | 'status' | 'action'
@@ -11,6 +12,8 @@ export interface ColumnDefinition<T> {
   align?: ColumnAlign
   // Fallback for custom rendering if needed in the future
   render?: (item: T) => ReactNode
+  // Cor do badge em colunas 'status'; sem ela, a cor é inferida do texto e o padrão é neutro
+  statusVariant?: (item: T) => StatusVariant
 }
 
 export interface TableAction<T> {

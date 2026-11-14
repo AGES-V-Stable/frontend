@@ -29,7 +29,7 @@ export function Table<T>({
 
     switch (column.type) {
       case 'status':
-        return <StatusBadge label={value as string} />
+        return <StatusBadge label={value as string} variant={column.statusVariant?.(item)} />
 
       case 'action':
         return (
