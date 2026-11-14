@@ -36,7 +36,6 @@ describe('orchestrated transfer API', () => {
     http.mockReset()
   })
 
-
   it('requests the winner selected by the backend without starting any financial operation', async () => {
     const request = {
       beneficiaryId: offerId,
