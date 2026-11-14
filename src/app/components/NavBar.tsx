@@ -37,7 +37,7 @@ export function NavBar({ logo, items, activeId, account, footerItems }: NavBarPr
               ? () => setExpanded((value) => ({ ...value, [item.id]: !open }))
               : item.onClick
           }
-          className={`flex min-h-11 w-full items-center gap-3 rounded-r-lg border-r-4 py-2 pr-4 text-left text-base font-medium transition-colors focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${nested ? 'pl-12 text-sm' : 'pl-4'} ${selected ? 'border-primary bg-primary/35 text-primary' : 'border-transparent text-slate-500 enabled:cursor-pointer enabled:hover:bg-emerald-50'}`}
+          className={`flex min-h-11 w-full items-center gap-3 rounded-r-lg border-r-4 py-2 pr-4 text-left text-base font-medium transition-colors focus-visible:outline-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 ${nested ? 'pl-12 text-sm' : 'pl-4'} ${selected ? 'border-primary bg-primary/35 text-emerald-800' : 'border-transparent text-slate-500 enabled:cursor-pointer enabled:hover:bg-emerald-50'}`}
         >
           {!nested && (
             <span aria-hidden="true" className="flex size-5 shrink-0 items-center justify-center">
