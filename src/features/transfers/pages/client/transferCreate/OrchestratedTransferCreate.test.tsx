@@ -15,8 +15,24 @@ vi.mock('@/features/transfers/api/orchestratedTransfers', () => ({
 vi.mock(
   '@/features/transfers/components/OrchestratedOfferConfirmation/OrchestratedOfferConfirmation',
   () => ({
-    OrchestratedOfferConfirmation: ({ offer }: { offer: { offerId: string } }) => (
-      <div data-testid="authorization">Autorização TOTP {offer.offerId}</div>
+    OrchestratedOfferConfirmation: ({
+      offer,
+      onAuthorizationAttempt,
+      onDefinitiveRejection,
+    }: {
+      offer: { offerId: string }
+      onAuthorizationAttempt?: () => void
+      onDefinitiveRejection?: () => void
+    }) => (
+      <div data-testid="authorization">
+        Autorização TOTP {offer.offerId}
+        <button type="button" onClick={onAuthorizationAttempt}>
+          Simular autorização
+        </button>
+        <button type="button" onClick={onDefinitiveRejection}>
+          Simular rejeição definitiva
+        </button>
+      </div>
     ),
   }),
 )
@@ -172,6 +188,25 @@ describe('OrchestratedTransferCreate', () => {
     await user.type(screen.getByLabelText('Valor'), '2000')
     expect(screen.queryByTestId('authorization')).not.toBeInTheDocument()
     expect(requestOrchestratedQuote).toHaveBeenCalledTimes(1)
+  })
+
+  it('freezes quote inputs after a financial confirmation attempt until definitive rejection', async () => {
+    const user = userEvent.setup()
+    render(<OrchestratedTransferCreate />)
+    await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
+    await user.type(screen.getByLabelText('Valor'), '1000')
+    await user.click(screen.getByRole('button', { name: 'Consultar melhor oferta' }))
+    expect(await screen.findByTestId('authorization')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Simular autorização' }))
+    expect(screen.getByLabelText('Valor')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Consultar melhor oferta' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('dados estão bloqueados')
+    expect(requestOrchestratedQuote).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'Simular rejeição definitiva' }))
+    expect(screen.getByLabelText('Valor')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Consultar melhor oferta' })).toBeEnabled()
   })
 
   it('does not display stale responses after the user changes the inputs', async () => {
