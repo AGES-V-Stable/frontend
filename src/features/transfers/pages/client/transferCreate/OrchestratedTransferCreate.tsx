@@ -69,6 +69,7 @@ export function OrchestratedTransferCreate() {
   const [description, setDescription] = useState('')
   const [quote, setQuote] = useState<OrchestratedQuoteResponse | null>(null)
   const [loadingQuote, setLoadingQuote] = useState(false)
+  const [financialRequestStarted, setFinancialRequestStarted] = useState(false)
   const [quoteError, setQuoteError] = useState<string | null>(null)
   const quoteRequest = useRef<AbortController | null>(null)
   const generation = useRef(0)
@@ -116,7 +117,7 @@ export function OrchestratedTransferCreate() {
   const route = beneficiary ? routeFor(beneficiary, bankRail) : null
   const amount = parseDecimalInput(amountText)
   const validAmount = amount !== null && Number.isFinite(amount) && amount >= 0.01
-  const canQuote = Boolean(companyId && route && validAmount && !loadingQuote)
+  const canQuote = Boolean(companyId && route && validAmount && !loadingQuote && !financialRequestStarted)
 
   async function requestQuote() {
     if (!canQuote || !route || !amount || !beneficiary) return
@@ -173,6 +174,12 @@ export function OrchestratedTransferCreate() {
         </p>
       </header>
 
+      {financialRequestStarted && (
+        <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+          Uma confirmação foi enviada. Os dados estão bloqueados para evitar outra cotação
+          enquanto o resultado da operação não for confirmado.
+        </p>
+      )}
       <section className="flex flex-col gap-4 rounded-xl border border-sage-300 bg-white p-6">
         <h2 className="text-lg font-semibold text-slate-900">Dados da cotação</h2>
         <label htmlFor="orchestrated-beneficiary" className="text-sm font-medium text-slate-900">
@@ -182,7 +189,7 @@ export function OrchestratedTransferCreate() {
           id="orchestrated-beneficiary"
           className={FIELD_CLASS}
           value={beneficiaryId}
-          disabled={loadingQuote || beneficiaries.status !== 'ready'}
+          disabled={financialRequestStarted || loadingQuote || beneficiaries.status !== 'ready'}
           onChange={(event) => {
             invalidateQuote()
             setBeneficiaryId(event.target.value)
@@ -213,6 +220,7 @@ export function OrchestratedTransferCreate() {
             </label>
             <select
               id="orchestrated-bank-rail"
+              disabled={financialRequestStarted}
               className={FIELD_CLASS}
               value={bankRail}
               onChange={(event) => {
@@ -250,6 +258,7 @@ export function OrchestratedTransferCreate() {
         </label>
         <select
           id="orchestrated-side"
+          disabled={financialRequestStarted}
           className={FIELD_CLASS}
           value={amountSide}
           onChange={(event) => {
@@ -268,6 +277,7 @@ export function OrchestratedTransferCreate() {
         </label>
         <input
           id="orchestrated-amount"
+          disabled={financialRequestStarted}
           inputMode="decimal"
           className={FIELD_CLASS}
           placeholder="1.000,00"
@@ -291,6 +301,7 @@ export function OrchestratedTransferCreate() {
               </label>
               <select
                 id="orchestrated-token"
+                disabled={financialRequestStarted}
                 className={FIELD_CLASS}
                 value={token}
                 onChange={(e) => {
@@ -311,6 +322,7 @@ export function OrchestratedTransferCreate() {
               </label>
               <select
                 id="orchestrated-network"
+                disabled={financialRequestStarted}
                 className={FIELD_CLASS}
                 value={network}
                 onChange={(e) => {
@@ -333,6 +345,7 @@ export function OrchestratedTransferCreate() {
         </label>
         <input
           id="orchestrated-description"
+          disabled={financialRequestStarted}
           className={FIELD_CLASS}
           maxLength={128}
           value={description}
@@ -385,7 +398,12 @@ export function OrchestratedTransferCreate() {
               </div>
             </dl>
           </div>
-          <OrchestratedOfferConfirmation key={quote.offer.offerId} offer={quote.offer} />
+          <OrchestratedOfferConfirmation
+            key={quote.offer.offerId}
+            offer={quote.offer}
+            onAuthorizationAttempt={() => setFinancialRequestStarted(true)}
+            onDefinitiveRejection={() => setFinancialRequestStarted(false)}
+          />
         </section>
       )}
     </main>
