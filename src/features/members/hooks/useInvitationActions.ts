@@ -87,7 +87,10 @@ export function useInvitationActions(
         async () => {
           const link = getInvitationLink(companyId, invitation.id)
           // A cópia começa ainda no clique, antes de esperar a API (exigência do Safari/iOS).
-          const copied = copyText(link.then((generated) => generated.inviteUrl))
+          const inviteUrl = link.then((generated) => generated.inviteUrl)
+          // A falha da busca é tratada ao esperar `link`; a cópia pode nem chegar a ler o link.
+          inviteUrl.catch(() => undefined)
+          const copied = copyText(inviteUrl)
           const generated = await link
           if (await copied)
             report({ tone: 'success', message: `Link copiado. Envie para ${invitation.name}.` })
