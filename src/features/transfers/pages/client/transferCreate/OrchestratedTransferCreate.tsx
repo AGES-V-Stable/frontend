@@ -44,9 +44,7 @@ function routeFor(beneficiary: Beneficiary) {
 export function OrchestratedTransferCreate() {
   const { user } = useSession()
   const companyId = user?.companyId
-  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryState>({
-    status: 'loading',
-  })
+  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryState>({ status: 'loading' })
   const [beneficiaryId, setBeneficiaryId] = useState('')
   const [amountText, setAmountText] = useState('')
   const [amountSide, setAmountSide] = useState<'SOURCE' | 'TARGET'>('SOURCE')
@@ -180,9 +178,7 @@ export function OrchestratedTransferCreate() {
               </option>
             ))}
         </select>
-        {beneficiaries.status === 'loading' && (
-          <p role="status">Carregando beneficiários...</p>
-        )}
+        {beneficiaries.status === 'loading' && <p role="status">Carregando beneficiários...</p>}
         {beneficiaries.status === 'error' && (
           <p role="alert">Não foi possível carregar os beneficiários.</p>
         )}
@@ -301,18 +297,14 @@ export function OrchestratedTransferCreate() {
           onClick={() => void requestQuote()}
         />
         {quoteError && (
-          <p role="alert" className="text-sm text-red-700">
-            {quoteError}
-          </p>
+          <p role="alert" className="text-sm text-red-700">{quoteError}</p>
         )}
       </section>
 
       {quote && (
         <section className="flex flex-col gap-4" aria-label="Oferta selecionada">
           <div className="rounded-xl border border-sage-300 bg-white p-6">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Melhor oferta encontrada
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-900">Melhor oferta encontrada</h2>
             <p className="text-sm text-slate-600">Provedor: {quote.offer.provider}</p>
             <dl className="mt-3 grid gap-2 text-sm">
               <div>
