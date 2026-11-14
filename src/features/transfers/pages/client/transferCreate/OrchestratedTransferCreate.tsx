@@ -15,15 +15,24 @@ type BeneficiaryState =
 
 const TOKENS = ['USDC', 'USDT'] as const
 const NETWORKS = ['polygon', 'ethereum', 'base'] as const
-const FIELD_CLASS = 'w-full rounded-lg border border-sage-300 bg-white px-3 py-3 text-sm text-slate-900'
+const FIELD_CLASS =
+  'w-full rounded-lg border border-sage-300 bg-white px-3 py-3 text-sm text-slate-900'
 
 /** The backend uses an explicit, supported payment rail for bank beneficiaries. */
 function routeFor(beneficiary: Beneficiary) {
   if (beneficiary.receivingMethod === 'BANK_ACCOUNT' && beneficiary.currency) {
-    return { targetPaymentMethod: 'international_swift', targetCurrency: beneficiary.currency.toUpperCase(), bank: true }
+    return {
+      targetPaymentMethod: 'international_swift',
+      targetCurrency: beneficiary.currency.toUpperCase(),
+      bank: true,
+    }
   }
   if (beneficiary.receivingMethod === 'CRYPTO_WALLET' && beneficiary.currency) {
-    return { targetPaymentMethod: beneficiary.blockchainNetwork?.toLowerCase() ?? 'blockchain', targetCurrency: beneficiary.currency.toUpperCase(), bank: false }
+    return {
+      targetPaymentMethod: beneficiary.blockchainNetwork?.toLowerCase() ?? 'blockchain',
+      targetCurrency: beneficiary.currency.toUpperCase(),
+      bank: false,
+    }
   }
   return null
 }
@@ -35,7 +44,9 @@ function routeFor(beneficiary: Beneficiary) {
 export function OrchestratedTransferCreate() {
   const { user } = useSession()
   const companyId = user?.companyId
-  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryState>({ status: 'loading' })
+  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryState>({
+    status: 'loading',
+  })
   const [beneficiaryId, setBeneficiaryId] = useState('')
   const [amountText, setAmountText] = useState('')
   const [amountSide, setAmountSide] = useState<'SOURCE' | 'TARGET'>('SOURCE')
@@ -65,10 +76,13 @@ export function OrchestratedTransferCreate() {
     return () => controller.abort()
   }, [companyId])
 
-  useEffect(() => () => {
-    generation.current += 1
-    quoteRequest.current?.abort()
-  }, [])
+  useEffect(
+    () => () => {
+      generation.current += 1
+      quoteRequest.current?.abort()
+    },
+    [],
+  )
 
   function invalidateQuote() {
     generation.current += 1
@@ -79,9 +93,10 @@ export function OrchestratedTransferCreate() {
     setLoadingQuote(false)
   }
 
-  const beneficiary = beneficiaries.status === 'ready'
-    ? beneficiaries.items.find((item) => item.id === beneficiaryId)
-    : undefined
+  const beneficiary =
+    beneficiaries.status === 'ready'
+      ? beneficiaries.items.find((item) => item.id === beneficiaryId)
+      : undefined
   const route = beneficiary ? routeFor(beneficiary) : null
   const amount = parseDecimalInput(amountText)
   const validAmount = amount !== null && Number.isFinite(amount) && amount >= 0.01
@@ -115,7 +130,9 @@ export function OrchestratedTransferCreate() {
       setQuote(result)
     } catch {
       if (controller.signal.aborted || generation.current !== currentGeneration) return
-      setQuoteError('Não foi possível obter uma oferta válida. Confira os dados e solicite outra cotação.')
+      setQuoteError(
+        'Não foi possível obter uma oferta válida. Confira os dados e solicite outra cotação.',
+      )
     } finally {
       if (generation.current === currentGeneration) {
         quoteRequest.current = null
@@ -125,7 +142,9 @@ export function OrchestratedTransferCreate() {
   }
 
   if (!companyId) {
-    return <p role="alert">É necessário ter um vínculo empresarial ativo para cotar transferências.</p>
+    return (
+      <p role="alert">É necessário ter um vínculo empresarial ativo para cotar transferências.</p>
+    )
   }
 
   return (
@@ -133,7 +152,8 @@ export function OrchestratedTransferCreate() {
       <header>
         <h1 className="text-xl font-bold text-slate-900">Cotação e transferência</h1>
         <p className="text-sm text-slate-600">
-          Compare as ofertas disponíveis. Uma operação só será iniciada após sua autorização por TOTP.
+          Compare as ofertas disponíveis. Uma operação só será iniciada após sua autorização por
+          TOTP.
         </p>
       </header>
 
@@ -160,14 +180,23 @@ export function OrchestratedTransferCreate() {
               </option>
             ))}
         </select>
-        {beneficiaries.status === 'loading' && <p role="status">Carregando beneficiários...</p>}
-        {beneficiaries.status === 'error' && <p role="alert">Não foi possível carregar os beneficiários.</p>}
-        {beneficiary && !route && (
-          <p role="alert">Este beneficiário não possui uma rota de pagamento compatível para cotação.</p>
+        {beneficiaries.status === 'loading' && (
+          <p role="status">Carregando beneficiários...</p>
         )}
-        {route && <p className="text-sm text-slate-600">
-          Origem: BRL via PIX. Destino: {route.targetCurrency} ({route.bank ? 'conta bancária' : 'carteira cripto'}).
-        </p>}
+        {beneficiaries.status === 'error' && (
+          <p role="alert">Não foi possível carregar os beneficiários.</p>
+        )}
+        {beneficiary && !route && (
+          <p role="alert">
+            Este beneficiário não possui uma rota de pagamento compatível para cotação.
+          </p>
+        )}
+        {route && (
+          <p className="text-sm text-slate-600">
+            Origem: BRL via PIX. Destino: {route.targetCurrency} (
+            {route.bank ? 'conta bancária' : 'carteira cripto'}).
+          </p>
+        )}
 
         <label htmlFor="orchestrated-side" className="text-sm font-medium text-slate-900">
           Valor informado em
@@ -182,10 +211,14 @@ export function OrchestratedTransferCreate() {
           }}
         >
           <option value="SOURCE">BRL (valor de origem)</option>
-          <option value="TARGET">{route?.targetCurrency ?? 'Moeda de destino'} (valor de destino)</option>
+          <option value="TARGET">
+            {route?.targetCurrency ?? 'Moeda de destino'} (valor de destino)
+          </option>
         </select>
 
-        <label htmlFor="orchestrated-amount" className="text-sm font-medium text-slate-900">Valor</label>
+        <label htmlFor="orchestrated-amount" className="text-sm font-medium text-slate-900">
+          Valor
+        </label>
         <input
           id="orchestrated-amount"
           inputMode="decimal"
@@ -198,48 +231,108 @@ export function OrchestratedTransferCreate() {
           }}
         />
         {amountText.trim() && !validAmount && (
-          <p role="alert" className="text-sm text-red-700">Informe um valor positivo com até duas casas decimais.</p>
+          <p role="alert" className="text-sm text-red-700">
+            Informe um valor positivo com até duas casas decimais.
+          </p>
         )}
 
         {route?.bank && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <label htmlFor="orchestrated-token" className="text-sm font-medium text-slate-900">Token intermediário</label>
-              <select id="orchestrated-token" className={FIELD_CLASS} value={token} onChange={(e) => { invalidateQuote(); setToken(e.target.value as typeof token) }}>
-                {TOKENS.map((value) => <option value={value} key={value}>{value}</option>)}
+              <label htmlFor="orchestrated-token" className="text-sm font-medium text-slate-900">
+                Token intermediário
+              </label>
+              <select
+                id="orchestrated-token"
+                className={FIELD_CLASS}
+                value={token}
+                onChange={(e) => {
+                  invalidateQuote()
+                  setToken(e.target.value as typeof token)
+                }}
+              >
+                {TOKENS.map((value) => (
+                  <option value={value} key={value}>
+                    {value}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="orchestrated-network" className="text-sm font-medium text-slate-900">Rede</label>
-              <select id="orchestrated-network" className={FIELD_CLASS} value={network} onChange={(e) => { invalidateQuote(); setNetwork(e.target.value as typeof network) }}>
-                {NETWORKS.map((value) => <option value={value} key={value}>{value}</option>)}
+              <label htmlFor="orchestrated-network" className="text-sm font-medium text-slate-900">
+                Rede
+              </label>
+              <select
+                id="orchestrated-network"
+                className={FIELD_CLASS}
+                value={network}
+                onChange={(e) => {
+                  invalidateQuote()
+                  setNetwork(e.target.value as typeof network)
+                }}
+              >
+                {NETWORKS.map((value) => (
+                  <option value={value} key={value}>
+                    {value}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
         )}
 
-        <label htmlFor="orchestrated-description" className="text-sm font-medium text-slate-900">Descrição (opcional)</label>
+        <label htmlFor="orchestrated-description" className="text-sm font-medium text-slate-900">
+          Descrição (opcional)
+        </label>
         <input
           id="orchestrated-description"
           className={FIELD_CLASS}
           maxLength={128}
           value={description}
-          onChange={(e) => { invalidateQuote(); setDescription(e.target.value) }}
+          onChange={(e) => {
+            invalidateQuote()
+            setDescription(e.target.value)
+          }}
         />
-        <Button type="button" label={loadingQuote ? 'Consultando...' : 'Consultar melhor oferta'} disabled={!canQuote} onClick={() => void requestQuote()} />
-        {quoteError && <p role="alert" className="text-sm text-red-700">{quoteError}</p>}
+        <Button
+          type="button"
+          label={loadingQuote ? 'Consultando...' : 'Consultar melhor oferta'}
+          disabled={!canQuote}
+          onClick={() => void requestQuote()}
+        />
+        {quoteError && (
+          <p role="alert" className="text-sm text-red-700">
+            {quoteError}
+          </p>
+        )}
       </section>
 
       {quote && (
         <section className="flex flex-col gap-4" aria-label="Oferta selecionada">
           <div className="rounded-xl border border-sage-300 bg-white p-6">
-            <h2 className="text-lg font-semibold text-slate-900">Melhor oferta encontrada</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Melhor oferta encontrada
+            </h2>
             <p className="text-sm text-slate-600">Provedor: {quote.offer.provider}</p>
             <dl className="mt-3 grid gap-2 text-sm">
-              <div><dt>Valor de origem</dt><dd className="font-semibold">{formatMoney(quote.offer.sourceAmount, 'BRL')}</dd></div>
-              <div><dt>Valor de destino</dt><dd className="font-semibold">{formatMoney(quote.offer.targetAmount, route?.targetCurrency ?? 'USD')}</dd></div>
-              <div><dt>Taxas totais</dt><dd className="font-semibold">{formatMoney(quote.offer.totalFee, 'BRL')}</dd></div>
-              <div><dt>Expira em</dt><dd>{new Date(quote.offer.expiresAt).toLocaleString('pt-BR')}</dd></div>
+              <div>
+                <dt>Valor de origem</dt>
+                <dd className="font-semibold">{formatMoney(quote.offer.sourceAmount, 'BRL')}</dd>
+              </div>
+              <div>
+                <dt>Valor de destino</dt>
+                <dd className="font-semibold">
+                  {formatMoney(quote.offer.targetAmount, route?.targetCurrency ?? 'USD')}
+                </dd>
+              </div>
+              <div>
+                <dt>Taxas totais</dt>
+                <dd className="font-semibold">{formatMoney(quote.offer.totalFee, 'BRL')}</dd>
+              </div>
+              <div>
+                <dt>Expira em</dt>
+                <dd>{new Date(quote.offer.expiresAt).toLocaleString('pt-BR')}</dd>
+              </div>
             </dl>
           </div>
           <OrchestratedOfferConfirmation key={quote.offer.offerId} offer={quote.offer} />
