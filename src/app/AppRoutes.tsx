@@ -249,20 +249,20 @@ function RoutedApplication() {
     : pathname.startsWith(PATHS.SETTINGS)
       ? 'settings'
       : pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
-      ? 'dashboard'
-      : admin
-        ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
-          ? 'admin-transfers'
-          : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
-            ? 'admin-beneficiaries'
-            : pathname.startsWith(PATHS.ADMIN_SECURITY)
-              ? 'security-requests'
-              : 'clients'
-        : pathname.startsWith('/app/transferencias')
-          ? 'transfers'
-          : pathname.startsWith(PATHS.MEMBERS)
-            ? 'members'
-            : 'beneficiaries'
+        ? 'dashboard'
+        : admin
+          ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
+            ? 'admin-transfers'
+            : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
+              ? 'admin-beneficiaries'
+              : pathname.startsWith(PATHS.ADMIN_SECURITY)
+                ? 'security-requests'
+                : 'clients'
+          : pathname.startsWith('/app/transferencias')
+            ? 'transfers'
+            : pathname.startsWith(PATHS.MEMBERS)
+              ? 'members'
+              : 'beneficiaries'
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
