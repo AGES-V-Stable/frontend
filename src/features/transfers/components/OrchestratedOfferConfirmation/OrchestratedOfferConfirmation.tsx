@@ -40,15 +40,20 @@ export function OrchestratedOfferConfirmation({
   const [error, setError] = useState<string | null>(null)
   const [execution, setExecution] = useState<TransferExecution | null>(null)
   const sending = useRef(false)
+  const [initialTime] = useState(() => Date.now())
   const offerExpired =
     !offer.expiresAt ||
     !Number.isFinite(Date.parse(offer.expiresAt)) ||
-    Date.parse(offer.expiresAt) <= Date.now()
+    Date.parse(offer.expiresAt) <= initialTime
 
   async function handleConfirm(totpCode: string) {
     if (sending.current || disabled) return
     const isRequote = execution?.status === 'REQUOTE_REQUIRED'
-    if (!isRequote && (offerExpired || execution)) return
+    if (!isRequote && execution) return
+    if (!isRequote && (offerExpired || Date.parse(offer.expiresAt ?? '') <= Date.now())) {
+      setError('A oferta expirou. Solicite uma nova cotação.')
+      return
+    }
     if (!/^\d{6}$/.test(totpCode)) {
       setError('Informe o código TOTP de 6 dígitos.')
       return
