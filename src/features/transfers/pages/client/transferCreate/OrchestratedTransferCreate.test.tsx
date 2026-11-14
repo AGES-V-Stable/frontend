@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCompanyBeneficiaries } from '@/features/beneficiaries'
+import type { Beneficiary } from '@/features/beneficiaries'
 import { useSession } from '@/features/auth'
 import { requestOrchestratedQuote } from '@/features/transfers/api/orchestratedTransfers'
 import { OrchestratedTransferCreate } from './OrchestratedTransferCreate'
@@ -15,7 +16,7 @@ vi.mock('@/features/transfers/components/OrchestratedOfferConfirmation/Orchestra
   ),
 }))
 
-const wallet = {
+const wallet: Beneficiary = {
   id: '550e8400-e29b-41d4-a716-446655440000',
   companyId: 'company-1',
   nickname: 'Carteira',
@@ -27,7 +28,7 @@ const wallet = {
   updatedAt: '2026-11-01T00:00:00Z',
 }
 
-const bank = {
+const bank: Beneficiary = {
   ...wallet,
   id: '6fa459ea-ee8a-4ca4-894e-db77e160355e',
   legalName: 'Fornecedor Internacional',
