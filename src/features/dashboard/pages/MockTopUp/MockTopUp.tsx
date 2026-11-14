@@ -51,7 +51,9 @@ export function MockTopUp() {
     try {
       const result = await addMockTopUp(credit)
       // A tela só atualiza após confirmação real do backend.
-      setSuccess(`Crédito simulado de ${formatBrl(result.creditedAmountBrl)} confirmado. Saldo atualizado: ${formatBrl(result.availableBalanceBrl)}.`)
+      setSuccess(
+        `Crédito simulado de ${formatBrl(result.creditedAmountBrl)} confirmado. Saldo atualizado: ${formatBrl(result.availableBalanceBrl)}.`,
+      )
       setAmount('')
       retry()
     } catch (cause) {
@@ -118,7 +120,11 @@ export function MockTopUp() {
               <p className="font-mono font-semibold">{projected ? formatBrl(projected) : '—'}</p>
             </div>
           </div>
-          {success && <p role="status" className="text-sm text-emerald-800">{success}</p>}
+          {success && (
+            <p role="status" className="text-sm text-emerald-800">
+              {success}
+            </p>
+          )}
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button
               type="button"
