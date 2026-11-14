@@ -446,9 +446,7 @@ it.each(['OPERATOR', 'VIEWER'])(
     expect(
       mock.mock.calls.filter(([url]) => String(url) === '/v1/companies/c1/members/me'),
     ).toHaveLength(1)
-    expect(
-      mock.mock.calls.some(([url]) => String(url).includes('/members?')),
-    ).toBe(false)
+    expect(mock.mock.calls.some(([url]) => String(url).includes('/members?'))).toBe(false)
   },
 )
 
