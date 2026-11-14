@@ -9,12 +9,17 @@ import { OrchestratedTransferCreate } from './OrchestratedTransferCreate'
 
 vi.mock('@/features/beneficiaries', () => ({ getCompanyBeneficiaries: vi.fn() }))
 vi.mock('@/features/auth', () => ({ useSession: vi.fn() }))
-vi.mock('@/features/transfers/api/orchestratedTransfers', () => ({ requestOrchestratedQuote: vi.fn() }))
-vi.mock('@/features/transfers/components/OrchestratedOfferConfirmation/OrchestratedOfferConfirmation', () => ({
-  OrchestratedOfferConfirmation: ({ offer }: { offer: { offerId: string } }) => (
-    <div data-testid="authorization">Autorização TOTP {offer.offerId}</div>
-  ),
+vi.mock('@/features/transfers/api/orchestratedTransfers', () => ({
+  requestOrchestratedQuote: vi.fn(),
 }))
+vi.mock(
+  '@/features/transfers/components/OrchestratedOfferConfirmation/OrchestratedOfferConfirmation',
+  () => ({
+    OrchestratedOfferConfirmation: ({ offer }: { offer: { offerId: string } }) => (
+      <div data-testid="authorization">Autorização TOTP {offer.offerId}</div>
+    ),
+  }),
+)
 
 const wallet: Beneficiary = {
   id: '550e8400-e29b-41d4-a716-446655440000',
@@ -144,7 +149,9 @@ describe('OrchestratedTransferCreate', () => {
     const user = userEvent.setup()
     let resolveQuote!: (value: typeof offer) => void
     vi.mocked(requestOrchestratedQuote).mockReturnValue(
-      new Promise((resolve) => { resolveQuote = resolve }),
+      new Promise((resolve) => {
+        resolveQuote = resolve
+      }),
     )
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
