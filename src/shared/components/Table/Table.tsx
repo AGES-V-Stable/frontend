@@ -63,20 +63,23 @@ export function Table<T>({
     }
   }
 
+  // Com título, o cabeçalho é um h2, para o leitor de tela achar a tabela pela lista de títulos.
+  const TitleTag = title ? 'h2' : 'div'
+
   return (
     <div className="bg-white w-full flex flex-col pt-6 pb-6 rounded-lg overflow-x-auto">
       <p role="status" className="sr-only">
         {summary}
       </p>
       {(title || totalRecords !== undefined) && (
-        <div className="px-6 mb-6 font-['IBM_Plex_Sans'] text-slate-900 font-medium text-[18px]">
+        <TitleTag className="px-6 mb-6 font-['IBM_Plex_Sans'] text-slate-900 font-medium text-[18px]">
           {title}{' '}
           {totalRecords !== undefined && (
             <span className="text-slate-900 text-[14px] font-medium ml-2">
               · {totalRecords} {entityLabel}
             </span>
           )}
-        </div>
+        </TitleTag>
       )}
 
       <div

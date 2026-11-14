@@ -90,4 +90,12 @@ describe('Table', () => {
     // Then a região de status anuncia o novo intervalo
     expect(screen.getByRole('status')).toHaveTextContent('Mostrando 5-8 de 10 clientes')
   })
+
+  it('exposes the table title as a level-2 heading', () => {
+    render(
+      <Table<Row> title="Todos os clientes" columns={[{ key: 'name', label: 'Nome' }]} data={[]} />,
+    )
+
+    expect(screen.getByRole('heading', { level: 2, name: /Todos os clientes/ })).toBeInTheDocument()
+  })
 })
