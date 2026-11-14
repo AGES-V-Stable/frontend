@@ -29,6 +29,8 @@ function safeError(error: unknown): string {
 export interface OrchestratedOfferConfirmationProps {
   offer: QuoteOffer
   disabled?: boolean
+  onAuthorizationAttempt?: () => void
+  onDefinitiveRejection?: () => void
 }
 
 /**
@@ -38,6 +40,8 @@ export interface OrchestratedOfferConfirmationProps {
 export function OrchestratedOfferConfirmation({
   offer,
   disabled = false,
+  onAuthorizationAttempt,
+  onDefinitiveRejection,
 }: OrchestratedOfferConfirmationProps) {
   const [code, setCode] = useState('')
   const [opened, setOpened] = useState(false)
@@ -72,6 +76,7 @@ export function OrchestratedOfferConfirmation({
       return
     }
 
+    onAuthorizationAttempt?.()
     sending.current = true
     setBusy(true)
     setError(null)
@@ -97,7 +102,9 @@ export function OrchestratedOfferConfirmation({
       setOpened(false)
     } catch (cause) {
       setError(safeError(cause))
-      if (!isDefinitiveRejection(cause)) {
+      if (isDefinitiveRejection(cause)) {
+        onDefinitiveRejection?.()
+      } else {
         // Em falha ambígua (rede, 5xx ou resposta inválida), pode existir ticket remoto.
         // Impede uma segunda submissão manual até que haja conciliação do resultado.
         setRequiresReconciliation(true)
