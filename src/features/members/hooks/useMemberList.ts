@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { ApiError } from '@/shared/http/httpClient'
 import { getMembers } from '../api/members'
 import type { MemberListResponse } from '../schemas/members'
 
-type LoadResult = { key: string; data?: MemberListResponse; failed?: boolean }
+type LoadResult = { key: string; data?: MemberListResponse; failed?: boolean; denied?: boolean }
 
 /** Lista paginada de membros da empresa; `reload` busca de novo a página atual. */
 export function useMemberList(companyId: string) {
@@ -25,8 +26,11 @@ export function useMemberList(companyId: string) {
         setData(response)
         setResult({ key, data: response })
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setResult({ key, failed: true })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return
+        // 403: o vínculo ou o perfil mudou; não é uma falha transitória para tentar de novo.
+        const denied = error instanceof ApiError && error.status === 403
+        setResult({ key, failed: !denied, denied })
       })
     return () => controller.abort()
   }, [companyId, page, key])
@@ -37,6 +41,8 @@ export function useMemberList(companyId: string) {
     data,
     loading: current === null,
     failed: current?.failed === true,
+    /** O backend recusou a listagem: quem está na tela não gerencia mais os membros. */
+    denied: current?.denied === true,
     page,
     setPage,
     reload,

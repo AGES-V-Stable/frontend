@@ -9,7 +9,7 @@ const memberPath = (companyId: string, memberId: string) =>
   `${membersPath(companyId)}/${encodeURIComponent(memberId)}`
 
 /** Versão do recurso no formato do backend: decimal entre aspas, como `"3"`. */
-const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` })
+export const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` })
 
 /** Lê a versão de um ETag (`"3"` ou `W/"3"`); retorna null se o formato não for reconhecido. */
 export function versionFromEtag(etag: string | null): number | null {
@@ -28,6 +28,14 @@ export async function getMembers(
     await httpRequest<unknown>(`${membersPath(companyId)}?${query}`, { signal }),
   )
 }
+
+/** Vínculo do próprio usuário com a empresa, ativo ou removido; nunca expõe terceiros. */
+export async function getOwnMembership(companyId: string, signal?: AbortSignal): Promise<Member> {
+  return MemberSchema.parse(await httpRequest<unknown>(`${membersPath(companyId)}/me`, { signal }))
+}
+
+/** Compatibilidade com os consumidores já integrados pela frontend #106. */
+export const getOwnMember = getOwnMembership
 
 /** Altera o perfil de um membro ativo; a versão listada vai em If-Match. */
 export async function updateMemberRole(

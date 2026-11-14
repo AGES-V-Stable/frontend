@@ -13,6 +13,8 @@ function getCellValue<T>(item: T, key: string): ReactNode {
 export function Table<T>({
   compact = false,
   title,
+  subtitle,
+  footer,
   totalRecords,
   columns,
   data,
@@ -72,14 +74,22 @@ export function Table<T>({
         {summary}
       </p>
       {(title || totalRecords !== undefined) && (
-        <TitleTag className="px-6 mb-6 font-['IBM_Plex_Sans'] text-slate-900 font-medium text-[18px]">
-          {title}{' '}
-          {totalRecords !== undefined && (
-            <span className="text-slate-900 text-[14px] font-medium ml-2">
-              · {totalRecords} {entityLabel}
-            </span>
+        <div className="px-6 mb-6">
+          <TitleTag className="font-['IBM_Plex_Sans'] text-slate-900 font-medium text-[18px]">
+            {title}{' '}
+            {totalRecords !== undefined && !subtitle && (
+              <span className="text-slate-900 text-[14px] font-medium ml-2">
+                · {totalRecords} {entityLabel}
+              </span>
+            )}
+          </TitleTag>
+          {subtitle && (
+            <p className="mt-1 text-[12px] font-normal text-slate-500">
+              {totalRecords !== undefined && `${totalRecords} ${entityLabel} · `}
+              {subtitle}
+            </p>
           )}
-        </TitleTag>
+        </div>
       )}
 
       <div
@@ -147,6 +157,7 @@ export function Table<T>({
           <TablePagination {...pagination} entityLabel={pagination.entityLabel ?? entityLabel} />
         )}
       </div>
+      {footer && <div className="px-6 pt-6">{footer}</div>}
       {compact && pagination && data.length > 0 && (
         <TablePagination
           {...pagination}

@@ -37,6 +37,10 @@ export interface TableProps<T> {
   compact?: boolean
   title?: string
   totalRecords?: number // Total number of records (used in header if provided)
+  /** Linha de apoio sob o título; quando informada, a contagem aparece nela. */
+  subtitle?: string
+  /** Conteúdo exibido dentro do cartão, abaixo das linhas (por exemplo, um estado inicial). */
+  footer?: ReactNode
   columns: ColumnDefinition<T>[]
   data: T[]
 

@@ -13,12 +13,18 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useSession } from '@/features/auth'
 import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
+import { SimulatedDepositDialog } from '@/features/dashboard/components/SimulatedDepositDialog'
+import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
+import { Button } from '@/shared/components/Button'
 import { MetricCard } from '@/features/dashboard/components/MetricCard'
 import { SettlementDrawer } from '@/features/dashboard/components/SettlementDrawer'
 import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
+import { ExchangeRateCard } from '@/features/dashboard/components/ExchangeRateCard'
 import { TransactionVolumeCard } from '@/features/dashboard/components/TransactionVolumeCard'
 import { useBalance } from '@/features/dashboard/hooks/useBalance'
+import { useExchangeRates } from '@/features/dashboard/hooks/useExchangeRates'
 import { useTransactionVolume } from '@/features/dashboard/hooks/useTransactionVolume'
 import { StatusBadge, Table, type StatusVariant } from '@/shared/components/Table'
 import { adminTransferDetailsPath, transferDetailsPath } from '@/shared/navigation/paths'
@@ -109,7 +115,40 @@ const card = 'rounded-xl border border-sage-300 bg-white p-5'
 
 function ClientBalanceCard() {
   const { state, retry } = useBalance()
-  return <BalanceCard state={state} onRetry={retry} />
+  const { user } = useSession()
+  const [depositing, setDepositing] = useState(false)
+  // Só o proprietário com vínculo ativo pode creditar; para os demais o backend sempre recusaria.
+  const canDeposit = canAddSimulatedBalance(user)
+
+  return (
+    <div className="flex flex-col gap-3">
+      <BalanceCard state={state} onRetry={retry} />
+      {canDeposit && (
+        <Button
+          type="button"
+          variant="secondary"
+          label="Adicionar saldo"
+          disabled={state.status !== 'ready'}
+          onClick={() => setDepositing(true)}
+        />
+      )}
+      {depositing && (
+        <SimulatedDepositDialog
+          onDeposited={() => {
+            setDepositing(false)
+            retry()
+          }}
+          onClose={() => setDepositing(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// Cotações globais: iguais para cliente e administrador e independentes dos filtros.
+function CurrentExchangeRates() {
+  const { state, retry } = useExchangeRates()
+  return <ExchangeRateCard state={state} onRetry={retry} />
 }
 
 function VolumeCard({ filters, admin }: { filters: Filters; admin: boolean }) {
@@ -396,10 +435,11 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
             : 'Liquidações registradas • Valores consolidados em BRL'}
         </p>
       </header>
-      <div className={`grid gap-4 ${admin ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+      <div className={`grid gap-4 sm:grid-cols-2 ${admin ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
         {!admin && <ClientBalanceCard />}
         <SavingsCard admin={admin} filters={filters} />
         <VolumeCard filters={filters} admin={admin} />
+        <CurrentExchangeRates />
       </div>
       <DashboardFilters admin={admin} onApply={applyFilters} />
       <div className="grid gap-6 lg:grid-cols-2">{admin ? charts : [...charts].reverse()}</div>

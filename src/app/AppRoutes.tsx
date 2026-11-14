@@ -13,10 +13,12 @@ import { SupportChatWidget } from '@/features/support'
 import {
   AdminSecurityRequests,
   clearLoginToken,
+  hasCompanyPermission,
   isStoredAdmin,
   Settings,
   useSession,
 } from '@/features/auth'
+import type { CompanyPermission } from '@/features/auth'
 import { Login } from '@/features/auth/pages/Login'
 import { CompanyInvitation } from '@/features/invitations'
 import AdminClients from '@/features/clients/pages/AdminClients'
@@ -27,6 +29,8 @@ import { BeneficiaryCreate } from '@/features/beneficiaries/pages/client/benefic
 import { TransferCreate } from '@/features/transfers/pages/client/transferCreate'
 import { TransferDetails } from '@/features/transfers/pages/client/transferDetails'
 import { Members } from '@/features/members/pages/Members'
+import { MockTopUp } from '@/features/dashboard/pages/MockTopUp/MockTopUp'
+import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
 import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
@@ -91,23 +95,77 @@ function RoleGuard({ role }: { role?: 'ADMIN' | 'USER' }) {
   if (status === 'anonymous')
     return <Navigate to={PATHS.LOGIN} replace state={{ from: pathname + search }} />
   if (role && (isStoredAdmin() ? 'ADMIN' : 'USER') !== role) return <RoleLanding />
-  if (role === 'USER' && !user?.companyId)
+  if (role === 'USER' && !user?.companyId) {
+    // Vínculo removido: a conta segue autenticável e só consulta o próprio acesso.
+    const removed = user?.companyAccess?.status === 'REMOVED'
+    if (removed && pathname === PATHS.MEMBERS) return <Outlet />
     return (
       <div className="flex flex-col items-start gap-3 p-8">
-        <p role="alert">Esta conta não possui vínculo empresarial.</p>
+        <p role="alert">
+          {removed
+            ? 'Seu acesso à empresa foi removido.'
+            : 'Esta conta não possui vínculo empresarial.'}
+        </p>
         <p className="text-sm text-slate-600">
           Cadastre a sua empresa para começar, ou peça um convite ao gestor de uma empresa já
           cadastrada.
         </p>
-        <Link
-          to={PATHS.COMPANY_SETUP}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-        >
-          Cadastrar empresa
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            to={PATHS.COMPANY_SETUP}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+          >
+            Cadastrar empresa
+          </Link>
+          {removed && (
+            <Link
+              to={PATHS.MEMBERS}
+              className="rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary"
+            >
+              Ver meu acesso
+            </Link>
+          )}
+        </div>
       </div>
     )
+  }
   return <Outlet />
+}
+/** Rotas que iniciam uma ação: só entram perfis com a capacidade, inclusive por URL direta. */
+function PermissionGuard({
+  permission,
+  message,
+}: {
+  permission: CompanyPermission
+  message: string
+}) {
+  const { user } = useSession()
+  if (hasCompanyPermission(user, permission)) return <Outlet />
+  return (
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col items-start gap-3 px-4 py-8 md:px-8">
+      <p role="alert" className="font-medium text-slate-900">
+        {message}
+      </p>
+      <p className="text-sm text-slate-600">
+        Para alterar seu perfil de acesso, entre em contato com o proprietário da empresa.
+      </p>
+      <Link
+        to={PATHS.MEMBERS}
+        className="rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary"
+      >
+        Ver meu acesso
+      </Link>
+    </div>
+  )
+}
+/** Quem só consulta transferências volta ao dashboard ao fechar, e não ao formulário de criação. */
+function TransferDetailsRoute() {
+  const { user } = useSession()
+  return (
+    <TransferDetails
+      closeTo={hasCompanyPermission(user, 'TRANSFER_CREATE') ? PATHS.TRANSFERS : PATHS.DASHBOARD}
+    />
+  )
 }
 function LegacyRedirect({ to, details = false }: { to?: string; details?: boolean }) {
   const { id } = useParams()
@@ -161,12 +219,21 @@ function RoutedApplication() {
           ],
         },
       ]
-    : [
-        item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
-        item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
-        item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
-        item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
-      ]
+    : user?.companyAccess?.status === 'REMOVED' && !user.companyId
+      ? // Sem empresa após a remoção: resta apenas a consulta do próprio acesso.
+        [item('members', 'Membros', PATHS.MEMBERS, clientsIcon)]
+      : [
+          item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
+          ...(canAddSimulatedBalance(user)
+            ? [item('mock-top-up', 'Adicionar saldo', PATHS.MOCK_TOP_UP, homeIcon)]
+            : []),
+          item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
+          // O item abre a criação de transferência: só aparece para quem pode criar.
+          ...(hasCompanyPermission(user, 'TRANSFER_CREATE')
+            ? [item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon)]
+            : []),
+          item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
+        ]
   items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
   const footerItems: NavigationItem[] = [
     {
@@ -194,6 +261,7 @@ function RoutedApplication() {
           : pathname.startsWith(PATHS.MEMBERS)
             ? 'members'
             : 'beneficiaries'
+  const selectedId = pathname === PATHS.MOCK_TOP_UP ? 'mock-top-up' : activeId
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -206,13 +274,24 @@ function RoutedApplication() {
         : 'Conta empresarial',
     initials: initials(name),
   }
+  // Telas de membros (Figma 07–16): título empresarial e identificação de quem está usando.
+  const header =
+    !admin && pathname.startsWith(PATHS.MEMBERS) && user ? (
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-sage-300 bg-white px-4 py-4 md:px-8">
+        <p className="text-base font-medium text-slate-900">V-Stable • Conta empresarial</p>
+        <p className="text-sm font-medium text-slate-900">
+          {user.name} • {initials(user.name)}
+        </p>
+      </header>
+    ) : undefined
   return (
     <ApplicationShell
+      header={header}
       navigation={
         <NavBar
           logo={<img src={logo} alt="V-Stable" className="h-[60px] w-[149px] object-contain" />}
           items={items}
-          activeId={activeId}
+          activeId={selectedId}
           account={account}
           footerItems={footerItems}
         />
@@ -258,10 +337,29 @@ export default function AppRoutes() {
       <Route element={<RoleGuard role="USER" />}>
         <Route element={<RoutedApplication />}>
           <Route path={PATHS.DASHBOARD} element={<DashboardRoute />} />
+          <Route path={PATHS.MOCK_TOP_UP} element={<MockTopUp />} />
           <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
-          <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
-          <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />
-          <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetails />} />
+          <Route
+            element={
+              <PermissionGuard
+                permission="BENEFICIARY_WRITE"
+                message="Seu perfil de acesso não permite cadastrar beneficiários."
+              />
+            }
+          >
+            <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
+          </Route>
+          <Route
+            element={
+              <PermissionGuard
+                permission="TRANSFER_CREATE"
+                message="Seu perfil de acesso não permite realizar transferências."
+              />
+            }
+          >
+            <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />
+          </Route>
+          <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetailsRoute />} />
           <Route path={PATHS.MEMBERS} element={<Members />} />
         </Route>
       </Route>
