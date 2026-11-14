@@ -129,6 +129,17 @@ describe('OrchestratedOfferConfirmation', () => {
     expect(confirm).toHaveBeenCalledTimes(1)
   })
 
+
+  it('blocks retries on 409 because another member may have already confirmed the offer', async () => {
+    confirm.mockRejectedValue(new HttpError('already confirmed by another user', 409))
+    render(<OrchestratedOfferConfirmation offer={offer} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Confirmar oferta' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Autorizar 123456' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Nova autorização bloqueada')
+    expect(screen.getByRole('button', { name: 'Confirmar oferta' })).toBeDisabled()
+    expect(confirm).toHaveBeenCalledTimes(1)
+  })
+
   it('reports an already used TOTP without exposing server details', async () => {
     confirm.mockRejectedValue(new HttpError('provider secret', 401, {}, 'INVALID_2FA_CODE'))
     render(<OrchestratedOfferConfirmation offer={offer} />)
