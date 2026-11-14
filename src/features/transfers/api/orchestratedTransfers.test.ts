@@ -42,8 +42,12 @@ describe('orchestrated transfer API', () => {
   })
 
   it('does not submit invalid confirmation amounts', async () => {
-    await expect(confirmOffer(offerId, { sourceAmount: 0, targetAmount: 20 }, '123456')).rejects.toThrow()
-    await expect(confirmOffer(offerId, { sourceAmount: 10, targetAmount: Number.NaN }, '123456')).rejects.toThrow()
+    await expect(
+      confirmOffer(offerId, { sourceAmount: 0, targetAmount: 20 }, '123456'),
+    ).rejects.toThrow()
+    await expect(
+      confirmOffer(offerId, { sourceAmount: 10, targetAmount: Number.NaN }, '123456'),
+    ).rejects.toThrow()
     expect(http).not.toHaveBeenCalled()
   })
 
@@ -70,7 +74,10 @@ describe('orchestrated transfer API', () => {
     await confirmRequote(executionId, { sourceAmount: 1000, targetAmount: 175 }, '654321')
     expect(http).toHaveBeenCalledWith(
       `/v1/transfer-executions/${executionId}/requote/confirm`,
-      { method: 'POST', body: JSON.stringify({ sourceAmount: 1000, targetAmount: 175, totpCode: '654321' }) },
+      {
+        method: 'POST',
+        body: JSON.stringify({ sourceAmount: 1000, targetAmount: 175, totpCode: '654321' }),
+      },
     )
   })
 
