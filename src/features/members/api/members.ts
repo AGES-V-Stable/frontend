@@ -29,6 +29,11 @@ export async function getMembers(
   )
 }
 
+/** Vínculo do próprio usuário com a empresa, ativo ou removido; nunca expõe terceiros. */
+export async function getOwnMembership(companyId: string, signal?: AbortSignal): Promise<Member> {
+  return MemberSchema.parse(await httpRequest<unknown>(`${membersPath(companyId)}/me`, { signal }))
+}
+
 /** Altera o perfil de um membro ativo; a versão listada vai em If-Match. */
 export async function updateMemberRole(
   companyId: string,

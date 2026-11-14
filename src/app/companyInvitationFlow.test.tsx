@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -190,6 +190,7 @@ describe('company invitation flow with the application routes', () => {
       [RESOLVE]: json(existingUserInvitation),
       [ME]: () => json(accepted ? userWithMembership : userWithoutCompany),
       [COMPANY]: json(companyProfile),
+      [`${COMPANY}/members/me`]: json(acceptedMember),
       [ACCEPT]: () => {
         accepted = true
         return json(acceptedMember)
@@ -208,13 +209,13 @@ describe('company invitation flow with the application routes', () => {
     await user.click(await screen.findByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: 'Confirmar e acessar' }))
 
-    // Then the members page of frontend#109 opens inside the company shell
-    expect(await screen.findByRole('heading', { name: 'Membros' })).toBeInTheDocument()
-    expect(
-      screen.getByText('A gestão de membros é exclusiva do proprietário da empresa.'),
-    ).toBeInTheDocument()
+    // Then Meu acesso (frontend#106) opens inside the company shell
+    expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeInTheDocument()
+    expect(screen.getByText('Você está acessando como membro')).toBeInTheDocument()
+    const details = await screen.findByRole('region', { name: 'Seu acesso à empresa' })
+    expect(within(details).getByText('Cooperativa AgroSul')).toBeInTheDocument()
+    expect(within(details).getByText('Operador')).toBeInTheDocument()
     expect(screen.getByTestId('current-path')).toHaveTextContent(/^\/app\/membros$/)
-    expect(screen.getByText('Cooperativa AgroSul')).toBeInTheDocument()
     expect(screen.queryByText('Carregando dashboard...')).not.toBeInTheDocument()
   })
 })

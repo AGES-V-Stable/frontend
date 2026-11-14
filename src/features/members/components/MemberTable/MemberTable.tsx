@@ -98,7 +98,7 @@ export function MemberTable({
       compact
       title="Pessoas com acesso"
       totalRecords={peopleCount}
-      entityLabel={peopleCount === 1 ? 'pessoa' : 'pessoas'}
+      entityLabel={peopleCount === 1 ? 'membro' : 'pessoas'}
       columns={columns}
       data={items}
       pagination={pagination}

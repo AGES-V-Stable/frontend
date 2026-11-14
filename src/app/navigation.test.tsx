@@ -396,7 +396,7 @@ it('opens members from the company menu with the same content as the direct rout
   renderRoute('/app/beneficiarios')
   const nav = await screen.findByRole('navigation')
   await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
-  expect(await screen.findByRole('heading', { name: 'Membros' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Membros da empresa' })).toBeInTheDocument()
   expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
   expect(within(nav).getByRole('button', { name: 'Membros' })).toHaveAttribute(
     'aria-current',
@@ -409,32 +409,97 @@ it('opens members from the company menu with the same content as the direct rout
   expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
 })
 
+const ownMembership = (companyRole: string, status = 'ACTIVE') => ({
+  id: 'm2',
+  userId: 'u1',
+  companyId: 'c1',
+  name: 'Marina Costa',
+  email: 'marina@example.com',
+  role: companyRole,
+  status,
+  version: 1,
+  joinedAt: '2026-11-01T12:00:00Z',
+  removedAt: status === 'REMOVED' ? '2026-11-12T12:00:00Z' : null,
+})
+/** Sessão de um membro convidado; removido, a conta fica sem empresa. */
+function mockMember(companyRole: string, status = 'ACTIVE') {
+  const companyAccess = {
+    membershipId: 'm2',
+    companyId: 'c1',
+    role: companyRole,
+    status,
+    permissions: status === 'ACTIVE' ? ['COMPANY_READ', 'SELF_MEMBERSHIP_READ'] : [],
+    version: 1,
+  }
+  mock.mockImplementation(async (url: string) => {
+    if (url === '/v1/users/me')
+      return new Response(
+        JSON.stringify({
+          ...user,
+          companyId: status === 'ACTIVE' ? 'c1' : null,
+          companyAccess,
+        }),
+      )
+    if (url === '/v1/companies/c1/members/me')
+      return new Response(JSON.stringify(ownMembership(companyRole, status)))
+    return backend(url)
+  })
+}
+const memberRequests = () =>
+  mock.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('/members'))
+
 it.each(['OPERATOR', 'VIEWER'])(
-  'given a %s opening the members URL directly, then no management is offered or requested',
+  'given a %s, then the menu and the direct URL show only the own access, without management',
   async (companyRole) => {
-    const companyAccess = {
-      membershipId: 'm2',
-      companyId: 'c1',
-      role: companyRole,
-      status: 'ACTIVE',
-      permissions: ['COMPANY_READ', 'SELF_MEMBERSHIP_READ'],
-      version: 1,
-    }
-    mock.mockImplementation(async (url: string) =>
-      url === '/v1/users/me'
-        ? new Response(JSON.stringify({ ...user, companyAccess }))
-        : backend(url),
-    )
+    mockMember(companyRole)
     saveLoginToken('login')
-    renderRoute('/app/membros')
-    expect(
-      await screen.findByText('A gestão de membros é exclusiva do proprietário da empresa.'),
-    ).toBeVisible()
+    renderRoute('/app/beneficiarios')
+    const nav = await screen.findByRole('navigation')
+
+    await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
+
+    expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeVisible()
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
+    expect(await screen.findByRole('region', { name: 'Seu acesso à empresa' })).toBeVisible()
+    expect(screen.getByText('Você está acessando como membro')).toBeVisible()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Gerenciar' })).not.toBeInTheDocument()
-    expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
+    expect(memberRequests()).toEqual(['/v1/companies/c1/members/me'])
   },
 )
+
+it('given a removed membership, then the members URL shows the lost access without loading the company', async () => {
+  mockMember('OPERATOR', 'REMOVED')
+  saveLoginToken('login')
+  renderRoute('/app/membros')
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Seu acesso a esta empresa foi removido.',
+  )
+  expect(await screen.findByText('Acesso removido')).toBeVisible()
+  const nav = screen.getByRole('navigation')
+  expect(within(nav).getByRole('button', { name: 'Membros' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  expect(within(nav).queryByRole('button', { name: 'Transferências' })).not.toBeInTheDocument()
+  expect(mock.mock.calls.some(([url]) => url === '/v1/companies/c1')).toBe(false)
+  expect(memberRequests()).toEqual(['/v1/companies/c1/members/me'])
+})
+
+it('given a removed membership, then company pages report the lost access and lead to the own access', async () => {
+  mockMember('OPERATOR', 'REMOVED')
+  saveLoginToken('login')
+  renderRoute('/app/beneficiarios')
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Seu acesso à empresa foi removido.')
+  expect(mock.mock.calls.some(([url]) => String(url).includes('/beneficiaries'))).toBe(false)
+
+  await userEvent.click(screen.getByRole('link', { name: 'Ver meu acesso' }))
+
+  expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeVisible()
+  expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
+})
 
 it('keeps administrators out of the company members page', async () => {
   role = 'ADMIN'
@@ -443,6 +508,6 @@ it('keeps administrators out of the company members page', async () => {
   )
   renderRoute('/app/membros')
   await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/admin/dashboard'))
-  expect(screen.queryByRole('heading', { name: 'Membros' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Membros da empresa' })).not.toBeInTheDocument()
   expect(mock.mock.calls.some(([url]) => String(url).includes('/members'))).toBe(false)
 })

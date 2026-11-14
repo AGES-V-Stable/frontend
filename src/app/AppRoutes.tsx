@@ -91,22 +91,40 @@ function RoleGuard({ role }: { role?: 'ADMIN' | 'USER' }) {
   if (status === 'anonymous')
     return <Navigate to={PATHS.LOGIN} replace state={{ from: pathname + search }} />
   if (role && (isStoredAdmin() ? 'ADMIN' : 'USER') !== role) return <RoleLanding />
-  if (role === 'USER' && !user?.companyId)
+  if (role === 'USER' && !user?.companyId) {
+    // Vínculo removido: a conta segue autenticável e só consulta o próprio acesso.
+    const removed = user?.companyAccess?.status === 'REMOVED'
+    if (removed && pathname === PATHS.MEMBERS) return <Outlet />
     return (
       <div className="flex flex-col items-start gap-3 p-8">
-        <p role="alert">Esta conta não possui vínculo empresarial.</p>
+        <p role="alert">
+          {removed
+            ? 'Seu acesso à empresa foi removido.'
+            : 'Esta conta não possui vínculo empresarial.'}
+        </p>
         <p className="text-sm text-slate-600">
           Cadastre a sua empresa para começar, ou peça um convite ao gestor de uma empresa já
           cadastrada.
         </p>
-        <Link
-          to={PATHS.COMPANY_SETUP}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-        >
-          Cadastrar empresa
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            to={PATHS.COMPANY_SETUP}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+          >
+            Cadastrar empresa
+          </Link>
+          {removed && (
+            <Link
+              to={PATHS.MEMBERS}
+              className="rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary"
+            >
+              Ver meu acesso
+            </Link>
+          )}
+        </div>
       </div>
     )
+  }
   return <Outlet />
 }
 function LegacyRedirect({ to, details = false }: { to?: string; details?: boolean }) {
@@ -161,12 +179,15 @@ function RoutedApplication() {
           ],
         },
       ]
-    : [
-        item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
-        item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
-        item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
-        item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
-      ]
+    : user?.companyAccess?.status === 'REMOVED' && !user.companyId
+      ? // Sem empresa após a remoção: resta apenas a consulta do próprio acesso.
+        [item('members', 'Membros', PATHS.MEMBERS, clientsIcon)]
+      : [
+          item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
+          item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
+          item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon),
+          item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
+        ]
   items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
   const footerItems: NavigationItem[] = [
     {
