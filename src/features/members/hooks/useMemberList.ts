@@ -10,7 +10,8 @@ export function useMemberList(companyId: string) {
   const [page, setPage] = useState(0)
   const [revision, setRevision] = useState(0)
   const [result, setResult] = useState<LoadResult | null>(null)
-  const [data, setData] = useState<MemberListResponse | null>(null)
+  // Nunca reutilizar dados de outra empresa, mesmo enquanto a nova consulta carrega.
+  const [loaded, setLoaded] = useState<{ companyId: string; data: MemberListResponse } | null>(null)
   const key = `${companyId}:${page}:${revision}`
 
   useEffect(() => {
@@ -23,7 +24,7 @@ export function useMemberList(companyId: string) {
           setPage(response.totalPages - 1)
           return
         }
-        setData(response)
+        setLoaded({ companyId, data: response })
         setResult({ key, data: response })
       })
       .catch((error: unknown) => {
@@ -37,6 +38,7 @@ export function useMemberList(companyId: string) {
 
   const reload = useCallback(() => setRevision((value) => value + 1), [])
   const current = result?.key === key ? result : null
+  const data = loaded?.companyId === companyId ? loaded.data : null
   return {
     data,
     loading: current === null,
