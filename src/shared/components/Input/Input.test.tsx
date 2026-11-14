@@ -34,7 +34,7 @@ describe('Input', () => {
     const input = screen.getByLabelText('E-mail')
     expect(input).toHaveAttribute('aria-invalid', 'false')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(input.className).toContain('border-sage-300')
+    expect(input.className).toContain('border-sage-500')
   })
 
   it('shows the prefix inside the field and reserves space for it', () => {
