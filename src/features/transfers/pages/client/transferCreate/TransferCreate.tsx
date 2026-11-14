@@ -7,6 +7,7 @@ import type { Beneficiary } from '@/features/beneficiaries'
 import type { TransactionStatus, TransferPaymentMethod } from '@/features/transfers/types/transfer'
 import { currencySymbol, formatMoney, formatPercent } from '@/shared/utils/formatters'
 import { useTransferCreate } from '@/features/transfers/hooks/useTransferCreate'
+import { OrchestratedTransferCreate } from './OrchestratedTransferCreate'
 
 const TRANSFER_STEPS = ['Dados', 'Revisão', 'Autenticação'] as const
 
@@ -34,7 +35,15 @@ const STATUS_LABELS: Record<TransactionStatus, string> = {
 
 const beneficiaryName = (beneficiary: Beneficiary) => beneficiary.legalName || beneficiary.nickname
 
+/** Rollout is off unless an environment explicitly enables financial orchestration. */
+const ORCHESTRATION_ENABLED = import.meta.env.VITE_ENABLE_ORCHESTRATED_TRANSFERS === 'true'
+
 export function TransferCreate() {
+  if (ORCHESTRATION_ENABLED) return <OrchestratedTransferCreate />
+  return <LegacyTransferCreate />
+}
+
+function LegacyTransferCreate() {
   const {
     activeStep,
     totpCode,
