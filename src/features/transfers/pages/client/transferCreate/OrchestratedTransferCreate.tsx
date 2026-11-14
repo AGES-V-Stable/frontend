@@ -326,8 +326,8 @@ export function OrchestratedTransferCreate() {
                 </dd>
               </div>
               <div>
-                <dt>Taxas totais</dt>
-                <dd className="font-semibold">{formatMoney(quote.offer.totalFee, 'BRL')}</dd>
+                <dt>Taxas informadas pelo provedor (moeda não especificada)</dt>
+                <dd className="font-semibold">{quote.offer.totalFee}</dd>
               </div>
               <div>
                 <dt>Expira em</dt>
