@@ -108,9 +108,7 @@ export function OrchestratedOfferConfirmation({
   }
 
   if (!execution && offerExpired) {
-    return (
-      <p role="alert">Esta oferta expirou. Solicite uma nova cotação antes de confirmar.</p>
-    )
+    return <p role="alert">Esta oferta expirou. Solicite uma nova cotação antes de confirmar.</p>
   }
 
   return (
