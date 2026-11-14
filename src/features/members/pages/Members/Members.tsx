@@ -56,7 +56,13 @@ function OwnMemberAccess({ companyId }: { companyId: string }) {
       {!loading && error && (
         <div className="mt-3 flex flex-col items-start gap-3">
           <p role="alert">Não foi possível consultar seu vínculo com a empresa.</p>
-          <Button type="button" label="Tentar novamente" variant="secondary" onClick={reload} className="!w-auto" />
+          <Button
+            type="button"
+            label="Tentar novamente"
+            variant="secondary"
+            onClick={reload}
+            className="!w-auto"
+          />
         </div>
       )}
       {!loading && member && (
@@ -69,25 +75,44 @@ function OwnMemberAccess({ companyId }: { companyId: string }) {
             <p className="mt-3">Você está acessando como membro desta empresa.</p>
           )}
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div><dt className="font-medium">Nome</dt><dd>{member.name}</dd></div>
-            <div><dt className="font-medium">E-mail</dt><dd>{member.email}</dd></div>
-            <div><dt className="font-medium">Empresa</dt><dd>{company?.tradeName || company?.legalName || 'Empresa vinculada'}</dd></div>
-            <div><dt className="font-medium">Perfil</dt><dd>{ROLE_LABELS[member.role]}</dd></div>
-            <div><dt className="font-medium">Status</dt><dd>{member.status === 'ACTIVE' ? 'Ativo' : 'Acesso removido'}</dd></div>
+            <div>
+              <dt className="font-medium">Nome</dt>
+              <dd>{member.name}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">E-mail</dt>
+              <dd>{member.email}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Empresa</dt>
+              <dd>{company?.tradeName || company?.legalName || 'Empresa vinculada'}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Perfil</dt>
+              <dd>{ROLE_LABELS[member.role]}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">Status</dt>
+              <dd>{member.status === 'ACTIVE' ? 'Ativo' : 'Acesso removido'}</dd>
+            </div>
           </dl>
-          <p className="mt-4 text-slate-500">Para alterar o seu perfil de acesso, fale com o proprietário.</p>
+          <p className="mt-4 text-slate-500">
+            Para alterar o seu perfil de acesso, fale com o proprietário.
+          </p>
         </>
       )}
     </section>
   )
 }
 
-function PageHeader() {
+function PageHeader({ owner }: { owner: boolean }) {
   return (
     <header className="flex flex-col gap-1">
       <h1 className="text-2xl font-bold text-slate-900">Membros</h1>
       <p className="text-xs text-slate-500">
-        Gerencie quem acessa a conta da empresa e o perfil de acesso de cada pessoa.
+        {owner
+          ? 'Gerencie quem acessa a conta da empresa e o perfil de acesso de cada pessoa.'
+          : 'Consulte seu perfil e o estado do seu vínculo empresarial.'}
       </p>
     </header>
   )
@@ -102,7 +127,7 @@ export function Members() {
   )
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-8 md:px-8">
-      <PageHeader />
+      <PageHeader owner={canManageMembers(user)} />
       {canManageMembers(user) && user?.companyId && viewer ? (
         <MemberManagement companyId={user.companyId} viewer={viewer} />
       ) : access?.companyId ? (
