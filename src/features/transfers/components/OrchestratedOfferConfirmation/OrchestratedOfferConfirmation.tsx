@@ -103,7 +103,8 @@ export function OrchestratedOfferConfirmation({
     } catch (cause) {
       setError(safeError(cause))
       if (isDefinitiveRejection(cause)) {
-        onDefinitiveRejection?.()
+        // Uma recotação rejeitada não cancela a execução financeira já iniciada.
+        if (!execution) onDefinitiveRejection?.()
       } else {
         // Em falha ambígua (rede, 5xx ou resposta inválida), pode existir ticket remoto.
         // Impede uma segunda submissão manual até que haja conciliação do resultado.
