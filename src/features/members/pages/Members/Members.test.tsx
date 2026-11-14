@@ -46,6 +46,8 @@ let invitations: FakeInvitation[]
 let tokens: Record<string, string>
 let tokenSequence: number
 let accessRole: Role | null
+let accessRemoved: boolean
+let selfLookupFailure: boolean
 let interceptor: Interceptor | null
 let fetchMock: ReturnType<typeof vi.fn>
 
@@ -96,20 +98,29 @@ async function backend(url: string, init: RequestInit = {}): Promise<Response> {
       id: 'user-m1',
       name: 'Marina Costa',
       email: 'marina@empresa.com',
-      companyId: 'c1',
+      companyId: accessRemoved ? null : 'c1',
       accountType: 'USER',
       roles: ['ROLE_USER'],
       companyAccess: accessRole && {
         membershipId: 'm1',
         companyId: 'c1',
         role: accessRole,
-        status: 'ACTIVE',
-        permissions: accessRole === 'OWNER' ? ['MEMBERS_READ', 'MEMBERS_MANAGE'] : [],
+        status: accessRemoved ? 'REMOVED' : 'ACTIVE',
+        permissions: accessRole === 'OWNER' && !accessRemoved ? ['MEMBERS_READ', 'MEMBERS_MANAGE'] : ['SELF_MEMBERSHIP_READ'],
         version: 1,
       },
     })
   if (url === '/v1/companies/c1')
     return json({ id: 'c1', legalName: 'Empresa de Teste', tradeName: null, cnpj: '1' })
+  if (url === '/v1/companies/c1/members/me' && method === 'GET') {
+    if (selfLookupFailure) return apiError(503, 'SERVICE_UNAVAILABLE')
+    return json({
+      ...newMember('m1', 'Marina Costa', accessRole ?? 'VIEWER'),
+      userId: 'user-m1',
+      status: accessRemoved ? 'REMOVED' : 'ACTIVE',
+      removedAt: accessRemoved ? '2026-11-14T12:00:00Z' : null,
+    })
+  }
   const list = LIST_URL.exec(url)
   if (list && method === 'GET') return json(listBody(Number(list[1]), Number(list[2])))
   const target = MEMBER_URL.exec(url)
@@ -265,6 +276,8 @@ beforeEach(() => {
   tokenSequence = 0
   issueToken(invitations[0]!)
   accessRole = 'OWNER'
+  accessRemoved = false
+  selfLookupFailure = false
   interceptor = null
   fetchMock = vi.fn(backend)
   vi.stubGlobal('fetch', fetchMock)
@@ -560,22 +573,59 @@ describe('Members — remover membro', () => {
 })
 
 describe('Members — autorização', () => {
-  it.each([['OPERATOR'], ['VIEWER'], [null]] as [Role | null][])(
-    'given the %s profile, then it shows no list of third parties and no management actions',
+  it.each(['OPERATOR', 'VIEWER'] as Role[])(
+    'given the %s profile, then it shows only the own membership',
     async (role) => {
       accessRole = role
       renderMembers()
 
-      expect(
-        await screen.findByText('A gestão de membros é exclusiva do proprietário da empresa.'),
-      ).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeInTheDocument()
+      expect(await screen.findByText('Marina Costa')).toBeInTheDocument()
+      expect(screen.getByText(role === 'OPERATOR' ? 'Operador' : 'Visualizador')).toBeInTheDocument()
+      expect(screen.getByText('Ativo')).toBeInTheDocument()
+      expect(screen.getByText('Empresa de Teste')).toBeInTheDocument()
+      expect(screen.queryByText('Ana Souza')).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Gerenciar' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Adicionar membro' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Copiar link' })).not.toBeInTheDocument()
       expect(calls('GET', LIST_URL)).toHaveLength(0)
+      expect(calls('GET', /\/members\/me$/)).toHaveLength(1)
       expect(calls('GET', /\/invitations\//)).toHaveLength(0)
     },
   )
+
+  it('given a removed membership, then it shows a revocation warning without listing colleagues', async () => {
+    accessRole = 'VIEWER'
+    accessRemoved = true
+    renderMembers()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Seu acesso a esta empresa foi removido')
+    expect(screen.getByText('Acesso removido')).toBeInTheDocument()
+    expect(screen.queryByText('Ana Souza')).not.toBeInTheDocument()
+    expect(calls('GET', LIST_URL)).toHaveLength(0)
+    expect(calls('GET', /\/members\/me$/)).toHaveLength(1)
+  })
+
+  it('given a failed own-access lookup, then retry loads only the own membership', async () => {
+    accessRole = 'OPERATOR'
+    selfLookupFailure = true
+    renderMembers()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível consultar seu vínculo')
+    expect(screen.queryByText('Ana Souza')).not.toBeInTheDocument()
+    selfLookupFailure = false
+    await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
+    expect(await screen.findByText('Marina Costa')).toBeInTheDocument()
+    expect(calls('GET', /\/members\/me$/)).toHaveLength(2)
+    expect(calls('GET', LIST_URL)).toHaveLength(0)
+  })
+
+  it('given a user without a membership, then it does not fetch company members', async () => {
+    accessRole = null
+    renderMembers()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não existe vínculo empresarial')
+    expect(calls('GET', LIST_URL)).toHaveLength(0)
+    expect(calls('GET', /\/members\/me$/)).toHaveLength(0)
+  })
 })
 
 /** Instala o stub de área de transferência do userEvent e observa as cópias. */
