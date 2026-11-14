@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --write src/features/dashboard/api/balance.test.ts && echo __FORMAT_START__ && cat src/features/dashboard/api/balance.test.ts && echo __FORMAT_END__ && prettier --check .",
+    "format:check": "prettier --check .",
     "format:fix": "prettier --write .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
