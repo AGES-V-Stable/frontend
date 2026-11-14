@@ -21,8 +21,10 @@ import { Button } from '@/shared/components/Button'
 import { MetricCard } from '@/features/dashboard/components/MetricCard'
 import { SettlementDrawer } from '@/features/dashboard/components/SettlementDrawer'
 import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
+import { ExchangeRateCard } from '@/features/dashboard/components/ExchangeRateCard'
 import { TransactionVolumeCard } from '@/features/dashboard/components/TransactionVolumeCard'
 import { useBalance } from '@/features/dashboard/hooks/useBalance'
+import { useExchangeRates } from '@/features/dashboard/hooks/useExchangeRates'
 import { useTransactionVolume } from '@/features/dashboard/hooks/useTransactionVolume'
 import { StatusBadge, Table, type StatusVariant } from '@/shared/components/Table'
 import { adminTransferDetailsPath, transferDetailsPath } from '@/shared/navigation/paths'
@@ -141,6 +143,12 @@ function ClientBalanceCard() {
       )}
     </div>
   )
+}
+
+// Cotações globais: iguais para cliente e administrador e independentes dos filtros.
+function CurrentExchangeRates() {
+  const { state, retry } = useExchangeRates()
+  return <ExchangeRateCard state={state} onRetry={retry} />
 }
 
 function VolumeCard({ filters, admin }: { filters: Filters; admin: boolean }) {
@@ -427,10 +435,11 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
             : 'Liquidações registradas • Valores consolidados em BRL'}
         </p>
       </header>
-      <div className={`grid gap-4 ${admin ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3'}`}>
+      <div className={`grid gap-4 sm:grid-cols-2 ${admin ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
         {!admin && <ClientBalanceCard />}
         <SavingsCard admin={admin} filters={filters} />
         <VolumeCard filters={filters} admin={admin} />
+        <CurrentExchangeRates />
       </div>
       <DashboardFilters admin={admin} onApply={applyFilters} />
       <div className="grid gap-6 lg:grid-cols-2">{admin ? charts : [...charts].reverse()}</div>
