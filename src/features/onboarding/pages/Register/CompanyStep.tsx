@@ -30,9 +30,16 @@ const fields: { name: Field; label: string; placeholder: string; required: boole
   { name: 'cidade', label: 'Cidade', placeholder: 'Ex: São Paulo', required: false },
   { name: 'estado', label: 'Estado', placeholder: 'Ex: SP, RJ', required: true },
 ]
+const requiredMessages: Record<Exclude<Field, 'cidade'>, string> = {
+  razaoSocial: 'Informe a razão social.',
+  pais: 'Informe o país.',
+  cnpj: 'Informe o CNPJ.',
+  cep: 'Informe o CEP.',
+  estado: 'Informe o estado.',
+}
 const brazil = (pais: string) => pais.trim().toLowerCase() === 'brasil'
 function validate(name: Field, value: string, pais: string) {
-  if (name !== 'cidade' && !value.trim()) return 'Campo obrigatório.'
+  if (name !== 'cidade' && !value.trim()) return requiredMessages[name]
   const maxLength = { razaoSocial: 255, pais: 100, estado: 100, cidade: 255, cep: 20, cnpj: 18 }[
     name
   ]
@@ -40,7 +47,8 @@ function validate(name: Field, value: string, pais: string) {
   if (name === 'razaoSocial' && value.trim().length < 3) return 'Use pelo menos 3 caracteres.'
   if (name === 'cnpj' && value.replace(/\D/g, '').length !== 14)
     return 'Informe um CNPJ com 14 dígitos.'
-  if (name === 'cnpj' && !isValidCNPJ(value)) return 'CNPJ inválido.'
+  if (name === 'cnpj' && !isValidCNPJ(value))
+    return 'Confira o CNPJ: os dígitos não formam um CNPJ válido.'
   if (name === 'cep' && brazil(pais) && !/^(\d{8}|\d{5}-\d{3})$/.test(value.trim()))
     return 'Informe um CEP com 8 dígitos.'
   return undefined

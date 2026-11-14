@@ -53,20 +53,20 @@ interface RepresentativeStepProps {
 
 function validateForm(data: RepresentativeData) {
   const errors: Partial<Record<keyof RepresentativeData, string>> = {}
-  if (!data.cargo_funcao) errors.cargo_funcao = 'Cargo é obrigatório'
-  if (!data.cpf) errors.cpf = 'CPF é obrigatório'
-  else if (!isValidCPF(data.cpf)) errors.cpf = 'CPF inválido'
-  if (!data.date_of_birth) errors.date_of_birth = 'Data de nascimento é obrigatória'
-  if (!data.phone) errors.phone = 'Telefone é obrigatório'
-  else if (data.phone.replace(/\D/g, '').length < 10) errors.phone = 'Telefone inválido'
+  if (!data.cargo_funcao) errors.cargo_funcao = 'Informe o cargo.'
+  if (!data.cpf) errors.cpf = 'Informe o CPF.'
+  else if (!isValidCPF(data.cpf)) errors.cpf = 'Confira o CPF: os dígitos não formam um CPF válido.'
+  if (!data.date_of_birth) errors.date_of_birth = 'Informe a data de nascimento.'
+  if (!data.phone) errors.phone = 'Informe o telefone.'
+  else if (data.phone.replace(/\D/g, '').length < 10) errors.phone = 'Informe o telefone com DDD.'
 
-  if (!data.cep) errors.cep = 'CEP é obrigatório'
-  else if (data.cep.replace(/\D/g, '').length !== 8) errors.cep = 'CEP inválido'
+  if (!data.cep) errors.cep = 'Informe o CEP.'
+  else if (data.cep.replace(/\D/g, '').length !== 8) errors.cep = 'Informe um CEP com 8 dígitos.'
 
-  if (!data.cidade) errors.cidade = 'Cidade é obrigatória'
-  if (!data.estado) errors.estado = 'Estado é obrigatório'
-  if (!data.pais) errors.pais = 'País é obrigatório'
-  if (!data.linha_endereco) errors.linha_endereco = 'Endereço é obrigatório'
+  if (!data.cidade) errors.cidade = 'Informe a cidade.'
+  if (!data.estado) errors.estado = 'Informe o estado.'
+  if (!data.pais) errors.pais = 'Informe o país.'
+  if (!data.linha_endereco) errors.linha_endereco = 'Informe o endereço.'
 
   return errors
 }
@@ -108,7 +108,10 @@ export function RepresentativeStep({
 
   function handleBlurCPF() {
     if (formData.cpf && !isValidCPF(formData.cpf)) {
-      setErrors((previous) => ({ ...previous, cpf: 'CPF inválido' }))
+      setErrors((previous) => ({
+        ...previous,
+        cpf: 'Confira o CPF: os dígitos não formam um CPF válido.',
+      }))
     }
   }
 

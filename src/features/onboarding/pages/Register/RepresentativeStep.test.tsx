@@ -53,15 +53,15 @@ describe('RepresentativeStep', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
-    expect(screen.getByText('Cargo é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('CPF é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('Data de nascimento é obrigatória')).toBeInTheDocument()
-    expect(screen.getByText('Telefone é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('CEP é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
-    expect(screen.getByText('Estado é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('Endereço é obrigatório')).toBeInTheDocument()
-    expect(screen.queryByText('País é obrigatório')).not.toBeInTheDocument()
+    expect(screen.getByText('Informe o cargo.')).toBeInTheDocument()
+    expect(screen.getByText('Informe o CPF.')).toBeInTheDocument()
+    expect(screen.getByText('Informe a data de nascimento.')).toBeInTheDocument()
+    expect(screen.getByText('Informe o telefone.')).toBeInTheDocument()
+    expect(screen.getByText('Informe o CEP.')).toBeInTheDocument()
+    expect(screen.getByText('Informe a cidade.')).toBeInTheDocument()
+    expect(screen.getByText('Informe o estado.')).toBeInTheDocument()
+    expect(screen.getByText('Informe o endereço.')).toBeInTheDocument()
+    expect(screen.queryByText('Informe o país.')).not.toBeInTheDocument()
     expect(onContinue).not.toHaveBeenCalled()
   })
 
@@ -95,7 +95,7 @@ describe('RepresentativeStep', () => {
     await user.type(cpfInput, '11111111111')
     fireEvent.blur(cpfInput)
 
-    expect(screen.getByText(/cpf inválido/i)).toBeInTheDocument()
+    expect(screen.getByText(/não formam um CPF válido/i)).toBeInTheDocument()
   })
 
   it('does not show an error on blur when the CPF is valid', async () => {
@@ -106,7 +106,7 @@ describe('RepresentativeStep', () => {
     await user.type(cpfInput, '52998224725')
     fireEvent.blur(cpfInput)
 
-    expect(screen.queryByText(/cpf inválido/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/não formam um CPF válido/i)).not.toBeInTheDocument()
   })
 
   it('clears a field error message as the user types again', async () => {
@@ -114,11 +114,11 @@ describe('RepresentativeStep', () => {
     render(<RepresentativeStep onContinue={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
-    expect(screen.getByText('Cidade é obrigatória')).toBeInTheDocument()
+    expect(screen.getByText('Informe a cidade.')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText(/cidade/i), 'A')
 
-    expect(screen.queryByText('Cidade é obrigatória')).not.toBeInTheDocument()
+    expect(screen.queryByText('Informe a cidade.')).not.toBeInTheDocument()
   })
 
   it('calls onContinue with the current masked data on a valid submission', async () => {

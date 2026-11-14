@@ -25,13 +25,13 @@ function Register() {
   function submit(event: React.FormEvent) {
     event.preventDefault()
     const nextErrors: Partial<Record<keyof AccessData, string>> = {}
-    if (!form.nomeCompleto.trim()) nextErrors.nomeCompleto = 'Informe seu nome completo'
+    if (!form.nomeCompleto.trim()) nextErrors.nomeCompleto = 'Informe seu nome completo.'
     if (!/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(form.email.trim()))
-      nextErrors.email = 'Informe um e-mail válido'
+      nextErrors.email = 'Informe um e-mail completo, como nome@empresa.com.br.'
     if (!/^(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/.test(form.senha))
-      nextErrors.senha = 'Use ao menos 8 caracteres, um número e um caractere especial'
+      nextErrors.senha = 'Use ao menos 8 caracteres, um número e um caractere especial.'
     if (form.confirmarSenha !== form.senha)
-      nextErrors.confirmarSenha = 'Senha e confirmação não coincidem'
+      nextErrors.confirmarSenha = 'Senha e confirmação não coincidem.'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length || locked.current) return
 

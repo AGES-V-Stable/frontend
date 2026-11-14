@@ -64,8 +64,8 @@ describe('Login Page Component', () => {
 
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(screen.getByText('E-mail é obrigatório')).toBeInTheDocument()
-    expect(screen.getByText('Senha é obrigatória')).toBeInTheDocument()
+    expect(screen.getByText('Informe o e-mail.')).toBeInTheDocument()
+    expect(screen.getByText('Informe a senha.')).toBeInTheDocument()
   })
 
   it('shows an error when the email format is invalid', async () => {
@@ -76,7 +76,9 @@ describe('Login Page Component', () => {
     await user.type(screen.getByLabelText('Senha'), '123456')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(screen.getByText('E-mail inválido')).toBeInTheDocument()
+    expect(
+      screen.getByText('Informe um e-mail completo, como nome@empresa.com.br.'),
+    ).toBeInTheDocument()
   })
 
   it('clears a field error as the user retypes it', async () => {
@@ -84,10 +86,10 @@ describe('Login Page Component', () => {
     renderLogin()
 
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
-    expect(screen.getByText('E-mail é obrigatório')).toBeInTheDocument()
+    expect(screen.getByText('Informe o e-mail.')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('E-mail'), 'a')
-    expect(screen.queryByText('E-mail é obrigatório')).not.toBeInTheDocument()
+    expect(screen.queryByText('Informe o e-mail.')).not.toBeInTheDocument()
   })
 
   it('navigates to the forgot password page when the link is clicked', async () => {
@@ -150,42 +152,42 @@ describe('Login Page Component', () => {
 
   it('shows an error when credentials are rejected', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login).mockRejectedValueOnce(new Error('E-mail ou senha inválidos'))
+    vi.mocked(authService.login).mockRejectedValueOnce(new Error('E-mail ou senha inválidos.'))
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
     await user.type(screen.getByLabelText('Senha'), 'senha-errada')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findAllByText('E-mail ou senha inválidos')).toHaveLength(2)
+    expect(await screen.findAllByText('E-mail ou senha inválidos.')).toHaveLength(2)
   })
 
   it('shows a specific error when the user is locked', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login).mockRejectedValueOnce(new Error('Usuário bloqueado'))
+    vi.mocked(authService.login).mockRejectedValueOnce(new Error('Usuário bloqueado.'))
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'bloqueado@empresa.com')
     await user.type(screen.getByLabelText('Senha'), 'senha-valida')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findByText('Usuário bloqueado')).toBeInTheDocument()
+    expect(await screen.findByText('Usuário bloqueado.')).toBeInTheDocument()
   })
 
   it('clears credential errors when either input changes', async () => {
     const user = userEvent.setup()
-    vi.mocked(authService.login).mockRejectedValue(new Error('E-mail ou senha inválidos'))
+    vi.mocked(authService.login).mockRejectedValue(new Error('E-mail ou senha inválidos.'))
     renderLogin()
 
     await user.type(screen.getByLabelText('E-mail'), 'usuario@empresa.com')
     await user.type(screen.getByLabelText('Senha'), 'senha-errada')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findAllByText('E-mail ou senha inválidos')).toHaveLength(2)
+    expect(await screen.findAllByText('E-mail ou senha inválidos.')).toHaveLength(2)
     await user.type(screen.getByLabelText('E-mail'), 'x')
-    expect(screen.getAllByText('E-mail ou senha inválidos')).toHaveLength(1)
+    expect(screen.getAllByText('E-mail ou senha inválidos.')).toHaveLength(1)
     await user.type(screen.getByLabelText('Senha'), 'x')
-    expect(screen.queryByText('E-mail ou senha inválidos')).not.toBeInTheDocument()
+    expect(screen.queryByText('E-mail ou senha inválidos.')).not.toBeInTheDocument()
   })
 
   it('transições para a etapa de 2FA quando o login exige segundo fator', async () => {

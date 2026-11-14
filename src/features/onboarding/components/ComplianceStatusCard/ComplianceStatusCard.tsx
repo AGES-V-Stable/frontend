@@ -115,7 +115,7 @@ export function ComplianceStatusCard({
                 disabled={!otpauthUri}
                 allowRecovery={false}
                 title="Configuração de Segurança em Duas Etapas (2FA)"
-                description="Abra seu aplicativo autenticador no celular e escaneie o QR Code para gerar seu código de acesso:"
+                description="Abra seu aplicativo autenticador no celular e escaneie o QR Code para gerar seu código de acesso."
                 value={totpCode}
                 onChange={(val) => {
                   setTotpCode(val)
@@ -187,7 +187,7 @@ export function ComplianceStatusCard({
                 disabled={!otpauthUri}
                 allowRecovery={false}
                 title="Configuração de Segurança em Duas Etapas (2FA)"
-                description="Abra seu aplicativo autenticador no celular e escaneie o QR Code para gerar seu código de acesso:"
+                description="Abra seu aplicativo autenticador no celular e escaneie o QR Code para gerar seu código de acesso."
                 value={totpCode}
                 onChange={(val) => {
                   setTotpCode(val)

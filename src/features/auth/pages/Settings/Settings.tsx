@@ -208,7 +208,7 @@ export function Settings({ twoFactorEnabled, onReconfigureSuccess }: SettingsPro
             <TwoFactorAuthContainer
               showQrCode={false}
               title="Autorizar troca de aparelho"
-              description="Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca"
+              description="Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca."
               value={currentTotpCode}
               onChange={(val) => {
                 setCurrentTotpCode(val)
@@ -238,7 +238,7 @@ export function Settings({ twoFactorEnabled, onReconfigureSuccess }: SettingsPro
               otpauthUri={newOtpauthUri}
               secret={newSecret}
               title="Configurar Novo Aparelho"
-              description="Abra seu novo aplicativo autenticador no celular e escaneie o QR Code para gerar seu código de acesso:"
+              description="Abra seu novo aplicativo autenticador no celular e escaneie o QR Code para gerar seu código de acesso."
               value={newTotpCode}
               onChange={(val) => {
                 setNewTotpCode(val)
