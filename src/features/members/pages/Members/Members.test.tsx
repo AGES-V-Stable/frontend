@@ -592,7 +592,9 @@ describe('Members — autorização', () => {
         await screen.findByRole('heading', { name: 'Seu acesso à empresa' }),
       ).toBeInTheDocument()
       expect(await screen.findByText('Marina Costa')).toBeInTheDocument()
-      expect(screen.getByText(role === 'OPERATOR' ? 'Operador' : 'Visualizador')).toBeInTheDocument()
+      expect(
+        screen.getByText(role === 'OPERATOR' ? 'Operador' : 'Visualizador'),
+      ).toBeInTheDocument()
       expect(screen.getByText('Ativo')).toBeInTheDocument()
       expect(screen.getByText('Empresa de Teste')).toBeInTheDocument()
       expect(screen.queryByText('Ana Souza')).not.toBeInTheDocument()
@@ -604,7 +606,7 @@ describe('Members — autorização', () => {
     },
   )
 
-  it('given a removed membership, then it shows a revocation warning without listing colleagues', async () => {
+  it('given a removed membership, then it warns without listing colleagues', async () => {
     accessRole = 'VIEWER'
     accessRemoved = true
     renderMembers()
