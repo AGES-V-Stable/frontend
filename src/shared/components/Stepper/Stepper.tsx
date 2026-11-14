@@ -41,7 +41,7 @@ export function Stepper({ steps, activeStep, className = '' }: StepperProps) {
               {completed ? '✓' : index + 1}
             </span>
             <span
-              className={`flex min-h-6 items-center text-[10px] sm:text-xs ${
+              className={`flex min-h-6 items-center text-xs ${
                 index <= activeStep ? 'text-primary' : 'text-slate-600'
               }`}
             >

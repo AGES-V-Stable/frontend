@@ -178,7 +178,7 @@ export function Settings({ twoFactorEnabled, onReconfigureSuccess }: SettingsPro
                   {twoFactorActive ? 'Ativo' : 'Inativo'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 max-w-md">
+              <p className="text-sm text-slate-500 max-w-md">
                 {twoFactorActive
                   ? 'Sua conta está protegida por verificação em duas etapas via aplicativo autenticador.'
                   : 'Adicione uma camada adicional de segurança solicitando um código temporário ao fazer login.'}

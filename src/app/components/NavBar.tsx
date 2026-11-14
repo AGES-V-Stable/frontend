@@ -81,10 +81,7 @@ export function NavBar({ logo, items, activeId, account, footerItems }: NavBarPr
             <p className="truncate text-xs font-semibold text-slate-900" title={account.name}>
               {account.name}
             </p>
-            <p
-              className="truncate text-[11px] font-medium text-sage-600"
-              title={account.description}
-            >
+            <p className="truncate text-xs font-medium text-sage-600" title={account.description}>
               {account.description}
             </p>
           </div>

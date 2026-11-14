@@ -82,13 +82,13 @@ export function RecoveryCodesContainer({
       {/* Cabeçalho */}
       <div className="flex flex-col gap-1 border-b border-sage-200 pb-4 text-left">
         <h2 className="text-base font-bold text-slate-900">{title}</h2>
-        <p className="text-xs text-slate-500">{description}</p>
+        <p className="text-sm text-slate-500">{description}</p>
       </div>
 
       {/* Alerta de Segurança */}
       <div
         role="alert"
-        className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900"
+        className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
       >
         <span className="text-base select-none" aria-hidden="true"></span>
         <div className="flex flex-col gap-0.5">
@@ -152,7 +152,7 @@ export function RecoveryCodesContainer({
         />
         <label
           htmlFor="confirm-saved-recovery-codes"
-          className="text-xs text-slate-700 leading-relaxed cursor-pointer select-none"
+          className="text-sm text-slate-700 leading-relaxed cursor-pointer select-none"
         >
           Confirmo que anotei ou salvei meus códigos em local seguro
         </label>

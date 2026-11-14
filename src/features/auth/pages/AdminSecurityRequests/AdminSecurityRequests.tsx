@@ -100,7 +100,7 @@ export function AdminSecurityRequests() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900 flex items-start gap-3">
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 flex items-start gap-3">
         <span className="text-base shrink-0" aria-hidden="true"></span>
         <p>
           <strong>Regra de Proteção (Bloqueio de 48h):</strong> Ao aprovar uma solicitação, o 2FA do
@@ -215,7 +215,7 @@ export function AdminSecurityRequests() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
+                <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
                   <span>
                     <strong>E-mail:</strong> {req.userEmail}
                   </span>
@@ -234,7 +234,7 @@ export function AdminSecurityRequests() {
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 mt-1">
+                <p className="text-sm text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 mt-1">
                   <strong>Motivo:</strong> {req.reason}
                 </p>
               </div>
