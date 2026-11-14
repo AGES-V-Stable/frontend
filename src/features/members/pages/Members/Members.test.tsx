@@ -295,7 +295,7 @@ describe('Members — listagem do proprietário', () => {
     renderMembers()
 
     await screen.findByText('Ana Souza')
-    expect(screen.getByText('· 4 pessoas')).toBeInTheDocument()
+    expect(screen.getByText('4 pessoas · Gestão exclusiva do proprietário')).toBeInTheDocument()
     expect(within(row('Ana Souza')).getByText('Operador')).toBeInTheDocument()
     expect(within(row('Ana Souza')).getByText('Ativo')).toBeInTheDocument()
     expect(within(row('Bruno Alves')).getByText('Convite pendente')).toBeInTheDocument()
@@ -332,6 +332,66 @@ describe('Members — listagem do proprietário', () => {
 
     expect(await screen.findByText('Ana Souza')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+})
+
+describe('Members — perda de acesso do proprietário', () => {
+  const expectLostAccess = async () => {
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Você não tem mais acesso à gestão de membros desta empresa.',
+    )
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ana Souza')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Adicionar membro' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tentar novamente' })).not.toBeInTheDocument()
+  }
+
+  it.each(['COMPANY_ACCESS_REVOKED', 'OWNER_REQUIRED', 'COMPANY_ACCESS_DENIED'])(
+    'given the list is refused with %s, then it reports the lost access without data, actions or retry',
+    async (code) => {
+      interceptor = (_, url) => (LIST_URL.test(url) ? apiError(403, code) : undefined)
+      renderMembers()
+
+      await expectLostAccess()
+      expect(calls('GET', LIST_URL)).toHaveLength(1)
+    },
+  )
+
+  it('given the access is lost after the list was shown, when it reloads, then the listed people are withdrawn', async () => {
+    renderMembers()
+    const { user, dialog } = await openManage('Ana Souza')
+    // O proprietário foi rebaixado em outra sessão: a alteração e a nova listagem são recusadas.
+    interceptor = (method, url) =>
+      method === 'PATCH' || LIST_URL.test(url) ? apiError(403, 'OWNER_REQUIRED') : undefined
+    members[1]!.version = 9
+
+    await user.click(within(dialog).getByRole('radio', { name: /Visualizador/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Salvar alterações' }))
+    await within(dialog).findByRole('alert')
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+    interceptor = (_, url) => (LIST_URL.test(url) ? apiError(403, 'OWNER_REQUIRED') : undefined)
+    await user.click(screen.getByRole('button', { name: 'Adicionar membro' }))
+    await user.type(screen.getByLabelText('Nome'), 'Diana Reis')
+    await user.type(screen.getByLabelText('E-mail'), 'diana@empresa.com')
+    await user.click(screen.getByRole('radio', { name: /Operador/ }))
+    await user.click(screen.getByRole('button', { name: 'Criar convite' }))
+
+    await expectLostAccess()
+  })
+
+  it('given the lost access, when updating the access, then the session is reloaded and shows the current profile', async () => {
+    interceptor = (_, url) => (LIST_URL.test(url) ? apiError(403, 'OWNER_REQUIRED') : undefined)
+    renderMembers()
+    await expectLostAccess()
+    // O backend agora informa o perfil atual do usuário.
+    accessRole = 'VIEWER'
+
+    await userEvent.click(screen.getByRole('button', { name: 'Atualizar meu acesso' }))
+
+    const details = await screen.findByRole('region', { name: 'Seu acesso à empresa' })
+    expect(within(details).getByText('Visualizador')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(calls('GET', /^\/v1\/users\/me$/)).toHaveLength(2)
   })
 })
 
@@ -497,7 +557,7 @@ describe('Members — remover membro', () => {
       await screen.findByText('O acesso de Ana Souza à empresa foi removido.'),
     ).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText('Ana Souza')).not.toBeInTheDocument())
-    expect(screen.getByText('· 3 pessoas')).toBeInTheDocument()
+    expect(screen.getByText('3 pessoas · Gestão exclusiva do proprietário')).toBeInTheDocument()
     const [[, init]] = calls('DELETE', MEMBER_URL) as [string, RequestInit][]
     expect(new Headers(init.headers as Record<string, string>).get('If-Match')).toBe('"3"')
   })
@@ -586,7 +646,7 @@ describe('Members — equipe somente com o proprietário', () => {
     expect(
       await screen.findByRole('heading', { name: 'Sua equipe começa aqui' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('· 1 membro')).toBeInTheDocument()
+    expect(screen.getByText('1 membro · Gestão exclusiva do proprietário')).toBeInTheDocument()
     expect(within(row('Marina Costa')).getByText('Proprietário da empresa')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar primeiro membro' }))
@@ -811,7 +871,7 @@ describe('Members — criar convite', () => {
     await waitFor(() =>
       expect(within(row('Diana Reis')).getByText('Convite pendente')).toBeInTheDocument(),
     )
-    expect(screen.getByText('· 5 pessoas')).toBeInTheDocument()
+    expect(screen.getByText('5 pessoas · Gestão exclusiva do proprietário')).toBeInTheDocument()
     expect(storedValues().join('\n')).not.toContain('token-2')
     for (const log of logs) expect(JSON.stringify(log.mock.calls)).not.toContain('token-2')
   })
@@ -930,7 +990,7 @@ describe('Members — criar convite', () => {
     expect(calls('GET', /\/invitations\/i1\/link$/)).toHaveLength(1)
     expect(calls('POST', REGENERATE_URL)).toHaveLength(0)
     await waitFor(() => expect(calls('GET', LIST_URL)).toHaveLength(2))
-    expect(screen.getByText('· 4 pessoas')).toBeInTheDocument()
+    expect(screen.getByText('4 pessoas · Gestão exclusiva do proprietário')).toBeInTheDocument()
     expect(within(screen.getByRole('table')).getAllByText('Bruno Alves')).toHaveLength(1)
   })
 
@@ -1084,7 +1144,7 @@ describe('Members — gerar novo link', () => {
     expect(ifMatchOf(init)).toBe('"1"')
     expect(Object.values(tokens)).not.toContain('token-1')
     await waitFor(() => expect(calls('GET', LIST_URL)).toHaveLength(2))
-    expect(screen.getByText('· 4 pessoas')).toBeInTheDocument()
+    expect(screen.getByText('4 pessoas · Gestão exclusiva do proprietário')).toBeInTheDocument()
   })
 
   it('given a regenerated link, when revoking next, then it sends the new version', async () => {
@@ -1185,7 +1245,7 @@ describe('Members — revogar convite', () => {
     ).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText('Bruno Alves')).not.toBeInTheDocument())
-    expect(screen.getByText('· 3 pessoas')).toBeInTheDocument()
+    expect(screen.getByText('3 pessoas · Gestão exclusiva do proprietário')).toBeInTheDocument()
     const [[, init]] = calls('DELETE', INVITATION_URL) as [string, RequestInit][]
     expect(ifMatchOf(init)).toBe('"1"')
   })

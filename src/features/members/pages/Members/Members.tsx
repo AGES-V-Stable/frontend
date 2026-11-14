@@ -96,7 +96,8 @@ interface MemberManagementProps {
 }
 
 function MemberManagement({ companyId, companyName, viewer }: MemberManagementProps) {
-  const { data, loading, failed, page, setPage, reload } = useMemberList(companyId)
+  const { retry: refreshSession } = useSession()
+  const { data, loading, failed, denied, page, setPage, reload } = useMemberList(companyId)
   const [selected, setSelected] = useState<Member | null>(null)
   const [outcome, setOutcome] = useState<MemberActionOutcome | null>(null)
 
@@ -133,6 +134,33 @@ function MemberManagement({ companyId, companyName, viewer }: MemberManagementPr
     invite.reset()
     setInviting(false)
   }
+
+  // Perda de acesso: nenhum dado ou ação de gestão permanece na tela, nem a lista já carregada.
+  if (denied)
+    return (
+      <>
+        <PageHeader companyName={companyName} />
+        <div
+          role="alert"
+          className="flex flex-col items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm"
+        >
+          <p className="font-medium text-red-700">
+            Você não tem mais acesso à gestão de membros desta empresa.
+          </p>
+          <p className="text-slate-700">
+            O seu perfil ou o seu vínculo com a empresa foi alterado. Atualize para ver o seu acesso
+            atual.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            label="Atualizar meu acesso"
+            onClick={refreshSession}
+            className="!w-auto"
+          />
+        </div>
+      </>
+    )
 
   // Somente o proprietário, sem membros ativos nem convites pendentes.
   const ownerOnly = data?.summary.peopleCount === 1
@@ -217,25 +245,26 @@ function MemberManagement({ companyId, companyName, viewer }: MemberManagementPr
                 }
               : undefined
           }
+          footer={
+            ownerOnly && (
+              <section className="flex flex-col items-center gap-3 rounded-lg bg-slate-50 p-8 text-center">
+                <h2 className="text-lg font-medium text-slate-900">Sua equipe começa aqui</h2>
+                <p className="text-sm text-slate-600">
+                  Adicione um membro para compartilhar o acesso à empresa.
+                  <br />
+                  Cada pessoa utiliza seu próprio login.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  label="Adicionar primeiro membro"
+                  onClick={openInvite}
+                  className="!w-auto"
+                />
+              </section>
+            )
+          }
         />
-      )}
-
-      {ownerOnly && (
-        <section className="flex flex-col items-center gap-3 rounded-lg border border-sage-300 bg-white p-8 text-center">
-          <h2 className="text-lg font-medium text-slate-900">Sua equipe começa aqui</h2>
-          <p className="text-sm text-slate-600">
-            Adicione um membro para compartilhar o acesso à empresa.
-            <br />
-            Cada pessoa utiliza seu próprio login.
-          </p>
-          <Button
-            type="button"
-            variant="secondary"
-            label="Adicionar primeiro membro"
-            onClick={openInvite}
-            className="!w-auto"
-          />
-        </section>
       )}
 
       {data && (

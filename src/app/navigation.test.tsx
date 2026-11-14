@@ -455,6 +455,8 @@ it.each(['OPERATOR', 'VIEWER'])(
     saveLoginToken('login')
     renderRoute('/app/beneficiarios')
     const nav = await screen.findByRole('navigation')
+    // O título empresarial da tela 16 pertence às telas de membros.
+    expect(screen.queryByText('V-Stable • Conta empresarial')).not.toBeInTheDocument()
 
     await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
 
@@ -462,9 +464,68 @@ it.each(['OPERATOR', 'VIEWER'])(
     expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
     expect(await screen.findByRole('region', { name: 'Seu acesso à empresa' })).toBeVisible()
     expect(screen.getByText('Você está acessando como membro')).toBeVisible()
+    expect(screen.getByText('V-Stable • Conta empresarial')).toBeVisible()
+    expect(screen.getByText('Marina Costa • MC')).toBeVisible()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Gerenciar' })).not.toBeInTheDocument()
     expect(memberRequests()).toEqual(['/v1/companies/c1/members/me'])
+  },
+)
+
+it.each(['OPERATOR', 'VIEWER'])(
+  'given a %s opening the members URL directly, then it shows the same own access as the menu',
+  async (companyRole) => {
+    mockMember(companyRole)
+    saveLoginToken('login')
+    renderRoute('/app/membros')
+
+    expect(await screen.findByRole('region', { name: 'Seu acesso à empresa' })).toBeVisible()
+    expect(screen.getByText('Você está acessando como membro')).toBeVisible()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Adicionar|Gerenciar/ })).not.toBeInTheDocument()
+    expect(memberRequests()).toEqual(['/v1/companies/c1/members/me'])
+  },
+)
+
+it.each(['/app/membros', '/app/beneficiarios'])(
+  'given the owner arriving from %s, then the direct URL and the menu show the same member list',
+  async (path) => {
+    const companyAccess = {
+      membershipId: 'm1',
+      companyId: 'c1',
+      role: 'OWNER',
+      status: 'ACTIVE',
+      permissions: ['COMPANY_READ', 'MEMBERS_READ', 'MEMBERS_MANAGE'],
+      version: 1,
+    }
+    mock.mockImplementation(async (url: string) => {
+      if (url === '/v1/users/me') return new Response(JSON.stringify({ ...user, companyAccess }))
+      if (url.startsWith('/v1/companies/c1/members?'))
+        return new Response(
+          JSON.stringify({
+            items: [{ kind: 'MEMBER', member: { ...ownMembership('OWNER'), id: 'm1' } }],
+            page: 0,
+            size: 20,
+            totalElements: 1,
+            totalPages: 1,
+            summary: { activeMembers: 1, pendingInvitations: 0, peopleCount: 1 },
+          }),
+        )
+      return backend(url)
+    })
+    saveLoginToken('login')
+    renderRoute(path)
+    const nav = await screen.findByRole('navigation')
+    if (path !== '/app/membros')
+      await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
+
+    expect(await screen.findByRole('heading', { name: 'Sua equipe começa aqui' })).toBeVisible()
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
+    expect(within(screen.getByRole('table')).getByText('Proprietário da empresa')).toBeVisible()
+    expect(screen.getByText('V-Stable • Conta empresarial')).toBeVisible()
+    expect(screen.getByText('Marina Costa • MC')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Adicionar membro' })).toBeEnabled()
+    expect(memberRequests()).toEqual(['/v1/companies/c1/members?page=0&size=20'])
   },
 )
 

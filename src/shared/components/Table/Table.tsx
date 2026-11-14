@@ -12,6 +12,8 @@ function getCellValue<T>(item: T, key: string): ReactNode {
 export function Table<T>({
   compact = false,
   title,
+  subtitle,
+  footer,
   totalRecords,
   columns,
   data,
@@ -57,10 +59,16 @@ export function Table<T>({
       {(title || totalRecords !== undefined) && (
         <div className="px-6 mb-6 font-['IBM_Plex_Sans'] text-slate-900 font-medium text-[18px]">
           {title}{' '}
-          {totalRecords !== undefined && (
+          {totalRecords !== undefined && !subtitle && (
             <span className="text-slate-900 text-[14px] font-medium ml-2">
               · {totalRecords} {entityLabel}
             </span>
+          )}
+          {subtitle && (
+            <p className="mt-1 text-[12px] font-normal text-slate-500">
+              {totalRecords !== undefined && `${totalRecords} ${entityLabel} · `}
+              {subtitle}
+            </p>
           )}
         </div>
       )}
@@ -130,6 +138,7 @@ export function Table<T>({
           <TablePagination {...pagination} entityLabel={pagination.entityLabel ?? entityLabel} />
         )}
       </div>
+      {footer && <div className="px-6 pt-6">{footer}</div>}
       {compact && pagination && data.length > 0 && (
         <TablePagination
           {...pagination}

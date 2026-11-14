@@ -227,8 +227,19 @@ function RoutedApplication() {
         : 'Conta empresarial',
     initials: initials(name),
   }
+  // Telas de membros (Figma 07–16): título empresarial e identificação de quem está usando.
+  const header =
+    !admin && pathname.startsWith(PATHS.MEMBERS) && user ? (
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-sage-300 bg-white px-4 py-4 md:px-8">
+        <p className="text-base font-medium text-slate-900">V-Stable • Conta empresarial</p>
+        <p className="text-sm font-medium text-slate-900">
+          {user.name} • {initials(user.name)}
+        </p>
+      </header>
+    ) : undefined
   return (
     <ApplicationShell
+      header={header}
       navigation={
         <NavBar
           logo={<img src={logo} alt="V-Stable" className="h-[60px] w-[149px] object-contain" />}

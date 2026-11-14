@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { StatusBadge, Table, TableActionButton } from '@/shared/components/Table'
 import type { ColumnDefinition, PaginationProps } from '@/shared/components/Table'
 import { canManageMember, ROLE_LABELS } from '../../model/permissions'
@@ -15,6 +16,8 @@ export interface MemberTableProps {
   onManageInvitation: (invitation: Invitation) => void
   /** Convite cujo link está sendo buscado para cópia. */
   copyingInvitationId?: string | null
+  /** Conteúdo dentro do cartão, abaixo das linhas (estado inicial da equipe). */
+  footer?: ReactNode
 }
 
 const person = (item: MemberListItem) => (item.kind === 'MEMBER' ? item.member : item.invitation)
@@ -28,6 +31,7 @@ export function MemberTable({
   onCopyInvitationLink,
   onManageInvitation,
   copyingInvitationId = null,
+  footer,
 }: MemberTableProps) {
   const isViewer = (item: MemberListItem) =>
     item.kind === 'MEMBER' &&
@@ -97,6 +101,8 @@ export function MemberTable({
     <Table
       compact
       title="Pessoas com acesso"
+      subtitle="Gestão exclusiva do proprietário"
+      footer={footer}
       totalRecords={peopleCount}
       entityLabel={peopleCount === 1 ? 'membro' : 'pessoas'}
       columns={columns}
