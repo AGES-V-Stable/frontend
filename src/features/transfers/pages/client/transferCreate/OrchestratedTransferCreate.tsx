@@ -117,7 +117,9 @@ export function OrchestratedTransferCreate() {
   const route = beneficiary ? routeFor(beneficiary, bankRail) : null
   const amount = parseDecimalInput(amountText)
   const validAmount = amount !== null && Number.isFinite(amount) && amount >= 0.01
-  const canQuote = Boolean(companyId && route && validAmount && !loadingQuote && !financialRequestStarted)
+  const canQuote = Boolean(
+    companyId && route && validAmount && !loadingQuote && !financialRequestStarted,
+  )
 
   async function requestQuote() {
     if (!canQuote || !route || !amount || !beneficiary) return
@@ -176,8 +178,8 @@ export function OrchestratedTransferCreate() {
 
       {financialRequestStarted && (
         <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-          Uma confirmação foi enviada. Os dados estão bloqueados para evitar outra cotação
-          enquanto o resultado da operação não for confirmado.
+          Uma confirmação foi enviada. Os dados estão bloqueados para evitar outra cotação enquanto
+          o resultado da operação não for confirmado.
         </p>
       )}
       <section className="flex flex-col gap-4 rounded-xl border border-sage-300 bg-white p-6">
