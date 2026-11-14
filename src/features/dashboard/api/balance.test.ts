@@ -43,11 +43,15 @@ describe('balance API', () => {
   })
 
   it('sends a fresh idempotency key with every mock credit request', async () => {
-    const fetchMock = vi.fn().mockImplementation(() =>
-      Promise.resolve(
-        new Response(JSON.stringify({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' })),
-      ),
-    )
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' }),
+          ),
+        ),
+      )
     vi.stubGlobal('fetch', fetchMock)
     const randomUUID = vi
       .fn()
