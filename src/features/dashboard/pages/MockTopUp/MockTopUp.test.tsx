@@ -120,7 +120,10 @@ describe('MockTopUp', () => {
   })
 
   it('shows retry for failure to load existing balance', async () => {
-    balance.mockReturnValue({ state: { status: 'error', message: 'Falha ao consultar saldo.' }, retry })
+    balance.mockReturnValue({
+      state: { status: 'error', message: 'Falha ao consultar saldo.' },
+      retry,
+    })
     render(<MockTopUp />)
     expect(submit()).toBeDisabled()
     await userEvent.click(screen.getByRole('button', { name: 'Tentar carregar novamente' }))
