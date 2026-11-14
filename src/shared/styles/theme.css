@@ -26,7 +26,8 @@
 
   /* ---------- Verde-acinzentado (bordas, sidebar) ---------- */
   --color-sage-200: #ccd8d2; /* divisorias da sidebar */
-  --color-sage-300: #bbcabf; /* borda padrao: inputs, cards, tabela */
+  --color-sage-300: #bbcabf; /* borda padrao: cards, tabela, divisorias */
+  --color-sage-500: #7d8d84; /* borda de campo de formulario (3,49:1 sobre branco, WCAG 1.4.11) */
   --color-sage-600: #66736c; /* descricao da conta na sidebar */
   --color-sage-800: #3c4a42; /* label de input */
 

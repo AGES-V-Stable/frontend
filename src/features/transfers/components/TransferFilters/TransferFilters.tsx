@@ -76,7 +76,7 @@ export function TransferFilters({ statuses, types, onApply, onClear }: TransferF
   }
 
   const inputClassName =
-    'h-11 w-full rounded-md border border-sage-300 bg-white px-3 text-sm text-slate-900 placeholder:text-gray-500 focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+    'h-11 w-full rounded-md border border-sage-500 bg-white px-3 text-sm text-slate-900 placeholder:text-gray-500 focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
   return (
     <form

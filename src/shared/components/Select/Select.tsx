@@ -39,7 +39,7 @@ function Select({
       aria-invalid={!!error}
       aria-describedby={errorId}
       style={inside ? { paddingLeft: `calc(1.25rem + ${label?.length ?? 0}ch)`, ...style } : style}
-      className={`w-full border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 ${inside ? 'py-2.5 pr-3 text-[14px] font-medium text-slate-700' : 'py-3.5 px-3 text-[16px] text-slate-900'} ${error ? 'border-red-700' : 'border-sage-300'} ${className}`}
+      className={`w-full border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 ${inside ? 'py-2.5 pr-3 text-[14px] font-medium text-slate-700' : 'py-3.5 px-3 text-[16px] text-slate-900'} ${error ? 'border-red-700' : 'border-sage-500'} ${className}`}
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>

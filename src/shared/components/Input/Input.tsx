@@ -30,7 +30,7 @@ function Input({
             ? { paddingLeft: `calc(1.25rem + ${label?.length ?? 0}ch)`, ...style }
             : style
       }
-      className={`w-full ${inside ? 'py-2.5 pr-3 text-[14px] font-medium text-slate-700' : 'py-3.5 px-3 text-[16px]'} placeholder:text-gray-500 border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${error ? 'border-red-700' : 'border-sage-300'} ${className}`}
+      className={`w-full ${inside ? 'py-2.5 pr-3 text-[14px] font-medium text-slate-700' : 'py-3.5 px-3 text-[16px]'} placeholder:text-gray-500 border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${error ? 'border-red-700' : 'border-sage-500'} ${className}`}
     />
   )
 
