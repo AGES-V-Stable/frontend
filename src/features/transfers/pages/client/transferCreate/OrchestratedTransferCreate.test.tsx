@@ -88,6 +88,7 @@ describe('OrchestratedTransferCreate', () => {
     const quoteButton = screen.getByRole('button', { name: 'Consultar melhor oferta' })
     expect(quoteButton).toBeDisabled()
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), wallet.id)
+    expect(screen.queryByLabelText('Modalidade bancária cadastrada')).not.toBeInTheDocument()
     await user.type(screen.getByLabelText('Valor'), '1.000,00')
     await user.click(quoteButton)
 
@@ -111,6 +112,7 @@ describe('OrchestratedTransferCreate', () => {
     const user = userEvent.setup()
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
+    await user.selectOptions(screen.getByLabelText('Modalidade bancária cadastrada'), 'international_swift')
     await user.selectOptions(screen.getByLabelText('Rede'), 'ethereum')
     await user.selectOptions(screen.getByLabelText('Valor informado em'), 'TARGET')
     await user.type(screen.getByLabelText('Valor'), '200,50')
@@ -131,10 +133,29 @@ describe('OrchestratedTransferCreate', () => {
     )
   })
 
+  it('does not guess SWIFT for a bank beneficiary when the registered rail is unknown', async () => {
+    const user = userEvent.setup()
+    render(<OrchestratedTransferCreate />)
+    await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
+    await user.type(screen.getByLabelText('Valor'), '1000')
+    const quoteButton = screen.getByRole('button', { name: 'Consultar melhor oferta' })
+    expect(quoteButton).toBeDisabled()
+    expect(requestOrchestratedQuote).not.toHaveBeenCalled()
+
+    await user.selectOptions(screen.getByLabelText('Modalidade bancária cadastrada'), 'wire')
+    expect(quoteButton).toBeEnabled()
+    await user.click(quoteButton)
+    expect(requestOrchestratedQuote).toHaveBeenCalledWith(
+      expect.objectContaining({ targetPaymentMethod: 'wire' }),
+      expect.any(AbortSignal),
+    )
+  })
+
   it('invalidates the previous offer whenever its underlying values change', async () => {
     const user = userEvent.setup()
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
+    await user.selectOptions(screen.getByLabelText('Modalidade bancária cadastrada'), 'international_swift')
     await user.type(screen.getByLabelText('Valor'), '1000')
     await user.click(screen.getByRole('button', { name: 'Consultar melhor oferta' }))
     expect(await screen.findByTestId('authorization')).toBeInTheDocument()
@@ -155,6 +176,7 @@ describe('OrchestratedTransferCreate', () => {
     )
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
+    await user.selectOptions(screen.getByLabelText('Modalidade bancária cadastrada'), 'international_swift')
     await user.type(screen.getByLabelText('Valor'), '1000')
     await user.click(screen.getByRole('button', { name: 'Consultar melhor oferta' }))
     await user.clear(screen.getByLabelText('Valor'))
@@ -167,6 +189,7 @@ describe('OrchestratedTransferCreate', () => {
     vi.mocked(requestOrchestratedQuote).mockRejectedValue(new Error('confidential provider error'))
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
+    await user.selectOptions(screen.getByLabelText('Modalidade bancária cadastrada'), 'international_swift')
     await user.type(screen.getByLabelText('Valor'), '1000')
     await user.click(screen.getByRole('button', { name: 'Consultar melhor oferta' }))
     const alert = await screen.findByRole('alert')
