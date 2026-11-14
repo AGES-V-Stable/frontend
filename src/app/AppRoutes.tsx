@@ -57,14 +57,25 @@ import settingsIcon from '@/shared/assets/navigation/settings.svg'
 import supportIcon from '@/shared/assets/navigation/support.svg'
 import logoutIcon from '@/shared/assets/navigation/logout.svg'
 
+// Ações das telas de bloqueio da conta: o usuário sempre pode tentar de novo ou sair.
+const blockingPrimaryAction =
+  'rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
+const blockingExitAction =
+  'rounded-lg border border-sage-500 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
+
 function SessionState() {
   const { status, retry } = useSession()
   return status === 'error' ? (
-    <div className="p-8">
+    <div className="flex flex-col items-start gap-3 p-8">
       <p role="alert">Não foi possível carregar os dados da conta.</p>
-      <button type="button" onClick={retry}>
-        Tentar novamente
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <button type="button" onClick={retry} className={blockingPrimaryAction}>
+          Tentar novamente
+        </button>
+        <button type="button" onClick={clearLoginToken} className={blockingExitAction}>
+          Sair
+        </button>
+      </div>
     </div>
   ) : (
     <p role="status" className="p-8">
@@ -111,10 +122,7 @@ function RoleGuard({ role }: { role?: 'ADMIN' | 'USER' }) {
           cadastrada.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link
-            to={PATHS.COMPANY_SETUP}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-          >
+          <Link to={PATHS.COMPANY_SETUP} className={blockingPrimaryAction}>
             Cadastrar empresa
           </Link>
           {removed && (
@@ -125,6 +133,9 @@ function RoleGuard({ role }: { role?: 'ADMIN' | 'USER' }) {
               Ver meu acesso
             </Link>
           )}
+          <button type="button" onClick={clearLoginToken} className={blockingExitAction}>
+            Sair
+          </button>
         </div>
       </div>
     )

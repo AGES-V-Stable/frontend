@@ -446,6 +446,16 @@ describe('usuário autenticado sem empresa (backend#64)', () => {
     )
   })
 
+  it('given no company, when the user chooses to sign out, then the login token is cleared', async () => {
+    const user = userEvent.setup({ delay: null })
+    renderAt(PATHS.DASHBOARD)
+    await screen.findByRole('alert')
+
+    await user.click(screen.getByRole('button', { name: 'Sair' }))
+
+    expect(localStorage.getItem('token')).toBeNull()
+  })
+
   it('registers the company, keeps the representative data for KYC and continues to compliance', async () => {
     const user = userEvent.setup({ delay: null })
     registerCompanyMock.mockImplementationOnce(async () => {
