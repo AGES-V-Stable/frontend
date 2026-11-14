@@ -92,3 +92,51 @@ export async function confirmRequote(
   )
   return TransferExecutionSchema.parse(response)
 }
+
+/**
+ * The comparison endpoint returns only the selected winning offer. It never creates
+ * a transfer; the user must authorize that specific offer separately with a TOTP.
+ */
+export const OrchestratedQuoteRequestSchema = z.object({
+  beneficiaryId: UUID,
+  direction: z.literal('PAYOUT'),
+  sourceCurrency: z.literal('BRL'),
+  targetCurrency: z.string().regex(/^[A-Z]{3,10}$/),
+  sourcePaymentMethod: z.enum(['pix', 'ted']),
+  targetPaymentMethod: z.string().min(1).max(50),
+  amount: z.number().finite().min(0.01),
+  amountSide: z.enum(['SOURCE', 'TARGET']),
+  token: z.string().min(1).max(20).optional(),
+  blockchainNetwork: z.string().min(1).max(50).optional(),
+  coverFees: z.boolean(),
+  description: z.string().max(128).optional(),
+})
+
+export const OrchestratedQuoteResponseSchema = z.object({
+  quoteRequestId: UUID,
+  offer: z.object({
+    offerId: UUID,
+    provider: z.enum(['BLINDPAY', 'AVENIA']),
+    sourceAmount: z.number().finite().positive(),
+    targetAmount: z.number().finite().positive(),
+    exchangeRate: z.number().finite().positive(),
+    totalFee: z.number().finite().nonnegative(),
+    expiresAt: z.string().datetime({ offset: true }),
+  }),
+})
+
+export type OrchestratedQuoteRequest = z.infer<typeof OrchestratedQuoteRequestSchema>
+export type OrchestratedQuoteResponse = z.infer<typeof OrchestratedQuoteResponseSchema>
+
+export async function requestOrchestratedQuote(
+  request: OrchestratedQuoteRequest,
+  signal?: AbortSignal,
+): Promise<OrchestratedQuoteResponse> {
+  const body = JSON.stringify(OrchestratedQuoteRequestSchema.parse(request))
+  const response = await httpRequest<unknown>('/v1/quotes', {
+    method: 'POST',
+    body,
+    signal,
+  })
+  return OrchestratedQuoteResponseSchema.parse(response)
+}
