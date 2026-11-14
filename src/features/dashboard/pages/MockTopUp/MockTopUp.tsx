@@ -130,9 +130,9 @@ export function MockTopUp() {
           </div>
           {requiresReconciliation && (
             <p role="alert" className="text-sm text-amber-900">
-              Não foi possível confirmar se o crédito já foi registrado. Confira o saldo
-              atualizado e procure o suporte antes de solicitar outro crédito. Para evitar
-              duplicidade, esta tela não permite uma nova tentativa agora.
+              Não foi possível confirmar se o crédito já foi registrado. Confira o saldo atualizado
+              e procure o suporte antes de solicitar outro crédito. Para evitar duplicidade, esta
+              tela não permite uma nova tentativa agora.
             </p>
           )}
           {success && (
