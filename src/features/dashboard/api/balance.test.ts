@@ -58,13 +58,16 @@ describe('balance API', () => {
       }),
     )
   })
+
   it('sends the exact mock-top-up contract with the saved login token', async () => {
     saveLoginToken('login')
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' }),
-      ),
-    )
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' }),
+        ),
+      )
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(addMockTopUp('10.25')).resolves.toEqual({
@@ -88,5 +91,4 @@ describe('balance API', () => {
     )
     await expect(addMockTopUp('10.25')).rejects.toThrow()
   })
-
 })
