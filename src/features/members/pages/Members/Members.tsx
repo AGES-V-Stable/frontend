@@ -133,7 +133,10 @@ export function Members() {
       ) : access?.companyId ? (
         <OwnMemberAccess key={access.companyId} companyId={access.companyId} />
       ) : (
-        <section role="alert" className="rounded-lg border border-sage-300 bg-white p-6 text-sm text-slate-700">
+        <section
+          role="alert"
+          className="rounded-lg border border-sage-300 bg-white p-6 text-sm text-slate-700"
+        >
           Não existe vínculo empresarial para esta conta.
         </section>
       )}
