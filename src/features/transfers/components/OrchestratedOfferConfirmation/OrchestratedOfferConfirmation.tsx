@@ -12,7 +12,7 @@ import type { TransferExecution } from '@/features/transfers/api/orchestratedTra
 
 /** Only explicit client rejections guarantee that no financial operation was accepted. */
 function isDefinitiveRejection(error: unknown): boolean {
-  return error instanceof HttpError && [400, 401, 403, 404, 409, 422, 423].includes(error.status)
+  return error instanceof HttpError && [400, 401, 403, 404, 422, 423].includes(error.status)
 }
 
 function safeError(error: unknown): string {
