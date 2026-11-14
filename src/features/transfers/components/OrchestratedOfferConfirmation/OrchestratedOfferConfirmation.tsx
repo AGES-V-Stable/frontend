@@ -69,11 +69,11 @@ export function OrchestratedOfferConfirmation({
       const result =
         isRequote && execution?.requote
           ? await confirmRequote(
-            execution.executionId,
-            {
-              sourceAmount: execution.requote.source.amount,
-              targetAmount: execution.requote.target.amount,
-            },
+              execution.executionId,
+              {
+                sourceAmount: execution.requote.source.amount,
+                targetAmount: execution.requote.target.amount,
+              },
               totpCode,
             )
           : await confirmOffer(
