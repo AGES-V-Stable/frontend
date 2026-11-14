@@ -78,7 +78,10 @@ describe('members API', () => {
   })
 
   it('rejects an invalid own-membership response', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...member, role: 'ADMIN' }))))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ ...member, role: 'ADMIN' }))),
+    )
     await expect(getOwnMember('c1')).rejects.toThrow()
   })
 
