@@ -106,7 +106,10 @@ async function backend(url: string, init: RequestInit = {}): Promise<Response> {
         companyId: 'c1',
         role: accessRole,
         status: accessRemoved ? 'REMOVED' : 'ACTIVE',
-        permissions: accessRole === 'OWNER' && !accessRemoved ? ['MEMBERS_READ', 'MEMBERS_MANAGE'] : ['SELF_MEMBERSHIP_READ'],
+        permissions:
+          accessRole === 'OWNER' && !accessRemoved
+            ? ['MEMBERS_READ', 'MEMBERS_MANAGE']
+            : ['SELF_MEMBERSHIP_READ'],
         version: 1,
       },
     })
