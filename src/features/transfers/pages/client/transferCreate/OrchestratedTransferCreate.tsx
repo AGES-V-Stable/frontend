@@ -25,14 +25,15 @@ const BANK_RAILS = [
 const FIELD_CLASS =
   'w-full rounded-lg border border-sage-300 bg-white px-3 py-3 text-sm text-slate-900'
 
-/** The beneficiary API does not yet expose the registered paymentRail.
- * Require the user to specify it instead of silently assuming all bank accounts use SWIFT.
- * The backend enforces that the requested rail matches the one actually registered.
+/** Read the registered rail. Older APIs without paymentRail use explicit manual fallback,
+ * never an implicit SWIFT guess. The quote backend verifies the rail against the DB.
  */
 function routeFor(beneficiary: Beneficiary, bankRail: string) {
-  if (beneficiary.receivingMethod === 'BANK_ACCOUNT' && beneficiary.currency && bankRail) {
+  const registeredRail = beneficiary.paymentRail?.trim().toLowerCase()
+  const selectedRail = registeredRail || bankRail
+  if (beneficiary.receivingMethod === 'BANK_ACCOUNT' && beneficiary.currency && selectedRail) {
     return {
-      targetPaymentMethod: bankRail,
+      targetPaymentMethod: selectedRail,
       targetCurrency: beneficiary.currency.toUpperCase(),
       bank: true,
     }
@@ -110,7 +111,8 @@ export function OrchestratedTransferCreate() {
     beneficiaries.status === 'ready'
       ? beneficiaries.items.find((item) => item.id === beneficiaryId)
       : undefined
-  const needsBankRail = beneficiary?.receivingMethod === 'BANK_ACCOUNT'
+  const needsBankRail =
+    beneficiary?.receivingMethod === 'BANK_ACCOUNT' && !beneficiary.paymentRail?.trim()
   const route = beneficiary ? routeFor(beneficiary, bankRail) : null
   const amount = parseDecimalInput(amountText)
   const validAmount = amount !== null && Number.isFinite(amount) && amount >= 0.01
@@ -198,6 +200,11 @@ export function OrchestratedTransferCreate() {
         {beneficiaries.status === 'loading' && <p role="status">Carregando beneficiários...</p>}
         {beneficiaries.status === 'error' && (
           <p role="alert">Não foi possível carregar os beneficiários.</p>
+        )}
+        {beneficiary?.receivingMethod === 'BANK_ACCOUNT' && beneficiary.paymentRail && (
+          <p className="text-xs text-slate-600">
+            Modalidade bancária cadastrada: {beneficiary.paymentRail}
+          </p>
         )}
         {needsBankRail && (
           <>
