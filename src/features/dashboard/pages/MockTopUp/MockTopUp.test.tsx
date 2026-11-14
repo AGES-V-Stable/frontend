@@ -96,14 +96,15 @@ describe('MockTopUp', () => {
     expect(retry).not.toHaveBeenCalled()
   })
 
-
   it('locks out another credit after an uncertain network result and refreshes the balance', async () => {
     addCredit.mockRejectedValue(new HttpError('network unavailable', 0, {}, 'NETWORK_ERROR'))
     render(<MockTopUp />)
     await userEvent.type(amount(), '10,25')
     await userEvent.click(submit())
 
-    expect(await screen.findByText(/não foi possível confirmar se o crédito já foi registrado/i)).toBeVisible()
+    expect(
+      await screen.findByText(/não foi possível confirmar se o crédito já foi registrado/i),
+    ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Confirmar crédito simulado' })).toBeDisabled()
     expect(amount()).toBeDisabled()
     expect(retry).toHaveBeenCalledTimes(1)
@@ -117,7 +118,9 @@ describe('MockTopUp', () => {
       const view = render(<MockTopUp />)
       await userEvent.type(amount(), '10,25')
       await userEvent.click(submit())
-      expect(await screen.findByText(/não foi possível confirmar se o crédito já foi registrado/i)).toBeVisible()
+      expect(
+        await screen.findByText(/não foi possível confirmar se o crédito já foi registrado/i),
+      ).toBeVisible()
       expect(submit()).toBeDisabled()
       expect(addCredit).toHaveBeenCalledTimes(1)
       view.unmount()
