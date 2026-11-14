@@ -13,7 +13,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useSession } from '@/features/auth'
 import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
+import { SimulatedDepositDialog } from '@/features/dashboard/components/SimulatedDepositDialog'
+import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
+import { Button } from '@/shared/components/Button'
 import { MetricCard } from '@/features/dashboard/components/MetricCard'
 import { SettlementDrawer } from '@/features/dashboard/components/SettlementDrawer'
 import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
@@ -109,7 +113,34 @@ const card = 'rounded-xl border border-sage-300 bg-white p-5'
 
 function ClientBalanceCard() {
   const { state, retry } = useBalance()
-  return <BalanceCard state={state} onRetry={retry} />
+  const { user } = useSession()
+  const [depositing, setDepositing] = useState(false)
+  // Só o proprietário com vínculo ativo pode creditar; para os demais o backend sempre recusaria.
+  const canDeposit = canAddSimulatedBalance(user)
+
+  return (
+    <div className="flex flex-col gap-3">
+      <BalanceCard state={state} onRetry={retry} />
+      {canDeposit && (
+        <Button
+          type="button"
+          variant="secondary"
+          label="Adicionar saldo"
+          disabled={state.status !== 'ready'}
+          onClick={() => setDepositing(true)}
+        />
+      )}
+      {depositing && (
+        <SimulatedDepositDialog
+          onDeposited={() => {
+            setDepositing(false)
+            retry()
+          }}
+          onClose={() => setDepositing(false)}
+        />
+      )}
+    </div>
+  )
 }
 
 function VolumeCard({ filters, admin }: { filters: Filters; admin: boolean }) {

@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { getBalance } from '@/features/dashboard/api/balance'
+import { addSimulatedBalance, getBalance } from '@/features/dashboard/api/balance'
 import { saveLoginToken } from '@/shared/http/authToken'
 import { ApiError } from '@/shared/http/httpClient'
 
-describe('getBalance', () => {
+describe('balance API', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     sessionStorage.clear()
@@ -40,5 +40,22 @@ describe('getBalance', () => {
 
     await expect(getBalance()).rejects.toMatchObject({ status })
     await expect(getBalance()).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('posts the simulated deposit and returns the updated balance', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ availableBalanceBrl: '120.50' })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(addSimulatedBalance('20.50')).resolves.toBe('120.50')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/v1/balance/simulated-deposits',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ amount: '20.50' }),
+      }),
+    )
   })
 })

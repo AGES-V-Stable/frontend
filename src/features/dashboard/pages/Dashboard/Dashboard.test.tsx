@@ -2,7 +2,36 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { Dashboard } from './Dashboard'
+import { useSession } from '@/features/auth'
+import type { User } from '@/features/auth'
 import { settlementsSchema } from '@/features/dashboard/api/dashboard'
+
+vi.mock('@/features/auth', () => ({ useSession: vi.fn() }))
+
+const sessionUser = (role: 'OWNER' | 'OPERATOR' | 'VIEWER' = 'OWNER'): User => ({
+  id: 'u1',
+  name: 'Ana',
+  email: 'ana@empresa.test',
+  companyId: 'c1',
+  accountType: 'USER',
+  roles: [],
+  companyAccess: {
+    membershipId: 'm1',
+    companyId: 'c1',
+    role,
+    status: 'ACTIVE',
+    permissions: [],
+    version: 1,
+  },
+})
+const givenSession = (user: User | null) =>
+  vi.mocked(useSession).mockReturnValue({
+    status: 'authenticated',
+    user,
+    company: null,
+    error: null,
+    retry: vi.fn(),
+  })
 
 // Recharts não desenha no jsdom; o mock repassa os filhos e guarda as props de cada série e eixo.
 const chartProps = vi.hoisted(() => ({}) as Record<string, Record<string, unknown>[]>)
@@ -90,6 +119,7 @@ const calledUrls = (fetcher: ReturnType<typeof vi.fn>) =>
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-11-03T15:00:00Z'))
+  givenSession(sessionUser('OWNER'))
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -317,6 +347,79 @@ it('shows balance and transacted volume beside the accumulated savings for the c
   ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado'])
 })
 
+it('submits a simulated deposit in BRL and refreshes the displayed balance', async () => {
+  let balance = '25000.00'
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === '/v1/balance/simulated-deposits') balance = '25020.50'
+    if (url.startsWith('/v1/balance')) {
+      return new Response(JSON.stringify({ availableBalanceBrl: balance }))
+    }
+    return reply(url)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  renderDashboard()
+
+  await screen.findByText('R$ 25.000,00')
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
+  const amount = within(modal).getByLabelText('Valor do crédito simulado (R$)')
+  fireEvent.change(amount, { target: { value: '20,50' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo simulado' }))
+
+  expect(await screen.findByText('R$ 25.020,50')).toBeInTheDocument()
+  expect(modal).not.toBeInTheDocument()
+  expect(fetcher).toHaveBeenCalledWith(
+    '/v1/balance/simulated-deposits',
+    expect.objectContaining({ method: 'POST', body: JSON.stringify({ amount: '20.50' }) }),
+  )
+})
+
+it('keeps the entered amount and explains why the deposit was rejected', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url === '/v1/balance/simulated-deposits'
+        ? new Response(JSON.stringify({ code: 'KYC_NOT_APPROVED', message: 'x' }), { status: 403 })
+        : reply(url),
+    ),
+  )
+  renderDashboard()
+
+  await screen.findByText('R$ 25.000,00')
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
+  const amount = within(modal).getByLabelText('Valor do crédito simulado (R$)')
+  fireEvent.change(amount, { target: { value: '20,50' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo simulado' }))
+
+  expect(await within(modal).findByRole('alert')).toHaveTextContent(
+    'Conclua a verificação de identidade para adicionar saldo.',
+  )
+  expect(amount).toHaveValue('20,50')
+  expect(screen.getByText('R$ 25.000,00')).toBeInTheDocument()
+  fireEvent.click(within(modal).getByRole('button', { name: 'Cancelar' }))
+  expect(modal).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const reopened = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
+  expect(within(reopened).getByLabelText('Valor do crédito simulado (R$)')).toHaveValue('')
+  expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument()
+})
+
+it.each(['OPERATOR', 'VIEWER'] as const)(
+  'does not offer the simulated deposit to the %s, who could never confirm it',
+  async (role) => {
+    givenSession(sessionUser(role))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => reply(url)),
+    )
+    renderDashboard()
+
+    expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Adicionar saldo' })).not.toBeInTheDocument()
+  },
+)
+
 it('shows the consolidated transacted volume to the administrator, without the balance', async () => {
   const fetcher = vi.fn(async (url: string) => reply(url))
   vi.stubGlobal('fetch', fetcher)
@@ -324,6 +427,7 @@ it('shows the consolidated transacted volume to the administrator, without the b
 
   expect(await screen.findByText('R$ 5.022,50')).toBeInTheDocument()
   expect(screen.queryByText('Saldo Disponível')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Adicionar saldo' })).not.toBeInTheDocument()
   expect(calledUrls(fetcher)).toContain(`/v1/admin/dashboard/transaction-volume?${DEFAULT_PERIOD}`)
   expect(calledUrls(fetcher).some((url) => url === '/v1/balance')).toBe(false)
 })
