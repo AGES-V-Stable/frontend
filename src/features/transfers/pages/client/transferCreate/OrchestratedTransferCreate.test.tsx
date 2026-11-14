@@ -39,6 +39,7 @@ const bank: Beneficiary = {
   legalName: 'Fornecedor Internacional',
   receivingMethod: 'BANK_ACCOUNT',
   currency: 'USD',
+  paymentRail: 'wire',
   blockchainNetwork: null,
 }
 
@@ -112,7 +113,8 @@ describe('OrchestratedTransferCreate', () => {
     const user = userEvent.setup()
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
-    await user.selectOptions(screen.getByLabelText('Modalidade bancária cadastrada'), 'international_swift')
+    expect(screen.queryByLabelText('Modalidade bancária cadastrada')).not.toBeInTheDocument()
+    expect(screen.getByText(/Modalidade bancária cadastrada: wire/i)).toBeVisible()
     await user.selectOptions(screen.getByLabelText('Rede'), 'ethereum')
     await user.selectOptions(screen.getByLabelText('Valor informado em'), 'TARGET')
     await user.type(screen.getByLabelText('Valor'), '200,50')
@@ -122,7 +124,7 @@ describe('OrchestratedTransferCreate', () => {
       expect.objectContaining({
         beneficiaryId: bank.id,
         targetCurrency: 'USD',
-        targetPaymentMethod: 'international_swift',
+        targetPaymentMethod: 'wire',
         token: 'USDC',
         blockchainNetwork: 'ethereum',
         amount: 200.5,
@@ -135,6 +137,13 @@ describe('OrchestratedTransferCreate', () => {
 
   it('does not guess SWIFT for a bank beneficiary when the registered rail is unknown', async () => {
     const user = userEvent.setup()
+    vi.mocked(getCompanyBeneficiaries).mockResolvedValueOnce({
+      content: [{ ...bank, paymentRail: undefined }],
+      totalElements: 1,
+      totalPages: 1,
+      number: 0,
+      size: 100,
+    })
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
     await user.type(screen.getByLabelText('Valor'), '1000')
@@ -155,7 +164,6 @@ describe('OrchestratedTransferCreate', () => {
     const user = userEvent.setup()
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
-    await user.selectOptions(screen.getByLabelText('Modalidade bancária cadastrada'), 'international_swift')
     await user.type(screen.getByLabelText('Valor'), '1000')
     await user.click(screen.getByRole('button', { name: 'Consultar melhor oferta' }))
     expect(await screen.findByTestId('authorization')).toBeInTheDocument()
@@ -176,7 +184,6 @@ describe('OrchestratedTransferCreate', () => {
     )
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
-    await user.selectOptions(screen.getByLabelText('Modalidade bancária cadastrada'), 'international_swift')
     await user.type(screen.getByLabelText('Valor'), '1000')
     await user.click(screen.getByRole('button', { name: 'Consultar melhor oferta' }))
     await user.clear(screen.getByLabelText('Valor'))
@@ -189,7 +196,6 @@ describe('OrchestratedTransferCreate', () => {
     vi.mocked(requestOrchestratedQuote).mockRejectedValue(new Error('confidential provider error'))
     render(<OrchestratedTransferCreate />)
     await user.selectOptions(await screen.findByLabelText('Beneficiário'), bank.id)
-    await user.selectOptions(screen.getByLabelText('Modalidade bancária cadastrada'), 'international_swift')
     await user.type(screen.getByLabelText('Valor'), '1000')
     await user.click(screen.getByRole('button', { name: 'Consultar melhor oferta' }))
     const alert = await screen.findByRole('alert')
