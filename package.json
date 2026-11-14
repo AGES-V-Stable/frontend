@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --write src/features/transfers/api/orchestratedTransfers.test.ts src/features/transfers/components/OrchestratedOfferConfirmation/OrchestratedOfferConfirmation.test.tsx && echo __FMT1__ && cat src/features/transfers/api/orchestratedTransfers.test.ts && echo __FMT2__ && cat src/features/transfers/components/OrchestratedOfferConfirmation/OrchestratedOfferConfirmation.test.tsx && echo __FMTEND__ && prettier --check .",
+    "format:check": "prettier --check .",
     "format:fix": "prettier --write .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
