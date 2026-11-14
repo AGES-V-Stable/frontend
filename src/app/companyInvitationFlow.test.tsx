@@ -214,7 +214,7 @@ describe('company invitation flow with the application routes', () => {
     expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeVisible()
     expect(await screen.findByText('Mariana Costa')).toBeInTheDocument()
     expect(screen.getByTestId('current-path')).toHaveTextContent(/^\/app\/membros$/)
-    expect(screen.getByText('Cooperativa AgroSul')).toBeInTheDocument()
+    expect(screen.getAllByText('Cooperativa AgroSul')[0]).toBeInTheDocument()
     expect(screen.queryByText('Carregando dashboard...')).not.toBeInTheDocument()
   })
 })
