@@ -96,6 +96,52 @@ describe('MockTopUp', () => {
     expect(retry).not.toHaveBeenCalled()
   })
 
+  it('locks out another credit after an uncertain network result and refreshes the balance', async () => {
+    addCredit.mockRejectedValue(new HttpError('network unavailable', 0, {}, 'NETWORK_ERROR'))
+    render(<MockTopUp />)
+    await userEvent.type(amount(), '10,25')
+    await userEvent.click(submit())
+
+    expect(
+      await screen.findByText(/não foi possível confirmar se o crédito já foi registrado/i),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Confirmar crédito simulado' })).toBeDisabled()
+    expect(amount()).toBeDisabled()
+    expect(retry).toHaveBeenCalledTimes(1)
+    expect(addCredit).toHaveBeenCalledTimes(1)
+    expect(screen.getByText(/confira o saldo atualizado/i)).toBeVisible()
+  })
+
+  it('does not permit repeat credit after server 5xx or malformed accepted response', async () => {
+    for (const failure of [new HttpError('upstream error', 502), new Error('invalid response')]) {
+      addCredit.mockRejectedValue(failure)
+      const view = render(<MockTopUp />)
+      await userEvent.type(amount(), '10,25')
+      await userEvent.click(submit())
+      expect(
+        await screen.findByText(/não foi possível confirmar se o crédito já foi registrado/i),
+      ).toBeVisible()
+      expect(submit()).toBeDisabled()
+      expect(addCredit).toHaveBeenCalledTimes(1)
+      view.unmount()
+      addCredit.mockClear()
+    }
+  })
+
+  it('allows correction and retry after an explicit validation rejection', async () => {
+    addCredit
+      .mockRejectedValueOnce(new HttpError('invalid amount', 400, {}, 'VALIDATION_ERROR'))
+      .mockResolvedValueOnce({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' })
+    render(<MockTopUp />)
+    await userEvent.type(amount(), '10,25')
+    await userEvent.click(submit())
+    expect(await screen.findByText(/informe um valor positivo/i)).toBeVisible()
+    expect(submit()).toBeEnabled()
+    await userEvent.click(submit())
+    expect(await screen.findByRole('status')).toHaveTextContent('12,75')
+    expect(addCredit).toHaveBeenCalledTimes(2)
+  })
+
   it('blocks duplicate submission while the request is pending', async () => {
     addCredit.mockReturnValue(new Promise(() => undefined))
     render(<MockTopUp />)
