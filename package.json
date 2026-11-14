@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --write src/features/dashboard/pages/MockTopUp/MockTopUp.tsx src/features/dashboard/pages/MockTopUp/MockTopUp.test.tsx && echo __FMT_A__ && cat src/features/dashboard/pages/MockTopUp/MockTopUp.tsx && echo __FMT_B__ && cat src/features/dashboard/pages/MockTopUp/MockTopUp.test.tsx && echo __FMT_END__ && prettier --check .",
+    "format:check": "prettier --check .",
     "format:fix": "prettier --write .",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
