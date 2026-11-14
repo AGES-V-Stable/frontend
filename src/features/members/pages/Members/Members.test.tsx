@@ -749,9 +749,10 @@ describe('Members — consulta do próprio acesso', () => {
       url === OWN_URL ? new Promise<Response>((resolve) => (release = resolve)) : undefined
     renderMembers()
 
-    expect(await screen.findByText('Carregando seu acesso...')).toBeInTheDocument()
-    // A consulta parte de um efeito, logo após o aviso de carregamento aparecer.
+    // Aguarda a sessão e a consulta do próprio vínculo; o primeiro aviso de
+    // carregamento pertence à sessão e pode ser substituído antes da asserção.
     await waitFor(() => expect(calls('GET', /\/members\/me$/)).toHaveLength(1))
+    expect(screen.getByText('Carregando seu acesso...')).toBeInTheDocument()
     await act(async () => release(json(newMember('m1', 'Marina Costa', 'OPERATOR'))))
 
     expect(await screen.findByRole('region', { name: 'Seu acesso à empresa' })).toBeInTheDocument()
