@@ -53,7 +53,7 @@ const offer = {
     totalFee: 2.5,
     expiresAt: '2099-01-01T00:00:00Z',
   },
-}
+} as const
 
 describe('OrchestratedTransferCreate', () => {
   beforeEach(() => {
