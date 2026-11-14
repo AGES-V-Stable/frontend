@@ -9,9 +9,7 @@ import { Button } from '@/shared/components/Button'
 import { formatMoney, parseDecimalInput } from '@/shared/utils/formatters'
 
 type BeneficiaryState =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; items: Beneficiary[] }
+  { status: 'loading' } | { status: 'error' } | { status: 'ready'; items: Beneficiary[] }
 
 const TOKENS = ['USDC', 'USDT'] as const
 const NETWORKS = ['polygon', 'ethereum', 'base'] as const
@@ -297,7 +295,9 @@ export function OrchestratedTransferCreate() {
           onClick={() => void requestQuote()}
         />
         {quoteError && (
-          <p role="alert" className="text-sm text-red-700">{quoteError}</p>
+          <p role="alert" className="text-sm text-red-700">
+            {quoteError}
+          </p>
         )}
       </section>
 
