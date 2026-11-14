@@ -210,7 +210,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
       )}
 
       {errorMessage && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-red-700">
           {errorMessage}
         </p>
       )}

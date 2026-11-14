@@ -82,7 +82,7 @@ export function NavBar({ logo, items, activeId, account, footerItems }: NavBarPr
               {account.name}
             </p>
             <p
-              className="truncate text-[11px] font-medium text-sage-800/70"
+              className="truncate text-[11px] font-medium text-sage-600"
               title={account.description}
             >
               {account.description}

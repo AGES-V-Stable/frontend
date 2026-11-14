@@ -84,7 +84,7 @@ export function BeneficiaryCreate() {
     <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 px-4 py-8 md:px-8">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-slate-900">Cadastrar beneficiário</h1>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-600">
           Adicione os dados de quem poderá receber dinheiro pela V-Stable.
         </p>
       </header>

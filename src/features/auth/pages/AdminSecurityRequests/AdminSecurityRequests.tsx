@@ -94,7 +94,7 @@ export function AdminSecurityRequests() {
             Solicitações de Segurança (Reset de 2FA)
           </h1>
         </div>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-600">
           Analise e aprove pedidos de recuperação de acesso para usuários que perderam seu
           autenticador e códigos de emergência.
         </p>
@@ -176,7 +176,7 @@ export function AdminSecurityRequests() {
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-slate-500 text-sm">
+        <div className="p-8 text-center text-slate-600 text-sm">
           Carregando solicitações de segurança...
         </div>
       ) : filteredRequests.length === 0 ? (
@@ -194,7 +194,7 @@ export function AdminSecurityRequests() {
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <span className="font-bold text-slate-900 text-base">{req.userName}</span>
                   {req.companyName && (
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                    <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
                       {req.companyName}
                     </span>
                   )}

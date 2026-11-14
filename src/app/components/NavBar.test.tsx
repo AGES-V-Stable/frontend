@@ -27,4 +27,13 @@ describe('NavBar', () => {
     expect(screen.getByRole('button', { name: 'Dashboard' })).not.toHaveClass('text-primary')
     expect(screen.getByRole('button', { name: 'Beneficiários' })).toHaveClass('text-slate-500')
   })
+
+  it('shows the account description in sage-600, which reaches 4.5:1 on the white menu', () => {
+    // Given o menu com a conta "Atlas"
+    renderNavBar('dashboard')
+
+    // Then a descrição da conta usa a cor sólida, sem a transparência que baixava o contraste
+    expect(screen.getByText('Conta empresarial')).toHaveClass('text-sage-600')
+    expect(screen.getByText('Conta empresarial')).not.toHaveClass('text-sage-800/70')
+  })
 })

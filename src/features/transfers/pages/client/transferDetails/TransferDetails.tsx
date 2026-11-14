@@ -112,7 +112,7 @@ interface ReceiptState {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <dt className="text-sm text-slate-500">{label}</dt>
+      <dt className="text-sm text-slate-600">{label}</dt>
       <dd className="text-sm text-slate-900">{children}</dd>
     </div>
   )
@@ -212,7 +212,7 @@ export function TransferDetails({ closeTo = PATHS.TRANSFERS }: TransferDetailsPr
   return (
     <div className="mx-auto flex w-full max-w-[1684px] flex-col gap-1 px-4 py-8 md:px-12">
       <h1 className="text-xl font-bold text-slate-900">Transferências</h1>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-600">
         Consulta dos detalhes de uma transferência da empresa.
       </p>
 
@@ -313,7 +313,7 @@ function DetailsContent({
       <section aria-labelledby="transfer-costs-title" className="rounded-xl bg-blue-50 p-4">
         <h3
           id="transfer-costs-title"
-          className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500"
+          className="text-xs font-medium uppercase tracking-[0.08em] text-slate-600"
         >
           Cotação e custos
         </h3>
@@ -344,7 +344,7 @@ function DetailsContent({
             )}
           </dl>
         ) : (
-          <p className="mt-3 text-sm text-slate-500">
+          <p className="mt-3 text-sm text-slate-600">
             Informações de cotação e custos indisponíveis.
           </p>
         )}

@@ -156,7 +156,7 @@ export function ComplianceStatusCard({
             <h2 className="text-[16px] text-slate-900 font-bold">
               Análise de compliance em andamento
             </h2>
-            <p className="text-[14px] text-slate-500 font-regular">
+            <p className="text-[14px] text-slate-600 font-regular">
               Não é necessário reenviar documentos neste momento.
             </p>
           </div>
@@ -226,7 +226,7 @@ export function ComplianceStatusCard({
           </p>
           <div className="bg-emerald-50 border border-primary rounded-[16px] w-[600px] h-[96px] p-4">
             <h2 className="text-[16px] text-slate-900 font-bold">Conta liberada</h2>
-            <p className="text-[14px] text-slate-500 font-regular">
+            <p className="text-[14px] text-slate-600 font-regular">
               Você já pode acessar os recursos disponíveis para a sua empresa.
             </p>
           </div>
@@ -239,7 +239,7 @@ export function ComplianceStatusCard({
       return (
         <div className="flex flex-col gap-y-5 items-center justify-center py-[61px] px-[70px] bg-white rounded-[16px] border border-sage-300">
           <img className="p-[22px] bg-red-50 rounded-full" src={closeIcon} alt="Não aprovado" />
-          <p className="text-[14px] font-medium py-[7px] px-[14px] text-red-600 bg-red-50 rounded-[16px]">
+          <p className="text-[14px] font-medium py-[7px] px-[14px] text-red-700 bg-red-50 rounded-[16px]">
             Não aprovado
           </p>
           <h1 className="text-[32px] text-slate-900 font-bold">Cadastro não aprovado</h1>
@@ -249,7 +249,7 @@ export function ComplianceStatusCard({
           </p>
           <div className="bg-red-50 border border-red-600 rounded-[16px] w-[600px] h-[96px] p-4">
             <h2 className="text-[16px] text-slate-900 font-bold">Ação necessária</h2>
-            <p className="text-[14px] text-slate-500 font-regular">
+            <p className="text-[14px] text-slate-600 font-regular">
               Revise os dados e documentos indicados pela auditoria antes de reenviar.
             </p>
           </div>

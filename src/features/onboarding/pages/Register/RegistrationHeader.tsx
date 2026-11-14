@@ -18,7 +18,7 @@ export function RegistrationHeader({
         <h1 className="mt-2 flex min-h-10 items-center text-2xl font-bold text-slate-900">
           Cadastro Institucional
         </h1>
-        <p className="mt-1 flex min-h-7 items-center text-xs text-slate-500">{description}</p>
+        <p className="mt-1 flex min-h-7 items-center text-xs text-slate-600">{description}</p>
       </header>
 
       <Stepper steps={steps} activeStep={activeStep} className="max-w-[1070px]" />
