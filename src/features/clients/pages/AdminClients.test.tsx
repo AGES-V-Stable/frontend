@@ -24,7 +24,10 @@ describe('AdminClients page', () => {
     await renderAdminClients()
 
     expect(screen.getByText(/^· \d+ clientes$/)).toBeInTheDocument()
-    expect(screen.getByText(/de \d+ clientes$/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/^Mostrando \d+-\d+ de \d+ clientes$/, { selector: 'div' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/^Mostrando \d+-\d+ de \d+ clientes$/)
   })
 
   it('shows only clients that match the company filter', async () => {
@@ -73,14 +76,14 @@ describe('AdminClients page', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Filtrar' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Nenhum cliente encontrado')
+    expect(screen.getByText(/Nenhum cliente encontrado/).closest('[role="status"]')).not.toBeNull()
   })
 
   it('opens a drawer with the selected client details', async () => {
     const user = userEvent.setup()
     await renderAdminClients()
 
-    await user.click(screen.getAllByRole('button', { name: 'Ver detalhes' })[0])
+    await user.click(screen.getByRole('button', { name: 'Ver detalhes: Cooperativa AgroSul' }))
 
     const dialog = screen.getByRole('dialog')
 

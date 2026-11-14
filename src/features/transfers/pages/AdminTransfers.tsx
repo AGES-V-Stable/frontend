@@ -176,6 +176,7 @@ function AdminTransfers() {
               <Table
                 title="Todas as transferências"
                 entityLabel="transferências"
+                rowLabel={(transfer) => `${transfer.empresa} para ${transfer.beneficiario}`}
                 totalRecords={totalItems > 0 ? totalItems : undefined}
                 columns={columns}
                 data={transfers}

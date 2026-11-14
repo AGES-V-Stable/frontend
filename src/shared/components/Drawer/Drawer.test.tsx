@@ -52,9 +52,25 @@ describe('Drawer', () => {
       </Drawer>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Fechar drawer' }))
+    await user.click(screen.getByTestId('drawer-overlay'))
 
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the overlay out of the tab order and hidden from assistive technology', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <Drawer open={true} title="Test Drawer" onClose={vi.fn()}>
+        <p>Drawer content</p>
+      </Drawer>,
+    )
+
+    expect(screen.getByTestId('drawer-overlay')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.queryByRole('button', { name: 'Fechar drawer' })).not.toBeInTheDocument()
+
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Fechar' })).toHaveFocus()
   })
 
   it('renders actions when provided', () => {

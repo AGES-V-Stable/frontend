@@ -1058,8 +1058,13 @@ describe('Members — copiar link do convite pendente', () => {
     await within(await screen.findByRole('table')).findByText('Diana Reis')
     await user.click(within(row('Diana Reis')).getByRole('button', { name: 'Copiar link' }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Link copiado. Envie para Diana Reis.',
+    // A tabela também tem uma região de status (resumo da lista); procura a da cópia.
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('status')
+          .some((status) => status.textContent?.includes('Link copiado. Envie para Diana Reis.')),
+      ).toBe(true),
     )
     expect(writeText).toHaveBeenLastCalledWith(inviteUrl('token-2'))
 

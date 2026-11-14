@@ -14,6 +14,9 @@ function Input({
   const generatedId = useId()
   const inputId = id ?? generatedId
   const errorId = error ? `${inputId}-error` : undefined
+  // O prefixo (ex.: moeda) é visual; entra na descrição para o leitor de tela também ouvi-lo.
+  const prefixId = prefix ? `${inputId}-prefix` : undefined
+  const describedBy = [prefixId, errorId].filter(Boolean).join(' ') || undefined
   const inside = labelPlacement === 'inside' && !!label && !prefix
 
   const field = (
@@ -22,7 +25,7 @@ function Input({
       {...inputProps}
       id={inputId}
       aria-invalid={!!error}
-      aria-describedby={errorId}
+      aria-describedby={describedBy}
       style={
         prefix
           ? { paddingLeft: `calc(1.25rem + ${prefix.length}ch)`, ...style }
@@ -53,7 +56,10 @@ function Input({
         </div>
       ) : prefix ? (
         <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-primary">
+          <span
+            id={prefixId}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-primary"
+          >
             {prefix}
           </span>
           {field}
