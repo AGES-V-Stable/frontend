@@ -190,6 +190,7 @@ describe('company invitation flow with the application routes', () => {
       [RESOLVE]: json(existingUserInvitation),
       [ME]: () => json(accepted ? userWithMembership : userWithoutCompany),
       [COMPANY]: json(companyProfile),
+      [`GET /v1/companies/${companyProfile.id}/members/me`]: json(acceptedMember),
       [ACCEPT]: () => {
         accepted = true
         return json(acceptedMember)
@@ -210,9 +211,8 @@ describe('company invitation flow with the application routes', () => {
 
     // Then the members page of frontend#109 opens inside the company shell
     expect(await screen.findByRole('heading', { name: 'Membros' })).toBeInTheDocument()
-    expect(
-      screen.getByText('A gestão de membros é exclusiva do proprietário da empresa.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Seu acesso à empresa' })).toBeVisible()
+    expect(await screen.findByText('Mariana Costa')).toBeInTheDocument()
     expect(screen.getByTestId('current-path')).toHaveTextContent(/^\/app\/membros$/)
     expect(screen.getByText('Cooperativa AgroSul')).toBeInTheDocument()
     expect(screen.queryByText('Carregando dashboard...')).not.toBeInTheDocument()
