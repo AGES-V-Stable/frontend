@@ -7,6 +7,7 @@ import { useBalance } from '@/features/dashboard/hooks/useBalance'
 import {
   canAddSimulatedBalance,
   describeSimulatedDepositError,
+  isUncertainSimulatedDepositOutcome,
 } from '@/features/dashboard/utils/simulatedDeposit'
 import { normalizeMockTopUp, projectedMockBalance } from '@/features/dashboard/utils/mockTopUp'
 import { Button } from '@/shared/components/Button'
@@ -26,6 +27,7 @@ export function MockTopUp() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [requiresReconciliation, setRequiresReconciliation] = useState(false)
   const inFlight = useRef(false)
   const permitted = canAddSimulatedBalance(user)
   const credit = normalizeMockTopUp(amount)
@@ -34,7 +36,7 @@ export function MockTopUp() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (inFlight.current || !permitted || state.status !== 'ready') return
+    if (inFlight.current || requiresReconciliation || !permitted || state.status !== 'ready') return
     if (!credit) {
       setError('Informe um valor positivo em BRL, com até duas casas decimais.')
       return
@@ -58,6 +60,12 @@ export function MockTopUp() {
       retry()
     } catch (cause) {
       setError(describeSimulatedDepositError(cause))
+      if (isUncertainSimulatedDepositOutcome(cause)) {
+        // Não podemos assumir que um erro de rede significa que o crédito foi revertido.
+        // Uma nova tentativa com o mesmo valor poderia duplicar o saldo.
+        setRequiresReconciliation(true)
+        retry()
+      }
     } finally {
       inFlight.current = false
       setSubmitting(false)
@@ -107,7 +115,7 @@ export function MockTopUp() {
             inputMode="decimal"
             autoComplete="off"
             placeholder="0,00"
-            disabled={submitting}
+            disabled={submitting || requiresReconciliation}
             error={error ?? undefined}
           />
           <div className="grid gap-4 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
@@ -120,6 +128,13 @@ export function MockTopUp() {
               <p className="font-mono font-semibold">{projected ? formatBrl(projected) : '—'}</p>
             </div>
           </div>
+          {requiresReconciliation && (
+            <p role="alert" className="text-sm text-amber-900">
+              Não foi possível confirmar se o crédito já foi registrado. Confira o saldo
+              atualizado e procure o suporte antes de solicitar outro crédito. Para evitar
+              duplicidade, esta tela não permite uma nova tentativa agora.
+            </p>
+          )}
           {success && (
             <p role="status" className="text-sm text-emerald-800">
               {success}
@@ -137,7 +152,7 @@ export function MockTopUp() {
             <Button
               type="submit"
               label={submitting ? 'Adicionando...' : 'Confirmar crédito simulado'}
-              disabled={submitting || state.status !== 'ready'}
+              disabled={submitting || requiresReconciliation || state.status !== 'ready'}
               className="sm:!w-auto"
             />
           </div>
