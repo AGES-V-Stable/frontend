@@ -337,6 +337,9 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path={PATHS.HOME} element={<RoleLanding />} />
+      {import.meta.env.DEV && (
+        <Route path="/dev/blindpay/complementar" element={<BlindPayComplement />} />
+      )}
       <Route element={<RoleGuard role="ADMIN" />}>
         <Route element={<RoutedApplication />}>
           <Route path={PATHS.ADMIN_DASHBOARD} element={<DashboardRoute admin />} />
