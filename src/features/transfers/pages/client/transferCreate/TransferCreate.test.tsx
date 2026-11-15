@@ -352,17 +352,34 @@ describe('TransferCreate', () => {
     expect(createTransfer).not.toHaveBeenCalled()
   })
 
-  it('blocks advancing from Passo 0 when the beneficiary is cleared after quoting', async () => {
-    // Given uma cotação feita com o beneficiário escolhido
+  it('blocks advancing from Passo 0 while no beneficiary is chosen', async () => {
+    // Given o formulário recém-aberto
     await renderPage()
-    chooseBeneficiary()
-    await typeSourceAmount('125000')
 
-    // When o usuário volta o beneficiário para "Selecione"
-    fireEvent.change(beneficiarySelect(), { target: { value: '' } })
-
-    // Then não dá para continuar
+    // Then não dá para continuar sem beneficiário
+    expect(beneficiarySelect()).toHaveValue('')
     expect(continueButton()).toBeDisabled()
+  })
+
+  it('keeps "Selecione" out of the option lists of both selects', async () => {
+    // Given o formulário recém-aberto
+    await renderPage()
+
+    // Then o beneficiário abre mostrando "Selecione", e o método já vem com a única opção
+    expect(beneficiarySelect()).toHaveValue('')
+    const paymentMethod = screen.getByLabelText('Método de Pagamento*')
+    expect(paymentMethod).toHaveValue('ACCOUNT_BALANCE')
+
+    // And o texto "Selecione" não pode ser escolhido na lista de nenhum dos dois
+    for (const [select, text] of [
+      [paymentMethod, 'Selecione o método de pagamento'],
+      [beneficiarySelect(), 'Selecione o beneficiário'],
+    ] as const) {
+      const placeholder = select.querySelector('option[value=""]')
+      expect(placeholder).toHaveTextContent(text)
+      expect(placeholder).toBeDisabled()
+      expect(placeholder).toHaveAttribute('hidden')
+    }
   })
 
   it('displays consolidated data correctly in Passo 1 (Revisão)', async () => {

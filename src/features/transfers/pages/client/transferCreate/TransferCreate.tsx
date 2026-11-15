@@ -18,6 +18,19 @@ const FIELD_CLASS =
 const SOURCE_CURRENCY = 'BRL'
 // Moeda usada enquanto nenhum beneficiário com moeda cadastrada foi escolhido (BRL → USD no Figma).
 
+// A seta nativa fica colada na borda; esta tem recuo próprio e o texto não passa por baixo dela.
+const SELECT_CLASS = `${FIELD_CLASS} h-12 appearance-none pr-10`
+const SELECT_CHEVRON = (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 20 20"
+    fill="currentColor"
+    className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-slate-600"
+  >
+    <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" />
+  </svg>
+)
+
 const PAYMENT_METHODS: { value: TransferPaymentMethod; label: string }[] = [
   { value: 'ACCOUNT_BALANCE', label: 'Saldo em Conta' },
 ]
@@ -214,51 +227,60 @@ function LegacyTransferCreate() {
               <label htmlFor="transfer-paymentMethod" className="text-[14px] text-sage-800">
                 Método de Pagamento*
               </label>
-              <select
-                id="transfer-paymentMethod"
-                value={values.paymentMethod}
-                disabled={submitting}
-                onChange={(event) =>
-                  setValues((previous) => ({
-                    ...previous,
-                    paymentMethod:
-                      PAYMENT_METHODS.find((method) => method.value === event.target.value)
-                        ?.value ?? '',
-                  }))
-                }
-                className={`${FIELD_CLASS} h-12`}
-              >
-                <option value="">Selecione o método de pagamento</option>
-                {PAYMENT_METHODS.map((method) => (
-                  <option key={method.value} value={method.value}>
-                    {method.label}
+              <div className="relative">
+                <select
+                  id="transfer-paymentMethod"
+                  value={values.paymentMethod}
+                  disabled={submitting}
+                  onChange={(event) =>
+                    setValues((previous) => ({
+                      ...previous,
+                      paymentMethod:
+                        PAYMENT_METHODS.find((method) => method.value === event.target.value)
+                          ?.value ?? '',
+                    }))
+                  }
+                  className={SELECT_CLASS}
+                >
+                  {/* Texto de abertura: aparece com o campo fechado, mas não é uma opção da lista. */}
+                  <option value="" disabled hidden>
+                    Selecione o método de pagamento
                   </option>
-                ))}
-              </select>
+                  {PAYMENT_METHODS.map((method) => (
+                    <option key={method.value} value={method.value}>
+                      {method.label}
+                    </option>
+                  ))}
+                </select>
+                {SELECT_CHEVRON}
+              </div>
             </div>
 
             <div className="flex flex-col gap-1">
               <label htmlFor="transfer-beneficiaryId" className="text-[14px] text-sage-800">
                 Beneficiário*
               </label>
-              <select
-                id="transfer-beneficiaryId"
-                value={values.beneficiaryId}
-                disabled={submitting || beneficiaries.status !== 'ready'}
-                onChange={(event) => handleBeneficiaryChange(event.target.value)}
-                className={`${FIELD_CLASS} h-12`}
-              >
-                <option value="">
-                  {beneficiaries.status === 'loading'
-                    ? 'Carregando beneficiários...'
-                    : 'Selecione o beneficiário'}
-                </option>
-                {beneficiaryList.map((beneficiary) => (
-                  <option key={beneficiary.id} value={beneficiary.id}>
-                    {beneficiaryName(beneficiary)}
+              <div className="relative">
+                <select
+                  id="transfer-beneficiaryId"
+                  value={values.beneficiaryId}
+                  disabled={submitting || beneficiaries.status !== 'ready'}
+                  onChange={(event) => handleBeneficiaryChange(event.target.value)}
+                  className={SELECT_CLASS}
+                >
+                  <option value="" disabled hidden>
+                    {beneficiaries.status === 'loading'
+                      ? 'Carregando beneficiários...'
+                      : 'Selecione o beneficiário'}
                   </option>
-                ))}
-              </select>
+                  {beneficiaryList.map((beneficiary) => (
+                    <option key={beneficiary.id} value={beneficiary.id}>
+                      {beneficiaryName(beneficiary)}
+                    </option>
+                  ))}
+                </select>
+                {SELECT_CHEVRON}
+              </div>
               {beneficiaries.status === 'error' && (
                 <p role="alert" className="text-sm text-red-700">
                   Não foi possível carregar os beneficiários.
