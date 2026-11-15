@@ -6,7 +6,7 @@ import { Stepper } from '@/shared/components/Stepper'
 type UploadKind = 'selfie' | 'proof'
 type Step = 0 | 1 | 2 | 3
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024
+const MAX_FILE_SIZE = 3 * 1024 * 1024
 const PROOF_TYPES = [
   { value: 'electricity', label: 'Conta de energia' },
   { value: 'water', label: 'Conta de água' },
@@ -30,7 +30,7 @@ export function validateBlindPayUpload(file: File, kind: UploadKind): string | n
       : 'Envie um comprovante PDF, JPG ou PNG.'
   }
   if (file.size === 0) return 'O arquivo selecionado está vazio.'
-  if (file.size > MAX_FILE_SIZE) return 'O arquivo deve ter no máximo 10 MB.'
+  if (file.size > MAX_FILE_SIZE) return 'O arquivo deve ter no máximo 3 MB.'
   return null
 }
 
@@ -213,7 +213,7 @@ export function BlindPayComplement() {
               <UploadField
                 id="blindpay-selfie"
                 title="Foto selfie"
-                description="Envie uma foto do rosto. JPG ou PNG, até 10 MB. O ID de liveness da Avenia não substitui este arquivo."
+                description="Envie uma foto do rosto. JPG ou PNG, até 3 MB. O ID de liveness da Avenia não substitui este arquivo."
                 accept=".jpg,.jpeg,.png"
                 kind="selfie"
                 file={selfie}
@@ -259,7 +259,7 @@ export function BlindPayComplement() {
               <UploadField
                 id="blindpay-proof"
                 title="Arquivo do comprovante"
-                description="PDF, JPG ou PNG, até 10 MB."
+                description="PDF, JPG ou PNG, até 3 MB."
                 accept=".pdf,.jpg,.jpeg,.png"
                 kind="proof"
                 file={proof}
