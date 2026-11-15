@@ -262,7 +262,7 @@ describe('AppRoutes Navigation & Routing', () => {
     await user.type(screen.getByRole('textbox', { name: 'Razão Social *' }), company.razaoSocial)
     await user.type(screen.getByRole('textbox', { name: 'CNPJ *' }), company.cnpj)
     await user.type(screen.getByRole('textbox', { name: 'CEP *' }), company.cep)
-    await user.type(screen.getByRole('textbox', { name: 'Estado *' }), company.estado)
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Estado *' }), company.estado)
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(
@@ -478,7 +478,7 @@ describe('usuário autenticado sem empresa (backend#64)', () => {
     await user.type(screen.getByRole('textbox', { name: 'Razão Social *' }), company.razaoSocial)
     await user.type(screen.getByRole('textbox', { name: 'CNPJ *' }), company.cnpj)
     await user.type(screen.getByRole('textbox', { name: 'CEP *' }), company.cep)
-    await user.type(screen.getByRole('textbox', { name: 'Estado *' }), company.estado)
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Estado *' }), company.estado)
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
   }
 

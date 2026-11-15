@@ -57,10 +57,38 @@ describe('CompanyStep', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Informe um CEP com 8 dígitos.')
   })
 
+  it('picks the state from the same list as the representative step and sends its abbreviation', async () => {
+    // Given a etapa da empresa com os demais dados válidos e sem estado
+    const user = userEvent.setup()
+    const onContinue = vi.fn()
+    render(
+      <CompanyStep
+        initialValues={{ ...valid, estado: '' }}
+        onCancel={vi.fn()}
+        onContinue={onContinue}
+      />,
+    )
+    const state = screen.getByRole('combobox', { name: 'Estado *' })
+
+    // Then o estado é escolhido numa lista com as 27 unidades federativas
+    expect(state).toHaveValue('')
+    expect(
+      screen.getAllByRole('option').filter((option) => option.getAttribute('value')),
+    ).toHaveLength(27)
+
+    // When o usuário escolhe Rio Grande do Sul e continua
+    await user.selectOptions(state, 'Rio Grande do Sul')
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    // Then a sigla vai junto com os dados da empresa
+    expect(onContinue).toHaveBeenCalledWith(expect.objectContaining({ estado: 'RS' }))
+  })
+
   it('shows the design fields, default country and active step', () => {
     render(<CompanyStep onCancel={vi.fn()} onContinue={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'Cadastro Institucional' })).toBeInTheDocument()
-    expect(screen.getAllByRole('textbox')).toHaveLength(6)
+    expect(screen.getAllByRole('textbox')).toHaveLength(5)
+    expect(screen.getByRole('combobox', { name: 'Estado *' })).toHaveValue('')
     expect(screen.getByRole('textbox', { name: 'País *' })).toHaveValue('Brasil')
     expect(screen.getByText('Empresa').closest('li')).toHaveAttribute('aria-current', 'step')
     expect(screen.getByRole('textbox', { name: 'Cidade' })).not.toBeRequired()
