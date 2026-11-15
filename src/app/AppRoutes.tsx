@@ -48,7 +48,6 @@ import { PATHS, transferDetailsPath } from '@/shared/navigation/paths'
 import { maskCNPJ } from '@/shared/utils/masks'
 import { postLoginDestination } from './postLoginDestination'
 import { ApplicationShell } from './components/ApplicationShell'
-import { BlindPayKycAccess } from './components/BlindPayKycAccess'
 import { NavBar } from './components/NavBar'
 import type { NavigationItem } from './components/NavBar'
 import logo from '@/shared/assets/navigation/logo.png'
@@ -342,10 +341,7 @@ function DashboardRoute({ admin = false }: { admin?: boolean }) {
         </p>
       }
     >
-      <Dashboard
-        admin={admin}
-        blindPayAccess={admin ? undefined : <BlindPayKycAccess variant="dashboard" />}
-      />
+      <Dashboard admin={admin} />
     </Suspense>
   )
 }
@@ -401,16 +397,7 @@ export default function AppRoutes() {
       </Route>
       <Route element={<RoleGuard />}>
         <Route element={<RoutedApplication />}>
-          <Route
-            path={PATHS.SETTINGS}
-            element={
-              <Settings
-                blindPayAccess={
-                  isStoredAdmin() ? undefined : <BlindPayKycAccess variant="settings" />
-                }
-              />
-            }
-          />
+          <Route path={PATHS.SETTINGS} element={<Settings />} />
         </Route>
         <Route path={PATHS.COMPANY_SETUP} element={<CompanySetupRoute />} />
         <Route path={PATHS.BLINDPAY_KYC} element={<BlindPayComplement />} />
