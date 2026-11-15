@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { Button } from '@/shared/components/Button/Button'
 import type {
   ComplianceFormData,
@@ -54,12 +55,15 @@ interface ComplianceStepProps {
   onContinue: (data: ComplianceFormData) => Promise<void>
   saving?: boolean
   serverError?: string
+  /** Conteúdo exibido antes do envio, como o aceite dos termos do provedor. */
+  beforeSubmit?: ReactNode
 }
 
 export default function ComplianceStep({
   onContinue,
   saving = false,
   serverError = '',
+  beforeSubmit,
 }: ComplianceStepProps) {
   const [form, setForm] = useState<ComplianceFormData>({
     tipoDocumento: '',
@@ -270,6 +274,7 @@ export default function ComplianceStep({
               </ul>
             )}
 
+            {beforeSubmit && <div className="mb-6">{beforeSubmit}</div>}
             {serverError && (
               <p role="alert" className="mb-4 text-sm text-red-700">
                 {serverError}

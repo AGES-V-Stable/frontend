@@ -21,6 +21,7 @@ export function useRepresentativeSubmission(access?: AccessData, company?: Compa
           email: access.email,
           password: access.senha,
           confirmPassword: access.confirmarSenha,
+          termsVersion: access.termsVersion,
           cargoFuncao: representative.cargo_funcao,
           participacaoSocietaria: representative.participacao_societaria,
           cpf: representative.cpf,

@@ -10,7 +10,7 @@ import {
   type NewUserFormData,
   type NewUserFormErrors,
 } from '../../schemas/invitation'
-import { TermsConsent } from './TermsConsent'
+import { TermsConsent } from '@/shared/components/TermsConsent'
 
 interface NewUserAcceptanceFormProps {
   invitation: Invitation

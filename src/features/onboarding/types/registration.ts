@@ -3,6 +3,8 @@ export interface AccessData {
   email: string
   senha: string
   confirmarSenha: string
+  /** Versão dos termos aceitos; o aceite é obrigatório para avançar. */
+  termsVersion: string
 }
 
 export interface CompanyData {

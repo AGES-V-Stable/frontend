@@ -3,6 +3,8 @@ export interface RepresentativeAccessData {
   email: string
   password: string
   confirmPassword: string
+  /** Versão dos termos de uso e da política de privacidade aceitos na tela de acesso. */
+  termsVersion: string
 }
 
 export interface RepresentativePersonalData {

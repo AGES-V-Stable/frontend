@@ -1,30 +1,49 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/shared/components/Button/Button'
 import { Input } from '@/shared/components/Input/Input'
+import { TermsConsent } from '@/shared/components/TermsConsent'
 import { PATHS } from '@/shared/navigation/paths'
 import type { AccessData } from '@/features/onboarding/types/registration'
 import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
+import { getRegistrationTerms } from '@/features/onboarding/api/onboarding'
+import type { RegistrationTerms } from '@/features/onboarding/api/onboarding'
+
+type AccessForm = Omit<AccessData, 'termsVersion'>
+type AccessErrors = Partial<Record<keyof AccessForm | 'terms', string>>
 
 function Register() {
   const navigate = useNavigate()
   const locked = useRef(false)
-  const [form, setForm] = useState<AccessData>({
+  const [form, setForm] = useState<AccessForm>({
     nomeCompleto: '',
     email: '',
     senha: '',
     confirmarSenha: '',
   })
-  const [errors, setErrors] = useState<Partial<Record<keyof AccessData, string>>>({})
+  const [errors, setErrors] = useState<AccessErrors>({})
+  const [terms, setTerms] = useState<RegistrationTerms | null>(null)
+  const [termsFailed, setTermsFailed] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
-  function change(field: keyof AccessData, value: string) {
+  useEffect(() => {
+    const controller = new AbortController()
+    getRegistrationTerms(controller.signal)
+      .then(setTerms)
+      .catch(() => {
+        if (!controller.signal.aborted) setTermsFailed(true)
+      })
+    return () => controller.abort()
+  }, [])
+
+  function change(field: keyof AccessForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
   }
 
   function submit(event: React.FormEvent) {
     event.preventDefault()
-    const nextErrors: Partial<Record<keyof AccessData, string>> = {}
+    const nextErrors: AccessErrors = {}
     if (!form.nomeCompleto.trim()) nextErrors.nomeCompleto = 'Informe seu nome completo.'
     if (!/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(form.email.trim()))
       nextErrors.email = 'Informe um e-mail completo, como nome@empresa.com.br.'
@@ -32,14 +51,17 @@ function Register() {
       nextErrors.senha = 'Use ao menos 8 caracteres, um número e um caractere especial.'
     if (form.confirmarSenha !== form.senha)
       nextErrors.confirmarSenha = 'Senha e confirmação não coincidem.'
+    if (!termsAccepted)
+      nextErrors.terms = 'Aceite os termos de uso e a política de privacidade para continuar.'
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length || locked.current) return
+    if (Object.keys(nextErrors).length || !terms || locked.current) return
 
     // O cadastro só é efetivado no backend ao final da etapa de representante
     // (submitOnboarding, chamada única); até lá os dados ficam só no estado de
     // navegação entre as páginas do wizard.
     locked.current = true
-    void navigate(PATHS.REGISTER_COMPANY, { state: { access: form } })
+    const access: AccessData = { ...form, termsVersion: terms.version }
+    void navigate(PATHS.REGISTER_COMPANY, { state: { access } })
   }
 
   return (
@@ -82,6 +104,23 @@ function Register() {
             error={errors.confirmarSenha}
             autoComplete="new-password"
           />
+          {terms ? (
+            <TermsConsent
+              terms={terms}
+              checked={termsAccepted}
+              onChange={(checked) => {
+                setTermsAccepted(checked)
+                setErrors((current) => ({ ...current, terms: undefined }))
+              }}
+              error={errors.terms}
+            />
+          ) : (
+            <p role={termsFailed ? 'alert' : 'status'} className="text-sm text-slate-600">
+              {termsFailed
+                ? 'Não foi possível carregar os termos de uso. Recarregue a página para continuar.'
+                : 'Carregando os termos de uso...'}
+            </p>
+          )}
           <div className="mt-2 grid gap-3 sm:grid-cols-2">
             <Link
               to={PATHS.LOGIN}

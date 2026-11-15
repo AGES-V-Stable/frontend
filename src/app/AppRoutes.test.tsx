@@ -23,6 +23,10 @@ const { submitOnboardingMock, registerCompanyMock } = vi.hoisted(() => ({
   submitOnboardingMock: vi.fn(),
   registerCompanyMock: vi.fn(),
 }))
+const { getAveniaTermsMock, acceptAveniaTermsMock } = vi.hoisted(() => ({
+  getAveniaTermsMock: vi.fn(),
+  acceptAveniaTermsMock: vi.fn(),
+}))
 const { startDocumentUploadMock, uploadFileToS3Mock, submitDocumentResultMock } = vi.hoisted(
   () => ({
     startDocumentUploadMock: vi.fn(),
@@ -33,7 +37,16 @@ const { startDocumentUploadMock, uploadFileToS3Mock, submitDocumentResultMock } 
 
 vi.mock('@/features/onboarding/api/onboarding', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/onboarding/api/onboarding')>()
-  return { ...actual, submitOnboarding: submitOnboardingMock, registerCompany: registerCompanyMock }
+  return {
+    ...actual,
+    submitOnboarding: submitOnboardingMock,
+    registerCompany: registerCompanyMock,
+    getRegistrationTerms: vi.fn().mockResolvedValue({
+      version: 'v1',
+      termsUrl: 'https://app.example.test/termos',
+      privacyUrl: 'https://app.example.test/privacidade',
+    }),
+  }
 })
 
 vi.mock('@/features/onboarding/api/compliance', async (importOriginal) => {
@@ -41,6 +54,8 @@ vi.mock('@/features/onboarding/api/compliance', async (importOriginal) => {
   return {
     ...actual,
     startDocumentUpload: startDocumentUploadMock,
+    getAveniaTerms: getAveniaTermsMock,
+    acceptAveniaTerms: acceptAveniaTermsMock,
     uploadFileToS3: uploadFileToS3Mock,
     submitDocumentResult: submitDocumentResultMock,
   }
@@ -53,6 +68,7 @@ const access = {
   email: 'maria@empresa.com',
   senha: 'segura123!',
   confirmarSenha: 'segura123!',
+  termsVersion: 'v1',
 }
 const company = {
   razaoSocial: 'Empresa Ltda.',
@@ -81,6 +97,9 @@ describe('AppRoutes Navigation & Routing', () => {
     startDocumentUploadMock.mockReset()
     uploadFileToS3Mock.mockReset()
     submitDocumentResultMock.mockReset()
+    // Por padrão os termos da Avenia já foram aceitos; o teste do aceite troca o retorno.
+    getAveniaTermsMock.mockReset().mockResolvedValue({ version: 2, accepted: true, documents: [] })
+    acceptAveniaTermsMock.mockReset()
   })
 
   afterEach(() => {
@@ -234,6 +253,7 @@ describe('AppRoutes Navigation & Routing', () => {
     await user.type(screen.getByLabelText('E-mail'), access.email)
     await user.type(screen.getByLabelText('Senha'), access.senha)
     await user.type(screen.getByLabelText('Confirmar senha'), access.confirmarSenha)
+    await user.click(await screen.findByRole('checkbox', { name: /Li e aceito/ }))
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(
@@ -260,7 +280,11 @@ describe('AppRoutes Navigation & Routing', () => {
 
     expect(await screen.findByText('Compliance e documentos')).toBeInTheDocument()
     expect(submitOnboardingMock).toHaveBeenCalledWith(
-      expect.objectContaining({ fullName: access.nomeCompleto, email: access.email }),
+      expect.objectContaining({
+        fullName: access.nomeCompleto,
+        email: access.email,
+        termsVersion: 'v1',
+      }),
       expect.objectContaining({ razaoSocial: company.razaoSocial }),
     )
 
@@ -269,6 +293,7 @@ describe('AppRoutes Navigation & Routing', () => {
       screen.getByTestId('file-input'),
       new File(['doc'], 'passaporte.pdf', { type: 'application/pdf' }),
     )
+    await screen.findByText('Termos da Avenia aceitos.')
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
     expect(await screen.findByText('Verificação facial')).toBeInTheDocument()
@@ -347,10 +372,58 @@ describe('AppRoutes Navigation & Routing', () => {
       screen.getByTestId('file-input'),
       new File(['2'], 'rg_verso.png', { type: 'image/png' }),
     )
+    await screen.findByText('Termos da Avenia aceitos.')
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
     expect(await screen.findByText('Verificação facial')).toBeInTheDocument()
     expect(uploadFileToS3Mock).toHaveBeenCalledTimes(2)
+  })
+
+  it('requires accepting the Avenia terms before sending the identity document', async () => {
+    const user = userEvent.setup({ delay: null })
+    getAveniaTermsMock.mockResolvedValue({
+      version: 2,
+      accepted: false,
+      documents: [
+        { key: 'TERMS_OF_USE', name: 'Terms of Use', url: 'https://docs.avenia.test/terms.pdf' },
+      ],
+    })
+    acceptAveniaTermsMock.mockResolvedValue({ version: 2, accepted: true, documents: [] })
+    startDocumentUploadMock.mockRejectedValueOnce(new Error('stop after terms'))
+
+    render(
+      <MemoryRouter initialEntries={[compliancePath(id)]}>
+        <SessionProvider>
+          <AppRoutes />
+        </SessionProvider>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('link', { name: 'Termos de uso' })).toHaveAttribute(
+      'href',
+      'https://docs.avenia.test/terms.pdf',
+    )
+    await user.selectOptions(screen.getByLabelText(/tipo de documento/i), 'PASSPORT')
+    await user.upload(
+      screen.getByTestId('file-input'),
+      new File(['1'], 'doc.pdf', { type: 'application/pdf' }),
+    )
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    expect(
+      screen.getByText(
+        'Aceite os termos de uso e a política de privacidade da Avenia para continuar.',
+      ),
+    ).toBeInTheDocument()
+    expect(startDocumentUploadMock).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('checkbox', { name: /termos de uso e a política de privacidade da Avenia/ }),
+    )
+    await user.click(screen.getByRole('button', { name: /continuar/i }))
+
+    await waitFor(() => expect(acceptAveniaTermsMock).toHaveBeenCalledWith(id, 2))
+    await waitFor(() => expect(startDocumentUploadMock).toHaveBeenCalled())
   })
 
   it('shows a generic error when the document upload fails', async () => {
@@ -370,6 +443,7 @@ describe('AppRoutes Navigation & Routing', () => {
       screen.getByTestId('file-input'),
       new File(['1'], 'doc.pdf', { type: 'application/pdf' }),
     )
+    await screen.findByText('Termos da Avenia aceitos.')
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(

@@ -4,7 +4,7 @@ import { acceptInvitation } from '../../api/companyInvitations'
 import { isLocallyHandled, useAcceptSubmission } from '../../hooks/useAcceptSubmission'
 import type { InvitationFailure } from '../../model/invitationFailure'
 import { TERMS_REQUIRED_MESSAGE, type Invitation } from '../../schemas/invitation'
-import { TermsConsent } from './TermsConsent'
+import { TermsConsent } from '@/shared/components/TermsConsent'
 
 interface ExistingUserAcceptanceProps {
   invitation: Invitation

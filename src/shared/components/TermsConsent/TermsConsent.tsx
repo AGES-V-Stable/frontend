@@ -1,8 +1,12 @@
 import { useId } from 'react'
-import type { Invitation } from '../../schemas/invitation'
+/** Endereços públicos dos termos de uso e da política de privacidade vigentes. */
+export interface TermsLinks {
+  termsUrl: string
+  privacyUrl: string
+}
 
 interface TermsConsentProps {
-  terms: Invitation['terms']
+  terms: TermsLinks
   checked: boolean
   onChange: (checked: boolean) => void
   error?: string

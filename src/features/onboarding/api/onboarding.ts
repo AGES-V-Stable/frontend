@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import {
   OnboardingResultSchema,
   CompanyRegistrationResultSchema,
@@ -55,6 +56,21 @@ export async function registerCompany(company: CompanyData) {
   )
 }
 
+const RegistrationTermsSchema = z.object({
+  version: z.string().min(1),
+  termsUrl: z.url(),
+  privacyUrl: z.url(),
+})
+
+export type RegistrationTerms = z.infer<typeof RegistrationTermsSchema>
+
+/** Termos de uso e política de privacidade vigentes, exigidos na criação da conta (público). */
+export async function getRegistrationTerms(signal?: AbortSignal): Promise<RegistrationTerms> {
+  return RegistrationTermsSchema.parse(
+    await httpRequest<unknown>(`${API_BASE}/onboarding/terms`, { signal }, false),
+  )
+}
+
 /**
  * Registra o representante e a empresa de uma vez (etapa única no backend,
  * chamada só ao final do wizard visual). Cria o usuário, a empresa e a
@@ -69,6 +85,9 @@ export async function submitOnboarding(representative: RepresentativeData, compa
       email: representative.email.trim(),
       password: representative.password,
       confirmPassword: representative.confirmPassword,
+      // Aceite explícito da versão exibida na tela de acesso (evidência gravada no backend).
+      termsAccepted: true,
+      termsVersion: representative.termsVersion,
       ...companyPayload(company),
     }),
   })
