@@ -16,8 +16,8 @@ describe('KycFullPreview', () => {
     expect(screen.getByRole('heading', { name: 'Verificação facial (Avenia)' })).toBeInTheDocument()
     expect(screen.getByText(/nenhuma verificação de identidade foi realizada/i)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '6. Complementação BlindPay' }))
-    expect(screen.getByRole('heading', { name: 'Complementação cadastral' })).toBeInTheDocument()
-    expect(screen.getByLabelText('País de emissão do documento *')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '6. KYC BlindPay' }))
+    expect(screen.getByRole('heading', { name: 'Verificação de identidade' })).toBeInTheDocument()
+    expect(screen.getByText(/nenhum dado, documento ou aceite será enviado/i)).toBeInTheDocument()
   })
 })

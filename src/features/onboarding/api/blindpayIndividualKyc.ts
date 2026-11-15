@@ -17,7 +17,7 @@ export interface IndividualKycProfile {
   taxId: string
   phoneNumber: string
   addressLine1: string
-  addressLine2: string
+  addressLine2: string | null
   city: string
   stateProvinceRegion: string
   postalCode: string
@@ -41,9 +41,9 @@ export async function loadIndividualKycStatus(): Promise<IndividualKycStatus> {
 }
 
 export async function startIndividualKycTerms(): Promise<string> {
-  const result = z.object({ url: z.url() }).parse(
-    await httpRequest<unknown>(path + '/terms', { method: 'POST' }),
-  )
+  const result = z
+    .object({ url: z.url() })
+    .parse(await httpRequest<unknown>(path + '/terms', { method: 'POST' }))
   const url = new URL(result.url)
   if (url.protocol !== 'https:' || url.hostname !== 'app.blindpay.com') {
     throw new Error('A BlindPay retornou um endereço de aceite inválido.')
@@ -61,7 +61,5 @@ export async function submitIndividualKyc(
   if (files.idBack) body.append('idBack', files.idBack)
   body.append('selfie', files.selfie)
   if (files.proofAddress) body.append('proofAddress', files.proofAddress)
-  return individualKycStatusSchema.parse(
-    await httpRequest<unknown>(path, { method: 'POST', body }),
-  )
+  return individualKycStatusSchema.parse(await httpRequest<unknown>(path, { method: 'POST', body }))
 }

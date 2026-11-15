@@ -5,7 +5,6 @@ import { CompanyStep } from '@/features/onboarding/pages/Register/CompanyStep'
 import { RepresentativeStep } from '@/features/onboarding/pages/Register/RepresentativeStep'
 import ComplianceStep from '@/features/onboarding/pages/Register/ComplianceStep'
 import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
-import { BlindPayIndividualKyc } from '@/features/onboarding/pages/BlindPayIndividualKyc/BlindPayIndividualKyc'
 import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
 
 const SCREENS = [
@@ -14,11 +13,10 @@ const SCREENS = [
   'Representante',
   'Documentos Avenia',
   'Verificação facial',
-  'Complementação BlindPay',
-  'KYC BlindPay (individual)',
+  'KYC BlindPay',
 ] as const
 
-type ScreenIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6
+type ScreenIndex = 0 | 1 | 2 | 3 | 4 | 5
 
 /**
  * Rota exclusivamente de desenvolvimento para revisar o percurso visual de KYC.
@@ -27,6 +25,8 @@ type ScreenIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6
  */
 export function KycFullPreview() {
   const [step, setStep] = useState<ScreenIndex>(0)
+  // Campos apenas demonstrativos: nada é enviado.
+  const [access, setAccess] = useState({ name: '', email: '', password: '', confirm: '' })
 
   function navigateTo(index: number) {
     if (index >= 0 && index < SCREENS.length) setStep(index as ScreenIndex)
@@ -75,10 +75,25 @@ export function KycFullPreview() {
             />
             <div className="mx-auto grid w-full max-w-xl gap-4 py-4">
               <h2 className="text-xl font-bold text-slate-900">Dados de acesso</h2>
-              <Input label="Nome completo" placeholder="Nome do representante" />
-              <Input label="E-mail" type="email" placeholder="nome@empresa.com.br" />
-              <Input label="Senha" type="password" placeholder="Senha de demonstração" />
-              <Input label="Confirmar senha" type="password" placeholder="Repita a senha" />
+              {(
+                [
+                  ['name', 'Nome completo', 'text', 'Nome do representante'],
+                  ['email', 'E-mail', 'email', 'nome@empresa.com.br'],
+                  ['password', 'Senha', 'password', 'Senha de demonstração'],
+                  ['confirm', 'Confirmar senha', 'password', 'Repita a senha'],
+                ] as const
+              ).map(([key, label, type, placeholder]) => (
+                <Input
+                  key={key}
+                  label={label}
+                  type={type}
+                  placeholder={placeholder}
+                  value={access[key]}
+                  onChange={(event) =>
+                    setAccess((previous) => ({ ...previous, [key]: event.target.value }))
+                  }
+                />
+              ))}
               <Button label="Próxima tela" onClick={() => navigateTo(1)} />
             </div>
           </div>
@@ -86,16 +101,17 @@ export function KycFullPreview() {
       )}
 
       {step === 1 && (
-        <CompanyStep
-          onCancel={() => navigateTo(0)}
-          onContinue={() => navigateTo(2)}
-        />
+        <CompanyStep onCancel={() => navigateTo(0)} onContinue={() => navigateTo(2)} />
       )}
 
       {step === 2 && <RepresentativeStep onContinue={() => navigateTo(3)} />}
 
       {step === 3 && (
-        <ComplianceStep onContinue={async () => { navigateTo(4) }} />
+        <ComplianceStep
+          onContinue={async () => {
+            navigateTo(4)
+          }}
+        />
       )}
 
       {step === 4 && (
@@ -108,29 +124,23 @@ export function KycFullPreview() {
             <section className="mx-auto flex w-full max-w-xl flex-col items-center gap-5 py-8 text-center">
               <h2 className="text-xl font-bold text-slate-900">Verificação facial (Avenia)</h2>
               <p className="text-sm leading-6 text-slate-600">
-                No fluxo real, o usuário inicia a verificação facial pela Avenia e retorna
-                para consultar a conclusão. Esta prévia não inicia liveness nem gera um ID
-                de verificação.
+                No fluxo real, o usuário inicia a verificação facial pela Avenia e retorna para
+                consultar a conclusão. Esta prévia não inicia liveness nem gera um ID de
+                verificação.
               </p>
-              <div role="status" className="w-full rounded-lg border border-amber-700 bg-amber-50 p-4 text-sm text-amber-700">
+              <div
+                role="status"
+                className="w-full rounded-lg border border-amber-700 bg-amber-50 p-4 text-sm text-amber-700"
+              >
                 Simulação visual: nenhuma verificação de identidade foi realizada.
               </div>
-              <Button label="Visualizar complementação BlindPay" onClick={() => navigateTo(5)} />
+              <Button label="Visualizar KYC BlindPay" onClick={() => navigateTo(5)} />
             </section>
           </div>
         </main>
       )}
 
-      {step === 6 && <BlindPayIndividualKyc previewOnly />}
-      {step === 5 && (
-        <div>
-          <div className="mx-auto max-w-[1300px] px-4 pt-5 text-sm text-slate-600 md:px-8">
-            Campos adicionais do representante. O backend atual da BlindPay opera o
-            onboarding KYB empresarial; esta prévia não equivale a um KYC individual enviado.
-          </div>
-          <BlindPayComplement />
-        </div>
-      )}
+      {step === 5 && <BlindPayComplement previewOnly />}
     </div>
   )
 }
