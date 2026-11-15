@@ -38,6 +38,19 @@ describe('RepresentativeStep', () => {
     expect(screen.getByText('Representante').closest('li')).toHaveAttribute('aria-current', 'step')
   })
 
+  it('uses the same state select as the company step', () => {
+    // Given a etapa do representante vazia
+    render(<RepresentativeStep onContinue={vi.fn()} />)
+
+    // Then o estado usa o select compartilhado: borda dos campos, 27 opções e "Selecione" fora da lista
+    const state = screen.getByLabelText('Estado *')
+    expect(state).toHaveClass('border-sage-500', 'h-[50px]')
+    expect(state.querySelectorAll('option:not([value=""])')).toHaveLength(27)
+    const placeholder = state.querySelector('option[value=""]')
+    expect(placeholder).toHaveTextContent('Selecione o estado')
+    expect(placeholder).toHaveAttribute('hidden')
+  })
+
   it('preloads and masks the provided initial values', () => {
     render(<RepresentativeStep initialValues={valid} onContinue={vi.fn()} />)
     expect(screen.getByLabelText(/cargo \/ função/i)).toHaveValue('Diretor(a)')

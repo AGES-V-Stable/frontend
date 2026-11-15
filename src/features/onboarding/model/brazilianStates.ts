@@ -28,3 +28,9 @@ export const BRAZILIAN_STATES: { sigla: string; nome: string }[] = [
   { sigla: 'SE', nome: 'Sergipe' },
   { sigla: 'TO', nome: 'Tocantins' },
 ]
+
+/** As mesmas unidades no formato do Select: mostra o nome e envia a sigla. */
+export const BRAZILIAN_STATE_OPTIONS = BRAZILIAN_STATES.map(({ sigla, nome }) => ({
+  value: sigla,
+  label: nome,
+}))

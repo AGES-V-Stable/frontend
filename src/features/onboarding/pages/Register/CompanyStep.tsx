@@ -6,7 +6,7 @@ import { isValidCNPJ } from '@/shared/utils/validators'
 import type { CompanyData } from '@/features/onboarding/types/registration'
 import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
 import { Select } from '@/shared/components/Select'
-import { BRAZILIAN_STATES } from '@/features/onboarding/model/brazilianStates'
+import { BRAZILIAN_STATE_OPTIONS } from '@/features/onboarding/model/brazilianStates'
 
 export type { CompanyData } from '@/features/onboarding/types/registration'
 
@@ -39,8 +39,6 @@ const requiredMessages: Record<Exclude<Field, 'cidade'>, string> = {
   cep: 'Informe o CEP.',
   estado: 'Informe o estado.',
 }
-// Mesma lista do Representante: o estado é escolhido, não digitado.
-const STATE_OPTIONS = BRAZILIAN_STATES.map(({ sigla, nome }) => ({ value: sigla, label: nome }))
 const brazil = (pais: string) => pais.trim().toLowerCase() === 'brasil'
 function validate(name: Field, value: string, pais: string) {
   if (name !== 'cidade' && !value.trim()) return requiredMessages[name]
@@ -145,7 +143,7 @@ export function CompanyStep({
                   name={name}
                   label={`${label}${required ? ' *' : ''}`}
                   placeholder="Selecione o estado"
-                  options={STATE_OPTIONS}
+                  options={BRAZILIAN_STATE_OPTIONS}
                   required={required}
                   disabled={saving}
                   value={data[name]}
