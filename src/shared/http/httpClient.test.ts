@@ -1,6 +1,12 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { httpRequest, httpResponse, apiUrl, HttpError, parseRetryAfter } from './httpClient'
-import { saveLoginToken, saveAccessToken, getLoginToken, getAccessToken } from './authToken'
+import {
+  ACCESS_DENIED,
+  saveLoginToken,
+  saveAccessToken,
+  getLoginToken,
+  getAccessToken,
+} from './authToken'
 afterEach(() => {
   vi.unstubAllGlobals()
   sessionStorage.clear()
@@ -182,4 +188,39 @@ it.each([
 it('rejects malformed JSON', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('invalid')))
   await expect(httpRequest('/v1/example')).rejects.toMatchObject({ code: 'INVALID_RESPONSE' })
+})
+it.each(['PERMISSION_DENIED', 'OWNER_REQUIRED', 'COMPANY_ACCESS_DENIED', 'COMPANY_ACCESS_REVOKED'])(
+  'given a 403 %s on an authenticated request, then it announces the access change and keeps the session',
+  async (code) => {
+    saveLoginToken('login')
+    const listener = vi.fn()
+    window.addEventListener(ACCESS_DENIED, listener)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(`{"code":"${code}"}`, { status: 403 })),
+    )
+
+    await expect(httpRequest('/v1/transfers')).rejects.toMatchObject({ status: 403, code })
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(getLoginToken()).toBe('login')
+    window.removeEventListener(ACCESS_DENIED, listener)
+  },
+)
+it('does not announce an access change for other refusals or for unauthenticated requests', async () => {
+  saveLoginToken('login')
+  const listener = vi.fn()
+  window.addEventListener(ACCESS_DENIED, listener)
+  const mock = vi.fn()
+  vi.stubGlobal('fetch', mock)
+
+  mock.mockResolvedValueOnce(new Response('{"code":"USER_NOT_VERIFIED"}', { status: 403 }))
+  await httpRequest('/v1/transfers').catch(() => undefined)
+  mock.mockResolvedValueOnce(new Response('{"code":"PERMISSION_DENIED"}', { status: 403 }))
+  await httpRequest('/v1/public', {}, false).catch(() => undefined)
+  mock.mockResolvedValueOnce(new Response('{"code":"PERMISSION_DENIED"}', { status: 409 }))
+  await httpRequest('/v1/transfers').catch(() => undefined)
+
+  expect(listener).not.toHaveBeenCalled()
+  window.removeEventListener(ACCESS_DENIED, listener)
 })

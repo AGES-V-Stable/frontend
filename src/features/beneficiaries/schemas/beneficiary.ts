@@ -17,6 +17,7 @@ export const BeneficiarySchema = z.object({
   bankCode: z.string().nullish(),
   branchNumber: z.string().nullish(),
   currency: z.string().nullish(),
+  paymentRail: z.string().nullish(),
   swiftBic: z.string().nullish(),
   pixKey: z.string().nullish(),
   walletAddress: z.string().nullish(),

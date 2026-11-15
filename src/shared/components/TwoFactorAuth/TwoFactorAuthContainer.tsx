@@ -56,6 +56,11 @@ function extractSecret(uri?: string): string | undefined {
   }
 }
 
+/** Só para exibição: separa a chave em blocos de 4 para facilitar a digitação manual. */
+function groupSecret(secret: string): string {
+  return secret.match(/.{1,4}/g)?.join(' ') ?? secret
+}
+
 /** Calcula o estado exato e sincronizado do ciclo TOTP de 30 segundos (RFC 6238) */
 function getTotpCycleState() {
   const now = Date.now()
@@ -204,7 +209,7 @@ export function TwoFactorAuthContainer({
       {!isRecoveryMode && (title || description) && (
         <div className="mb-6 flex flex-col gap-1 border-b border-sage-200 pb-4">
           {title && <h2 className="text-base font-bold text-slate-900">{title}</h2>}
-          {description && <p className="text-xs text-slate-500">{description}</p>}
+          {description && <p className="text-sm text-slate-500">{description}</p>}
         </div>
       )}
 
@@ -228,7 +233,7 @@ export function TwoFactorAuthContainer({
                 Passo 1
               </span>
               <h3 className="text-sm font-bold text-slate-900">Escanear código de autenticação</h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-sm text-slate-500">
                 Abra o <strong>Google Authenticator</strong>,{' '}
                 <strong>Microsoft Authenticator</strong> ou outro app compatível no seu celular e
                 escaneie o QR Code abaixo:
@@ -245,19 +250,19 @@ export function TwoFactorAuthContainer({
             </div>
 
             {effectiveSecret && (
-              <div className="flex w-full flex-col gap-1.5 rounded-lg bg-slate-50 p-3 text-xs">
+              <div className="flex w-full flex-col gap-1.5 rounded-lg bg-slate-50 p-3 text-sm">
                 <span className="font-medium text-slate-600">Não consegue escanear?</span>
                 <span className="text-slate-500">
                   Adicione a conta manualmente utilizando esta chave secreta:
                 </span>
                 <div className="flex items-center justify-between gap-2 rounded-md border border-sage-300 bg-white px-2.5 py-1.5">
-                  <code className="select-all font-mono text-[11px] font-semibold tracking-wider text-slate-900">
-                    {effectiveSecret}
+                  <code className="min-w-0 select-all break-words font-mono text-xs font-semibold tracking-wider text-slate-900">
+                    {groupSecret(effectiveSecret)}
                   </code>
                   <button
                     type="button"
                     onClick={handleCopySecret}
-                    className="shrink-0 text-[11px] font-semibold text-primary transition-colors hover:text-primary-hover hover:underline cursor-pointer"
+                    className="shrink-0 text-xs font-semibold text-primary transition-colors hover:text-primary-hover hover:underline cursor-pointer"
                     aria-label="Copiar chave secreta"
                   >
                     {copied ? '✓ Copiado!' : 'Copiar'}
@@ -278,7 +283,7 @@ export function TwoFactorAuthContainer({
               <h3 className="text-sm font-bold text-slate-900">
                 Código de recuperação de emergência
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-sm text-slate-500">
                 Insira um dos códigos de backup gerados para acessar sua conta sem o aplicativo
                 autenticador:
               </p>
@@ -293,7 +298,7 @@ export function TwoFactorAuthContainer({
                   >
                     Código de recuperação
                   </label>
-                  <span className="text-[11px] font-mono text-slate-500">
+                  <span className="text-xs font-mono text-slate-500">
                     {rawAlphanumeric.length}/8 dígitos
                   </span>
                 </div>
@@ -386,7 +391,7 @@ export function TwoFactorAuthContainer({
                 </span>
               )}
               <h3 className="text-sm font-bold text-slate-900">Inserir código de verificação</h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-sm text-slate-500">
                 Digite o código de 6 dígitos gerado pelo aplicativo autenticador:
               </p>
             </div>
@@ -420,7 +425,7 @@ export function TwoFactorAuthContainer({
                   aria-label={`Novo código em ${secondsLeft} segundos`}
                   className="flex flex-col gap-1.5 pt-1"
                 >
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-sm">
                     <span
                       className={isExpiringSoon ? 'font-medium text-red-600' : 'text-slate-500'}
                     >

@@ -1,6 +1,19 @@
-import type { ColumnDefinition } from '@/shared/components/Table'
+import type { ColumnDefinition, StatusVariant } from '@/shared/components/Table'
 import type { Transfer } from '@/features/transfers/types/transferHistory'
 import { formatCurrency, formatDate } from '@/shared/utils/formatters'
+
+// Cor de cada status, pelo rótulo exibido (ver transferStatusLabels em api/transfers.ts),
+// igual à tabela de liquidações do Dashboard.
+export const transferStatusVariants: Record<string, StatusVariant> = {
+  'Aguardando pagamento': 'warning',
+  Processando: 'warning',
+  Retida: 'warning',
+  Concluída: 'success',
+  Falha: 'error',
+  'Falha parcial': 'error',
+  Cancelada: 'error',
+  Expirada: 'error',
+}
 
 export const transferTableColumns: ColumnDefinition<Transfer>[] = [
   { key: 'empresa', label: 'Empresa', type: 'text', width: 200 },
@@ -21,6 +34,13 @@ export const transferTableColumns: ColumnDefinition<Transfer>[] = [
     align: 'right',
     render: (item) => formatCurrency(item.valor, item.moeda),
   },
-  { key: 'status', label: 'Status', type: 'status', width: 140, align: 'center' },
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'status',
+    width: 140,
+    align: 'center',
+    statusVariant: (item) => transferStatusVariants[item.status] ?? 'neutral',
+  },
   { key: 'action', label: 'Ação', type: 'action', width: 150, align: 'center' },
 ]

@@ -47,4 +47,17 @@ describe('MetricCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
+
+  it('shows a control beside the title when given', () => {
+    render(
+      <MetricCard
+        title="Câmbio Atual"
+        accent="neutral"
+        state={{ status: 'ready', value: '1 USDC = R$ 5,4700' }}
+        action={<button type="button">Trocar par</button>}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Trocar par' })).toBeInTheDocument()
+  })
 })

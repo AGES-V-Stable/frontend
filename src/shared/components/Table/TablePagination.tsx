@@ -1,5 +1,7 @@
+import { useRef } from 'react'
 import type { PaginationProps } from '@/shared/components/Table/types'
 import { Button } from '@/shared/components/Button'
+import { getRecordRange } from '@/shared/components/Table/recordRange'
 
 export function TablePagination({
   compact = false,
@@ -14,21 +16,30 @@ export function TablePagination({
   const hasPreviousPage = currentPage > 1
   const hasNextPage = currentPage < totalPages
 
+  const prevRef = useRef<HTMLButtonElement>(null)
+  const nextRef = useRef<HTMLButtonElement>(null)
+
+  // O botão usado fica desabilitado no limite da lista; o foco passa para o outro antes disso.
   const handlePrev = () => {
-    if (hasPreviousPage) {
-      onPageChange(currentPage - 1)
-    }
+    if (!hasPreviousPage) return
+    if (currentPage - 1 === 1 && document.activeElement === prevRef.current)
+      nextRef.current?.focus()
+    onPageChange(currentPage - 1)
   }
 
   const handleNext = () => {
-    if (hasNextPage) {
-      onPageChange(currentPage + 1)
-    }
+    if (!hasNextPage) return
+    if (currentPage + 1 === totalPages && document.activeElement === nextRef.current)
+      prevRef.current?.focus()
+    onPageChange(currentPage + 1)
   }
 
-  const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
-  const endRecord =
-    totalRecords === 0 ? 0 : Math.min(startRecord + displayedRecords - 1, totalRecords)
+  const { start: startRecord, end: endRecord } = getRecordRange({
+    currentPage,
+    itemsPerPage,
+    displayedRecords,
+    totalRecords,
+  })
 
   return (
     <div
@@ -40,6 +51,7 @@ export function TablePagination({
 
       <div className={`flex items-center gap-[8px] ${compact ? 'flex-wrap' : ''}`}>
         <Button
+          ref={prevRef}
           label="Anterior"
           variant="secondary"
           disabled={!hasPreviousPage}
@@ -50,6 +62,7 @@ export function TablePagination({
           {currentPage} de {totalPages}
         </div>
         <Button
+          ref={nextRef}
           label="Próxima"
           variant="secondary"
           disabled={!hasNextPage}

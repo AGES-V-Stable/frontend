@@ -31,6 +31,11 @@ export function clearAccessToken(): void {
 }
 
 export const SESSION_CHANGED = 'vstable:session-changed'
+/** O backend recusou uma ação porque o perfil ou o vínculo com a empresa mudou. */
+export const ACCESS_DENIED = 'vstable:access-denied'
+export function notifyAccessDenied(): void {
+  window.dispatchEvent(new Event(ACCESS_DENIED))
+}
 export function getLoginToken(): string | null {
   return localStorage.getItem(LOGIN_TOKEN_KEY)
 }

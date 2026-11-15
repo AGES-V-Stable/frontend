@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
+import { ApiError } from '@/shared/http/httpClient'
 import { getMembers } from '../api/members'
 import type { MemberListResponse } from '../schemas/members'
 
-type LoadResult = { key: string; data?: MemberListResponse; failed?: boolean }
+type LoadResult = { key: string; data?: MemberListResponse; failed?: boolean; denied?: boolean }
 
 /** Lista paginada de membros da empresa; `reload` busca de novo a página atual. */
 export function useMemberList(companyId: string) {
   const [page, setPage] = useState(0)
   const [revision, setRevision] = useState(0)
   const [result, setResult] = useState<LoadResult | null>(null)
-  const [data, setData] = useState<MemberListResponse | null>(null)
+  // Nunca reutilizar dados de outra empresa, mesmo enquanto a nova consulta carrega.
+  const [loaded, setLoaded] = useState<{ companyId: string; data: MemberListResponse } | null>(null)
   const key = `${companyId}:${page}:${revision}`
 
   useEffect(() => {
@@ -22,21 +24,27 @@ export function useMemberList(companyId: string) {
           setPage(response.totalPages - 1)
           return
         }
-        setData(response)
+        setLoaded({ companyId, data: response })
         setResult({ key, data: response })
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setResult({ key, failed: true })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return
+        // 403: o vínculo ou o perfil mudou; não é uma falha transitória para tentar de novo.
+        const denied = error instanceof ApiError && error.status === 403
+        setResult({ key, failed: !denied, denied })
       })
     return () => controller.abort()
   }, [companyId, page, key])
 
   const reload = useCallback(() => setRevision((value) => value + 1), [])
   const current = result?.key === key ? result : null
+  const data = loaded?.companyId === companyId ? loaded.data : null
   return {
     data,
     loading: current === null,
     failed: current?.failed === true,
+    /** O backend recusou a listagem: quem está na tela não gerencia mais os membros. */
+    denied: current?.denied === true,
     page,
     setPage,
     reload,

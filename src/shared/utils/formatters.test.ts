@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   currencySymbol,
   formatDateTime,
+  formatLocalDateTime,
   formatDecimal,
   formatMoney,
   formatMoneyString,
+  formatRateString,
   formatPercent,
   formatPercentString,
   parseDecimalInput,
@@ -122,4 +124,47 @@ it('preserves decimal-string precision beyond the safe integer range', () => {
     'US$ 12.345.678.901.234.567.890,67',
   )
   expect(formatPercentString('0.005')).toBe('0,01%')
+})
+
+describe('formatRateString', () => {
+  it.each([
+    ['5.47000000', 'BRL', 'R$ 5,4700'],
+    ['5.47004999', 'BRL', 'R$ 5,4700'],
+    ['5.47005', 'BRL', 'R$ 5,4701'],
+    ['1234.5', 'BRL', 'R$ 1.234,5000'],
+    ['1.0001', 'BRLA', 'BRLA 1,0001'],
+  ])('formats %s %s as %s from the decimal string', (rate, currency, expected) => {
+    expect(normalizeSpaces(formatRateString(rate, currency) ?? '')).toBe(expected)
+  })
+
+  it('accepts a different number of decimal places', () => {
+    expect(normalizeSpaces(formatRateString('5.4789', 'BRL', 2) ?? '')).toBe('R$ 5,48')
+  })
+
+  it('returns null for a value that is not a decimal string', () => {
+    expect(formatRateString('abc', 'BRL')).toBeNull()
+    expect(formatRateString('abc', 'BRLA')).toBeNull()
+  })
+})
+
+describe('formatLocalDateTime', () => {
+  it('formats as dd/mm/aaaa hh:mm in the given time zone', () => {
+    expect(formatLocalDateTime('2026-11-12T22:45:00Z', 'America/Sao_Paulo')).toBe(
+      '12/11/2026 19:45',
+    )
+    expect(formatLocalDateTime('2026-11-12T22:45:00Z', 'UTC')).toBe('12/11/2026 22:45')
+    expect(formatLocalDateTime('2026-11-12T23:30:00-03:00', 'UTC')).toBe('13/11/2026 02:30')
+  })
+
+  it('uses the browser time zone by default', () => {
+    const local = new Date('2026-11-12T22:45:00Z')
+    const pad = (value: number) => String(value).padStart(2, '0')
+    expect(formatLocalDateTime('2026-11-12T22:45:00Z')).toBe(
+      `${pad(local.getDate())}/${pad(local.getMonth() + 1)}/${local.getFullYear()} ${pad(local.getHours())}:${pad(local.getMinutes())}`,
+    )
+  })
+
+  it('returns a text that is not a date unchanged', () => {
+    expect(formatLocalDateTime('ontem')).toBe('ontem')
+  })
 })

@@ -7,6 +7,7 @@ import type { Beneficiary } from '@/features/beneficiaries'
 import type { TransactionStatus, TransferPaymentMethod } from '@/features/transfers/types/transfer'
 import { currencySymbol, formatMoney, formatPercent } from '@/shared/utils/formatters'
 import { useTransferCreate } from '@/features/transfers/hooks/useTransferCreate'
+import { OrchestratedTransferCreate } from './OrchestratedTransferCreate'
 
 const TRANSFER_STEPS = ['Dados', 'Revisão', 'Autenticação'] as const
 
@@ -34,7 +35,15 @@ const STATUS_LABELS: Record<TransactionStatus, string> = {
 
 const beneficiaryName = (beneficiary: Beneficiary) => beneficiary.legalName || beneficiary.nickname
 
+/** Rollout is off unless an environment explicitly enables financial orchestration. */
+const ORCHESTRATION_ENABLED = import.meta.env.VITE_ENABLE_ORCHESTRATED_TRANSFERS === 'true'
+
 export function TransferCreate() {
+  if (ORCHESTRATION_ENABLED) return <OrchestratedTransferCreate />
+  return <LegacyTransferCreate />
+}
+
+function LegacyTransferCreate() {
   const {
     activeStep,
     totpCode,
@@ -100,7 +109,7 @@ export function TransferCreate() {
 
       <dl className="flex flex-col gap-3 text-sm tabular-nums">
         <div className="flex w-fit flex-col gap-1 rounded-lg bg-blue-50 p-4">
-          <dt className="text-sm uppercase text-slate-500">Cotação atual</dt>
+          <dt className="text-sm uppercase text-slate-600">Cotação atual</dt>
           <dd className="text-base font-medium text-slate-900">
             {quote
               ? `1 ${quote.exchangeRate.fromCurrency} = ${formatMoney(
@@ -135,7 +144,7 @@ export function TransferCreate() {
     <div className="mx-auto flex w-full max-w-[1684px] flex-col gap-6 px-4 py-8 md:px-12">
       <header className="flex flex-col">
         <h1 className="text-xl font-bold text-slate-900">Realizar transferência</h1>
-        <p className="text-xs text-slate-500">Informe os dados do pagamento internacional.</p>
+        <p className="text-xs text-slate-600">Informe os dados do pagamento internacional.</p>
       </header>
 
       {isWithdrawalLocked && (

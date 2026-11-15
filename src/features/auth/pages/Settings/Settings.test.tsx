@@ -59,7 +59,7 @@ describe('Settings Page - Fluxo de Reconfigurar 2FA (State Machine)', () => {
     expect(screen.getByText('Passo 1 de 3: Confirmar aparelho atual')).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca',
+        'Digite o código de 6 dígitos do seu autenticador atual para autorizar a troca.',
       ),
     ).toBeInTheDocument()
 
@@ -114,7 +114,7 @@ describe('Settings Page - Fluxo de Reconfigurar 2FA (State Machine)', () => {
     expect(
       screen.getByRole('region', { name: 'Configuração do aplicativo autenticador' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('NEWSECRET789')).toBeInTheDocument()
+    expect(screen.getByText('NEWS ECRE T789')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Confirmar e Ativar 2FA' })).toBeInTheDocument()
   })
 

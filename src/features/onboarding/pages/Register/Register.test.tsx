@@ -48,10 +48,12 @@ describe('Register Page Component', () => {
     renderRegister()
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
-    expect(screen.getByText('Informe seu nome completo')).toBeInTheDocument()
-    expect(screen.getByText('Informe um e-mail válido')).toBeInTheDocument()
+    expect(screen.getByText('Informe seu nome completo.')).toBeInTheDocument()
     expect(
-      screen.getByText('Use ao menos 8 caracteres, um número e um caractere especial'),
+      screen.getByText('Informe um e-mail completo, como nome@empresa.com.br.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Use ao menos 8 caracteres, um número e um caractere especial.'),
     ).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Nome completo'), 'M')
@@ -60,12 +62,14 @@ describe('Register Page Component', () => {
     await user.type(screen.getByLabelText('Confirmar senha'), 'different')
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
-    expect(screen.queryByText('Informe seu nome completo')).not.toBeInTheDocument()
-    expect(screen.getByText('Informe um e-mail válido')).toBeInTheDocument()
+    expect(screen.queryByText('Informe seu nome completo.')).not.toBeInTheDocument()
     expect(
-      screen.getByText('Use ao menos 8 caracteres, um número e um caractere especial'),
+      screen.getByText('Informe um e-mail completo, como nome@empresa.com.br.'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Senha e confirmação não coincidem')).toBeInTheDocument()
+    expect(
+      screen.getByText('Use ao menos 8 caracteres, um número e um caractere especial.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Senha e confirmação não coincidem.')).toBeInTheDocument()
   })
 
   it('rejects an invalid email without navigating', async () => {
@@ -74,7 +78,9 @@ describe('Register Page Component', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
-    expect(screen.getByText('Informe um e-mail válido')).toBeInTheDocument()
+    expect(
+      screen.getByText('Informe um e-mail completo, como nome@empresa.com.br.'),
+    ).toBeInTheDocument()
     expect(screen.queryByText('Company registration')).not.toBeInTheDocument()
   })
 

@@ -143,7 +143,7 @@ function AdminTransfers() {
           <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Histórico de Transferências</h1>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-600">
                 Acompanhe todas as operações realizadas pelas empresas na plataforma.
               </p>
             </div>
@@ -176,6 +176,7 @@ function AdminTransfers() {
               <Table
                 title="Todas as transferências"
                 entityLabel="transferências"
+                rowLabel={(transfer) => `${transfer.empresa} para ${transfer.beneficiario}`}
                 totalRecords={totalItems > 0 ? totalItems : undefined}
                 columns={columns}
                 data={transfers}

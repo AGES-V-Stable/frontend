@@ -2,7 +2,36 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { Dashboard } from './Dashboard'
+import { useSession } from '@/features/auth'
+import type { User } from '@/features/auth'
 import { settlementsSchema } from '@/features/dashboard/api/dashboard'
+
+vi.mock('@/features/auth', () => ({ useSession: vi.fn() }))
+
+const sessionUser = (role: 'OWNER' | 'OPERATOR' | 'VIEWER' = 'OWNER'): User => ({
+  id: 'u1',
+  name: 'Ana',
+  email: 'ana@empresa.test',
+  companyId: 'c1',
+  accountType: 'USER',
+  roles: [],
+  companyAccess: {
+    membershipId: 'm1',
+    companyId: 'c1',
+    role,
+    status: 'ACTIVE',
+    permissions: [],
+    version: 1,
+  },
+})
+const givenSession = (user: User | null) =>
+  vi.mocked(useSession).mockReturnValue({
+    status: 'authenticated',
+    user,
+    company: null,
+    error: null,
+    retry: vi.fn(),
+  })
 
 // Recharts não desenha no jsdom; o mock repassa os filhos e guarda as props de cada série e eixo.
 const chartProps = vi.hoisted(() => ({}) as Record<string, Record<string, unknown>[]>)
@@ -50,11 +79,31 @@ const series = {
   points: [] as { month: string; amount: string }[],
   incompleteOperations: 0,
 }
+const exchangeRates = {
+  rates: [
+    {
+      baseCurrency: 'BRL',
+      quoteCurrency: 'USDC',
+      rate: '5.47000000',
+      fetchedAt: '2026-11-03T12:00:00Z',
+      status: 'CURRENT',
+    },
+    {
+      baseCurrency: 'BRL',
+      quoteCurrency: 'USDT',
+      rate: null,
+      fetchedAt: null,
+      status: 'UNAVAILABLE',
+    },
+  ],
+  ttlSeconds: 7200,
+}
 const emptyPage = { content: [], number: 0, size: 5, totalElements: 0, totalPages: 0 }
 
 function responses(url: string): unknown {
   const path = url.split('?')[0]
   if (path === '/v1/balance') return { availableBalanceBrl: '25000.00' }
+  if (path === '/v1/exchange-rates') return exchangeRates
   if (path === '/v1/companies/summaries')
     return [{ id: 'c1', legalName: 'Alfa Ltda', tradeName: 'Alfa', cnpj: '1' }]
   if (path.endsWith('/transaction-volume')) return { transactedVolumeBrl: '5022.50' }
@@ -90,6 +139,7 @@ const calledUrls = (fetcher: ReturnType<typeof vi.fn>) =>
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-11-03T15:00:00Z'))
+  givenSession(sessionUser('OWNER'))
 })
 afterEach(() => {
   vi.useRealTimers()
@@ -210,9 +260,13 @@ it('uses administrative endpoints and filters every widget by company', async ()
   expect(await screen.findByText('Nenhuma liquidação registrada.')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Dashboard Administrativo' })).toBeInTheDocument()
   expect(screen.getByText('PAINEL ADMIN')).toBeInTheDocument()
+  // As cotações são globais (cicd#55): a mesma rota para cliente e administrador.
   expect(
     calledUrls(fetcher).every(
-      (url) => url.startsWith('/v1/admin/dashboard/') || url === '/v1/companies/summaries',
+      (url) =>
+        url.startsWith('/v1/admin/dashboard/') ||
+        url === '/v1/companies/summaries' ||
+        url === '/v1/exchange-rates',
     ),
   ).toBe(true)
 
@@ -314,8 +368,81 @@ it('shows balance and transacted volume beside the accumulated savings for the c
     Array.from(row.children).map(
       (card) => within(card as HTMLElement).getByRole('heading').textContent,
     ),
-  ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado'])
+  ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado', 'Câmbio Atual'])
 })
+
+it('submits a simulated deposit in BRL and refreshes the displayed balance', async () => {
+  let balance = '25000.00'
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === '/v1/balance/simulated-deposits') balance = '25020.50'
+    if (url.startsWith('/v1/balance')) {
+      return new Response(JSON.stringify({ availableBalanceBrl: balance }))
+    }
+    return reply(url)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  renderDashboard()
+
+  await screen.findByText('R$ 25.000,00')
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
+  const amount = within(modal).getByLabelText('Valor do crédito simulado (R$)')
+  fireEvent.change(amount, { target: { value: '20,50' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo simulado' }))
+
+  expect(await screen.findByText('R$ 25.020,50')).toBeInTheDocument()
+  expect(modal).not.toBeInTheDocument()
+  expect(fetcher).toHaveBeenCalledWith(
+    '/v1/balance/simulated-deposits',
+    expect.objectContaining({ method: 'POST', body: JSON.stringify({ amount: '20.50' }) }),
+  )
+})
+
+it('keeps the entered amount and explains why the deposit was rejected', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url === '/v1/balance/simulated-deposits'
+        ? new Response(JSON.stringify({ code: 'KYC_NOT_APPROVED', message: 'x' }), { status: 403 })
+        : reply(url),
+    ),
+  )
+  renderDashboard()
+
+  await screen.findByText('R$ 25.000,00')
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
+  const amount = within(modal).getByLabelText('Valor do crédito simulado (R$)')
+  fireEvent.change(amount, { target: { value: '20,50' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo simulado' }))
+
+  expect(await within(modal).findByRole('alert')).toHaveTextContent(
+    'Conclua a verificação de identidade para adicionar saldo.',
+  )
+  expect(amount).toHaveValue('20,50')
+  expect(screen.getByText('R$ 25.000,00')).toBeInTheDocument()
+  fireEvent.click(within(modal).getByRole('button', { name: 'Cancelar' }))
+  expect(modal).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const reopened = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
+  expect(within(reopened).getByLabelText('Valor do crédito simulado (R$)')).toHaveValue('')
+  expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument()
+})
+
+it.each(['OPERATOR', 'VIEWER'] as const)(
+  'does not offer the simulated deposit to the %s, who could never confirm it',
+  async (role) => {
+    givenSession(sessionUser(role))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => reply(url)),
+    )
+    renderDashboard()
+
+    expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Adicionar saldo' })).not.toBeInTheDocument()
+  },
+)
 
 it('shows the consolidated transacted volume to the administrator, without the balance', async () => {
   const fetcher = vi.fn(async (url: string) => reply(url))
@@ -324,6 +451,7 @@ it('shows the consolidated transacted volume to the administrator, without the b
 
   expect(await screen.findByText('R$ 5.022,50')).toBeInTheDocument()
   expect(screen.queryByText('Saldo Disponível')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Adicionar saldo' })).not.toBeInTheDocument()
   expect(calledUrls(fetcher)).toContain(`/v1/admin/dashboard/transaction-volume?${DEFAULT_PERIOD}`)
   expect(calledUrls(fetcher).some((url) => url === '/v1/balance')).toBe(false)
 })
@@ -505,4 +633,49 @@ it('names the chart series, flags incomplete data and formats the value axis in 
     item: { payload: { amount: string | null } },
   ) => string
   expect(formatter(1640, 'Economia', { payload: { amount: '1640.00' } })).toMatch(/R\$\s*1\.640,00/)
+})
+
+it.each([
+  ['client', false],
+  ['administrator', true],
+])(
+  'shows the current exchange rates to the %s, independent of the filters',
+  async (_label, admin) => {
+    const fetcher = vi.fn(async (url: string) => reply(url))
+    vi.stubGlobal('fetch', fetcher)
+    renderDashboard(admin)
+
+    const card = await screen.findByRole('region', { name: 'Câmbio Atual' })
+    expect(await within(card).findByText(/^1 USDC = R\$\s5,4700$/)).toBeInTheDocument()
+    // Na linha de métricas, ao lado da economia e do volume.
+    expect(card.parentElement).toBe(
+      screen.getByRole('region', { name: 'Economia Acumulada' }).parentElement,
+    )
+    fireEvent.change(within(card).getByRole('combobox', { name: 'Par de moedas' }), {
+      target: { value: 'BRL-USDT' },
+    })
+    expect(within(card).getByText('Cotação indisponível')).toBeInTheDocument()
+    expect(calledUrls(fetcher).filter((url) => url.startsWith('/v1/exchange-rates'))).toEqual([
+      '/v1/exchange-rates',
+    ])
+  },
+)
+
+it('keeps the dashboard working when the exchange rates fail, and retries only them', async () => {
+  const fetcher = vi.fn(async (url: string) =>
+    url.startsWith('/v1/exchange-rates') ? new Response('{}', { status: 502 }) : reply(url),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  renderDashboard()
+
+  const card = await screen.findByRole('region', { name: 'Câmbio Atual' })
+  expect(await within(card).findByRole('alert')).toHaveTextContent(
+    'Não foi possível carregar as cotações',
+  )
+  expect(await screen.findByText('Nenhuma liquidação registrada.')).toBeInTheDocument()
+
+  fetcher.mockImplementation(async (url: string) => reply(url))
+  fireEvent.click(within(card).getByText('Tentar novamente'))
+
+  expect(await within(card).findByText(/^1 USDC = R\$\s5,4700$/)).toBeInTheDocument()
 })

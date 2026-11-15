@@ -138,7 +138,7 @@ describe('authService.login', () => {
     )
 
     await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
-      'E-mail ou senha inválidos',
+      'E-mail ou senha inválidos.',
     )
   })
 
@@ -156,7 +156,7 @@ describe('authService.login', () => {
     )
 
     await expect(authService.login({ email: 'a@b.com', password: '123' })).rejects.toThrow(
-      'Usuário bloqueado',
+      'Usuário bloqueado.',
     )
   })
 
@@ -262,6 +262,6 @@ describe('authService.verify2fa', () => {
 
     await expect(
       authService.verify2fa({ challengeToken: 'challenge-123', code: '123456' }),
-    ).rejects.toThrow('Usuário bloqueado')
+    ).rejects.toThrow('Usuário bloqueado.')
   })
 })

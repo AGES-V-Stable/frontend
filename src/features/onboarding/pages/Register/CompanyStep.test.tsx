@@ -19,8 +19,8 @@ describe('CompanyStep', () => {
   it.each([
     [{ razaoSocial: 'ab' }, 'Use pelo menos 3 caracteres.'],
     [{ estado: 'a'.repeat(101) }, 'Use no máximo 100 caracteres.'],
-    [{ cnpj: '11222333000182' }, 'CNPJ inválido.'],
-    [{ cnpj: '00000000000000' }, 'CNPJ inválido.'],
+    [{ cnpj: '11222333000182' }, 'Confira o CNPJ: os dígitos não formam um CNPJ válido.'],
+    [{ cnpj: '00000000000000' }, 'Confira o CNPJ: os dígitos não formam um CNPJ válido.'],
   ])('rejects backend validation violations %j', async (values, message) => {
     const submit = vi.fn()
     render(
@@ -79,7 +79,7 @@ describe('CompanyStep', () => {
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
     const name = screen.getByRole('textbox', { name: 'Razão Social *' })
     expect(name).toHaveFocus()
-    expect(name).toHaveAccessibleDescription('Campo obrigatório.')
+    expect(name).toHaveAccessibleDescription('Informe a razão social.')
     expect(screen.getAllByRole('alert')).toHaveLength(5)
     expect(onContinue).not.toHaveBeenCalled()
     await user.type(name, 'Empresa')

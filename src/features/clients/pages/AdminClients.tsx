@@ -75,7 +75,7 @@ function AdminClients() {
           <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Clientes PME</h1>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-600">
                 Visualize e audite todas as contas cadastradas na plataforma.
               </p>
             </div>
@@ -118,6 +118,7 @@ function AdminClients() {
             <Table
               title="Todos os clientes"
               entityLabel="clientes"
+              rowLabel={(client) => client.empresa}
               totalRecords={filteredClients.length}
               columns={columns}
               data={filteredClients.slice((currentPage - 1) * 4, currentPage * 4)}

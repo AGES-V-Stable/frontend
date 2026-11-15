@@ -123,6 +123,27 @@ export const formatMoneyString = (amount: string | null, currencyCode: string): 
   }
 }
 
+/**
+ * Taxa de câmbio recebida como string decimal ("5.47000000"), na moeda informada e com casas
+ * fixas (4 por padrão), sem converter para número. Null quando o valor não é decimal.
+ */
+export const formatRateString = (
+  rate: string,
+  currencyCode: string,
+  fractionDigits = 4,
+): string | null => {
+  const digits = { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits }
+  try {
+    return formatExactDecimal(
+      rate,
+      new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currencyCode, ...digits }),
+    )
+  } catch {
+    const formatted = formatExactDecimal(rate, new Intl.NumberFormat('pt-BR', digits))
+    return formatted === null ? null : `${currencyCode} ${formatted}`
+  }
+}
+
 export const formatPercentString = (value: string | null): string | null => {
   if (value === null) return null
   const formatted = formatExactDecimal(
@@ -154,4 +175,27 @@ export const formatDateTime = (isoDate: string, timeZone = 'America/Sao_Paulo'):
 
   const month = SHORT_MONTHS[Number(part('month')) - 1] ?? ''
   return `${part('day')} ${month} ${part('year')} • ${part('hour')}:${part('minute')}`
+}
+
+/**
+ * Data e hora "dd/mm/aaaa hh:mm" no fuso do navegador do usuário (ou no fuso informado).
+ * Texto que não é uma data volta como veio.
+ */
+export const formatLocalDateTime = (isoDate: string, timeZone?: string): string => {
+  const date = new Date(isoDate)
+  if (Number.isNaN(date.getTime())) return isoDate
+
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? ''
+
+  return `${part('day')}/${part('month')}/${part('year')} ${part('hour')}:${part('minute')}`
 }

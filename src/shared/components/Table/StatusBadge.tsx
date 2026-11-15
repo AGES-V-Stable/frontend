@@ -1,4 +1,4 @@
-export type StatusVariant = 'success' | 'warning' | 'error' | 'info'
+export type StatusVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral'
 
 interface StatusBadgeProps {
   label: string
@@ -15,6 +15,7 @@ export function StatusBadge({ label, variant }: StatusBadgeProps) {
     warning: 'bg-amber-50 text-amber-700',
     error: 'bg-red-50 text-red-700',
     info: 'bg-blue-50 text-blue-700',
+    neutral: 'bg-slate-100 text-slate-700',
   }
 
   const inferVariant = (labelText: string): StatusVariant => {
@@ -23,7 +24,8 @@ export function StatusBadge({ label, variant }: StatusBadgeProps) {
       return 'warning'
     if (text.includes('falha') || text.includes('erro') || text.includes('cancelad')) return 'error'
     if (text.includes('info')) return 'info'
-    return 'success'
+    // Status sem cor definida não pode parecer sucesso.
+    return 'neutral'
   }
 
   const activeVariant = variant || inferVariant(label)
