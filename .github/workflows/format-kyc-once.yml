@@ -39,5 +39,5 @@ jobs:
           git add src/features/onboarding
           if ! git diff --cached --quiet; then
             HUSKY=0 git commit -m "style(onboarding): aplica Prettier aos novos componentes KYC"
-            git push origin HEAD:feat/blindpay-onboarding-complementar
+            HUSKY=0 git push origin HEAD:feat/blindpay-onboarding-complementar
           fi
