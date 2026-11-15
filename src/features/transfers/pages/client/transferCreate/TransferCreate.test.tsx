@@ -147,7 +147,10 @@ describe('TransferCreate', () => {
     await renderPage(false)
     await typeSourceAmount('100')
     expect(getTransferQuote).not.toHaveBeenCalled()
+    expect(screen.queryByText('Atualizando cotação...')).not.toBeInTheDocument()
     fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
+    // A primeira escolha já sinaliza a cotação em andamento, antes do debounce.
+    expect(screen.getByText('Atualizando cotação...')).toBeInTheDocument()
     await advance(DEBOUNCE_MS)
     expect(getTransferQuote).toHaveBeenCalledWith(
       expect.objectContaining({ beneficiaryId: atlas.id, paymentMethod: 'PIX' }),

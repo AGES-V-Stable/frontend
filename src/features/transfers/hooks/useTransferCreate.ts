@@ -203,9 +203,15 @@ export function useTransferCreate() {
   ])
 
   // Qualquer mudança que afete a cotação invalida a anterior na hora: nada fica exibido como válido.
-  function invalidateQuote(nextAmount: number | null) {
+  // Recebe a rota nova explicitamente: dentro do handler, `values` ainda tem o estado anterior.
+  function invalidateQuote(
+    nextAmount: number | null,
+    route: { beneficiaryId?: string; paymentMethod?: TransferPaymentMethod | '' } = {},
+  ) {
+    const beneficiaryId = route.beneficiaryId ?? values.beneficiaryId
+    const paymentMethod = route.paymentMethod ?? values.paymentMethod
     setQuoteState(
-      isValidAmount(nextAmount) && values.beneficiaryId && values.paymentMethod
+      isValidAmount(nextAmount) && beneficiaryId && paymentMethod
         ? { status: 'loading' }
         : { status: 'idle' },
     )
@@ -232,14 +238,14 @@ export function useTransferCreate() {
       ...(currencyChanged &&
         (amountType === 'SOURCE' ? { destinationAmount: '' } : { sourceAmount: '' })),
     }))
-    if (beneficiaryId) invalidateQuote(editedAmount)
+    if (beneficiaryId) invalidateQuote(editedAmount, { beneficiaryId })
     else setQuoteState({ status: 'idle' })
     setCreatedStatus(undefined)
   }
 
   function handlePaymentMethodChange(paymentMethod: TransferPaymentMethod | '') {
     setValues((previous) => ({ ...previous, paymentMethod }))
-    if (paymentMethod) invalidateQuote(editedAmount)
+    if (paymentMethod) invalidateQuote(editedAmount, { paymentMethod })
     else setQuoteState({ status: 'idle' })
     setCreatedStatus(undefined)
   }
