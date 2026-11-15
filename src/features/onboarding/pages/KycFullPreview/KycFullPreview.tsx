@@ -4,7 +4,6 @@ import { Input } from '@/shared/components/Input'
 import { CompanyStep } from '@/features/onboarding/pages/Register/CompanyStep'
 import { RepresentativeStep } from '@/features/onboarding/pages/Register/RepresentativeStep'
 import ComplianceStep from '@/features/onboarding/pages/Register/ComplianceStep'
-import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
 import { BlindPayIndividualKyc } from '@/features/onboarding/pages/BlindPayIndividualKyc/BlindPayIndividualKyc'
 import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
 
@@ -14,11 +13,10 @@ const SCREENS = [
   'Representante',
   'Documentos Avenia',
   'Verificação facial',
-  'Complementação BlindPay',
   'KYC BlindPay (individual)',
 ] as const
 
-type ScreenIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6
+type ScreenIndex = 0 | 1 | 2 | 3 | 4 | 5
 
 /**
  * Rota exclusivamente de desenvolvimento para revisar o percurso visual de KYC.
@@ -119,22 +117,13 @@ export function KycFullPreview() {
               >
                 Simulação visual: nenhuma verificação de identidade foi realizada.
               </div>
-              <Button label="Visualizar complementação BlindPay" onClick={() => navigateTo(5)} />
+              <Button label="Visualizar KYC BlindPay" onClick={() => navigateTo(5)} />
             </section>
           </div>
         </main>
       )}
 
-      {step === 6 && <BlindPayIndividualKyc previewOnly />}
-      {step === 5 && (
-        <div>
-          <div className="mx-auto max-w-[1300px] px-4 pt-5 text-sm text-slate-600 md:px-8">
-            Campos adicionais do representante. O backend atual da BlindPay opera o onboarding KYB
-            empresarial; esta prévia não equivale a um KYC individual enviado.
-          </div>
-          <BlindPayComplement />
-        </div>
-      )}
+      {step === 5 && <BlindPayIndividualKyc previewOnly />}
     </div>
   )
 }
