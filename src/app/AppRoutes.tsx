@@ -34,6 +34,7 @@ import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDepo
 import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
+import { KycFullPreview } from '@/features/onboarding/pages/KycFullPreview/KycFullPreview'
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
 import {
   CompanyRoute,
@@ -338,7 +339,10 @@ export default function AppRoutes() {
     <Routes>
       <Route path={PATHS.HOME} element={<RoleLanding />} />
       {import.meta.env.DEV && (
-        <Route path="/dev/blindpay/complementar" element={<BlindPayComplement />} />
+        <>
+          <Route path="/dev/blindpay/complementar" element={<BlindPayComplement />} />
+          <Route path="/dev/kyc/fluxo-completo" element={<KycFullPreview />} />
+        </>
       )}
       <Route element={<RoleGuard role="ADMIN" />}>
         <Route element={<RoutedApplication />}>
