@@ -202,11 +202,39 @@ describe('Login Page Component', () => {
     await user.type(screen.getByLabelText('Senha'), 'senha-valida')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findByText('Verificação de Segurança')).toBeInTheDocument()
-    expect(screen.getByText('Autenticação em duas etapas')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Verificação em duas etapas' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Digite o código do seu app autenticador.')).toBeInTheDocument()
     expect(screen.getByLabelText('Código de autenticação')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Verificar e Entrar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument()
     expect(localStorage.getItem('token')).toBeNull()
+  })
+
+  it('asks to activate the authenticator on the first access, with no recovery exit yet', async () => {
+    // Given um login que exige ativar o 2FA (com QR Code)
+    const user = userEvent.setup()
+    vi.mocked(authService.login).mockResolvedValueOnce({
+      requires2fa: true,
+      challengeToken: 'challenge-token-123',
+      otpauthUri: 'otpauth://totp/V-Stable:user@empresa.com?secret=JBSWY3DPEHPK3PXP',
+    })
+    renderLogin()
+
+    // When o usuário entra com as credenciais
+    await user.type(screen.getByLabelText('E-mail'), 'user2fa@empresa.com')
+    await user.type(screen.getByLabelText('Senha'), 'senha-valida')
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    // Then vê os passos da ativação, o botão de ativar e só a saída de volta ao login
+    expect(
+      await screen.findByText('Escaneie o QR Code com seu app autenticador.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ativar e entrar' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Não consigo usar o autenticador' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Voltar ao login' })).toBeInTheDocument()
   })
 
   it('envia o código de 6 dígitos via verify2fa e conclui o login com sucesso sem salvar token antes', async () => {
@@ -229,7 +257,7 @@ describe('Login Page Component', () => {
 
     const totpInput = await screen.findByLabelText('Código de autenticação')
     await user.type(totpInput, '123456')
-    await user.click(screen.getByRole('button', { name: 'Verificar e Entrar' }))
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(authService.verify2fa).toHaveBeenCalledWith({
       challengeToken: 'challenge-token-123',
@@ -257,7 +285,7 @@ describe('Login Page Component', () => {
 
     const totpInput = await screen.findByLabelText('Código de autenticação')
     await user.type(totpInput, '123456')
-    await user.click(screen.getByRole('button', { name: 'Verificar e Entrar' }))
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText('Admin page')).toBeInTheDocument()
     expect(localStorage.getItem('token')).toBe(mockAdminToken)
@@ -280,7 +308,7 @@ describe('Login Page Component', () => {
 
     const totpInput = await screen.findByLabelText('Código de autenticação')
     await user.type(totpInput, '000000')
-    await user.click(screen.getByRole('button', { name: 'Verificar e Entrar' }))
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(
       await screen.findByText('Código de autenticação inválido ou expirado.'),
@@ -300,8 +328,8 @@ describe('Login Page Component', () => {
     await user.type(screen.getByLabelText('Senha'), 'senha-valida')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findByText('Verificação de Segurança')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Voltar para o login' }))
+    expect(await screen.findByText('Verificação em duas etapas')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Voltar ao login' }))
 
     expect(screen.getByRole('heading', { name: 'Bem-vindo à V-Stable!' })).toBeInTheDocument()
     expect(screen.getByLabelText('E-mail')).toBeInTheDocument()
@@ -322,25 +350,17 @@ describe('Login Page Component', () => {
     await user.type(screen.getByLabelText('Senha'), 'senha-valida')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    // Verifica que na etapa de 6 dígitos o texto de 6 dígitos está presente
+    // Given a etapa do código, com a instrução do autenticador
+    expect(await screen.findByText('Digite o código do seu app autenticador.')).toBeInTheDocument()
+
+    // When o usuário diz que não consegue usar o autenticador
+    await user.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
+
+    // Then a instrução do autenticador dá lugar à do código de recuperação
+    expect(screen.queryByText('Digite o código do seu app autenticador.')).not.toBeInTheDocument()
     expect(
-      await screen.findByText('Confirme o acesso com o código de 6 dígitos'),
+      screen.getByText('Use um dos códigos de recuperação que você salvou ao ativar o 2FA.'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Autenticação em duas etapas')).toBeInTheDocument()
-
-    // Clica para usar código de recuperação
-    await user.click(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
-    )
-
-    // Os textos de 6 dígitos não devem mais estar visíveis
-    expect(
-      screen.queryByText('Confirme o acesso com o código de 6 dígitos'),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText('Autenticação em duas etapas')).not.toBeInTheDocument()
-    expect(
-      screen.queryByText(/Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador/),
-    ).not.toBeInTheDocument()
 
     // Preenche o código de recuperação de 8 caracteres
     const recoveryInput = screen.getByTestId('recovery-code-input')
@@ -367,12 +387,9 @@ describe('Login Page Component', () => {
     await user.type(screen.getByLabelText('Senha'), 'senha-valida')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    // Na etapa 2FA, clica na opção
-    await user.click(
-      await screen.findByRole('button', {
-        name: 'Não tenho acesso ao autenticador nem aos códigos de recuperação',
-      }),
-    )
+    // Na etapa 2FA: primeiro o código de recuperação, e de lá o pedido de ajuda
+    await user.click(await screen.findByRole('button', { name: 'Não consigo usar o autenticador' }))
+    await user.click(screen.getByRole('button', { name: 'Não tenho os códigos' }))
 
     // Exibe o formulário de recuperação
     expect(screen.getByText('Recuperação de Acesso (2FA)')).toBeInTheDocument()

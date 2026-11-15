@@ -1,6 +1,7 @@
 import { isStoredAdmin } from '@/features/auth'
 import { getCurrentUser } from '@/features/auth/api/user'
 import { getCurrentOnboarding } from '@/features/onboarding/api/onboarding'
+import { loadIndividualKycStatus } from '@/features/onboarding/api/blindpayIndividualKyc'
 import { pendingOnboardingPath } from '@/features/onboarding/model/registrationStatus'
 import { PATHS } from '@/shared/navigation/paths'
 
@@ -26,5 +27,10 @@ export async function postLoginDestination(from: string | null): Promise<string>
   // Sem verificação de KYC (404) ou com falha na consulta, o login segue normalmente.
   const onboarding = await getCurrentOnboarding().catch(() => null)
   const pending = onboarding ? pendingOnboardingPath(onboarding) : null
-  return pending ?? fallback
+  if (pending) return pending
+
+  // A complementação BlindPay acontece depois das etapas Avenia. Se o recurso estiver
+  // desabilitado ou indisponível neste ambiente, a falha não bloqueia o acesso à aplicação.
+  const blindPay = await loadIndividualKycStatus().catch(() => null)
+  return blindPay && !blindPay.submitted ? PATHS.BLINDPAY_KYC : fallback
 }

@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { DocumentUploadSchema } from '../schemas/responses'
 import type {
   DocumentUploadStartResponse,
@@ -64,5 +65,37 @@ export async function submitDocumentResult(
       method: 'PUT',
       body: JSON.stringify({ documentoId }),
     },
+  )
+}
+
+const AveniaTermsSchema = z.object({
+  version: z.number().int().positive(),
+  accepted: z.boolean(),
+  documents: z.array(
+    z.object({ key: z.string().nullable(), name: z.string().nullable(), url: z.url() }),
+  ),
+})
+
+export type AveniaTerms = z.infer<typeof AveniaTermsSchema>
+
+function aveniaTermsPath(kycVerificationId: string) {
+  return `/v1/onboarding/${encodeURIComponent(kycVerificationId)}/compliance/avenia-terms`
+}
+
+/** Termos de uso e política de privacidade da Avenia que o titular precisa ver e aceitar. */
+export async function getAveniaTerms(kycVerificationId: string): Promise<AveniaTerms> {
+  return AveniaTermsSchema.parse(await httpRequest<unknown>(aveniaTermsPath(kycVerificationId)))
+}
+
+/** Registra na Avenia o aceite da versão exibida; o token de aceite fica só no backend. */
+export async function acceptAveniaTerms(
+  kycVerificationId: string,
+  version: number,
+): Promise<AveniaTerms> {
+  return AveniaTermsSchema.parse(
+    await httpRequest<unknown>(aveniaTermsPath(kycVerificationId), {
+      method: 'POST',
+      body: JSON.stringify({ version }),
+    }),
   )
 }

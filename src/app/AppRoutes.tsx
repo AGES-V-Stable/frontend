@@ -35,7 +35,6 @@ import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
 import { KycFullPreview } from '@/features/onboarding/pages/KycFullPreview/KycFullPreview'
-import { BlindPayIndividualKyc } from '@/features/onboarding/pages/BlindPayIndividualKyc/BlindPayIndividualKyc'
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
 import {
   CompanyRoute,
@@ -49,6 +48,7 @@ import { PATHS, transferDetailsPath } from '@/shared/navigation/paths'
 import { maskCNPJ } from '@/shared/utils/masks'
 import { postLoginDestination } from './postLoginDestination'
 import { ApplicationShell } from './components/ApplicationShell'
+import { BlindPayKycAccess } from './components/BlindPayKycAccess'
 import { NavBar } from './components/NavBar'
 import type { NavigationItem } from './components/NavBar'
 import logo from '@/shared/assets/navigation/logo.png'
@@ -204,7 +204,19 @@ function RoutedApplication() {
   const { pathname } = useLocation()
   const [supportChatOpen, setSupportChatOpen] = useState(false)
   const admin = isStoredAdmin()
-  const icon = (src: string) => <img src={src} alt="" />
+  // O SVG vira máscara e a cor vem do texto do item: cinza no inativo, verde no selecionado.
+  const icon = (src: string) => (
+    <span
+      data-testid="navigation-icon"
+      className="block size-5 bg-current"
+      style={{
+        maskImage: `url("${src}")`,
+        maskSize: 'contain',
+        maskRepeat: 'no-repeat',
+        maskPosition: 'center',
+      }}
+    />
+  )
   const item = (id: string, label: string, path: string, src: string): NavigationItem => ({
     id,
     label,
@@ -330,8 +342,21 @@ function DashboardRoute({ admin = false }: { admin?: boolean }) {
         </p>
       }
     >
-      <Dashboard admin={admin} />
+      <Dashboard
+        admin={admin}
+        blindPayAccess={admin ? undefined : <BlindPayKycAccess variant="dashboard" />}
+      />
     </Suspense>
+  )
+}
+
+function BlindPayComplementRoute({ previewOnly = false }: { previewOnly?: boolean }) {
+  const navigate = useNavigate()
+  return (
+    <BlindPayComplement
+      previewOnly={previewOnly}
+      onPostpone={() => void navigate(PATHS.DASHBOARD)}
+    />
   )
 }
 
@@ -341,9 +366,12 @@ export default function AppRoutes() {
       <Route path={PATHS.HOME} element={<RoleLanding />} />
       {import.meta.env.DEV && (
         <>
-          <Route path="/dev/blindpay/complementar" element={<BlindPayComplement />} />
+          <Route
+            path="/dev/blindpay/complementar"
+            element={<BlindPayComplementRoute previewOnly />}
+          />
           <Route path="/dev/kyc/fluxo-completo" element={<KycFullPreview />} />
-          <Route path="/dev/kyc/blindpay" element={<BlindPayIndividualKyc previewOnly />} />
+          <Route path="/dev/kyc/blindpay" element={<BlindPayComplementRoute previewOnly />} />
         </>
       )}
       <Route element={<RoleGuard role="ADMIN" />}>
@@ -386,11 +414,23 @@ export default function AppRoutes() {
       </Route>
       <Route element={<RoleGuard />}>
         <Route element={<RoutedApplication />}>
-          <Route path={PATHS.SETTINGS} element={<Settings />} />
+          <Route
+            path={PATHS.SETTINGS}
+            element={
+              <Settings
+                blindPayAccess={
+                  isStoredAdmin() ? undefined : <BlindPayKycAccess variant="settings" />
+                }
+              />
+            }
+          />
         </Route>
         <Route path={PATHS.COMPANY_SETUP} element={<CompanySetupRoute />} />
-        <Route path={PATHS.BLINDPAY_KYC} element={<BlindPayIndividualKyc />} />
-        <Route path={PATHS.BLINDPAY_COMPLEMENT} element={<BlindPayComplement />} />
+        <Route path={PATHS.BLINDPAY_KYC} element={<BlindPayComplementRoute />} />
+        <Route
+          path={PATHS.BLINDPAY_COMPLEMENT}
+          element={<Navigate replace to={PATHS.BLINDPAY_KYC} />}
+        />
       </Route>
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
       <Route path="/beneficiarios/novo" element={<LegacyRedirect to={PATHS.BENEFICIARIES_NEW} />} />

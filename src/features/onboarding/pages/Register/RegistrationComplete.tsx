@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router'
 
 import { Button } from '@/shared/components/Button'
 import { PATHS } from '@/shared/navigation/paths'
+import logo from '@/shared/assets/navigation/logo.png'
 
 export default function RegistrationComplete() {
   const navigate = useNavigate()
@@ -9,7 +10,7 @@ export default function RegistrationComplete() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-10 px-4 bg-slate-50">
       <div className="mb-8">
-        <span className="text-2xl font-bold tracking-widest text-primary">V-STABLE</span>
+        <img src={logo} alt="V-Stable" className="h-12 w-auto object-contain" />
       </div>
 
       <div className="bg-white rounded-2xl shadow-md w-full max-w-lg p-8 text-center flex flex-col gap-6">

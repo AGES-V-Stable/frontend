@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Button } from '@/shared/components/Button'
 import { RecoveryCodesContainer, TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
 import { twoFactorService, useSession } from '@/features/auth'
@@ -11,9 +11,15 @@ export interface SettingsProps {
   twoFactorEnabled?: boolean
   /** Callback disparado ao concluir a reconfiguração com sucesso */
   onReconfigureSuccess?: () => void
+  /** Bloco de verificação injetado pela camada da aplicação para contas de usuário. */
+  blindPayAccess?: ReactNode
 }
 
-export function Settings({ twoFactorEnabled, onReconfigureSuccess }: SettingsProps) {
+export function Settings({
+  twoFactorEnabled,
+  onReconfigureSuccess,
+  blindPayAccess,
+}: SettingsProps) {
   const { user } = useSession()
   const [twoFactorActive, setTwoFactorActive] = useState<boolean>(
     () => twoFactorEnabled ?? user?.twoFactorEnabled ?? twoFactorService.isActivated(user?.id),
@@ -149,6 +155,8 @@ export function Settings({ twoFactorEnabled, onReconfigureSuccess }: SettingsPro
           </div>
         </div>
       </section>
+
+      {blindPayAccess}
 
       {/* Seção de Segurança */}
       <section

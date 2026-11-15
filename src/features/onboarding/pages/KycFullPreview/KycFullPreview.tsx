@@ -4,7 +4,7 @@ import { Input } from '@/shared/components/Input'
 import { CompanyStep } from '@/features/onboarding/pages/Register/CompanyStep'
 import { RepresentativeStep } from '@/features/onboarding/pages/Register/RepresentativeStep'
 import ComplianceStep from '@/features/onboarding/pages/Register/ComplianceStep'
-import { BlindPayIndividualKyc } from '@/features/onboarding/pages/BlindPayIndividualKyc/BlindPayIndividualKyc'
+import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
 import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
 
 const SCREENS = [
@@ -13,7 +13,7 @@ const SCREENS = [
   'Representante',
   'Documentos Avenia',
   'Verificação facial',
-  'KYC BlindPay (individual)',
+  'KYC BlindPay',
 ] as const
 
 type ScreenIndex = 0 | 1 | 2 | 3 | 4 | 5
@@ -25,6 +25,8 @@ type ScreenIndex = 0 | 1 | 2 | 3 | 4 | 5
  */
 export function KycFullPreview() {
   const [step, setStep] = useState<ScreenIndex>(0)
+  // Campos apenas demonstrativos: nada é enviado.
+  const [access, setAccess] = useState({ name: '', email: '', password: '', confirm: '' })
 
   function navigateTo(index: number) {
     if (index >= 0 && index < SCREENS.length) setStep(index as ScreenIndex)
@@ -73,10 +75,25 @@ export function KycFullPreview() {
             />
             <div className="mx-auto grid w-full max-w-xl gap-4 py-4">
               <h2 className="text-xl font-bold text-slate-900">Dados de acesso</h2>
-              <Input label="Nome completo" placeholder="Nome do representante" />
-              <Input label="E-mail" type="email" placeholder="nome@empresa.com.br" />
-              <Input label="Senha" type="password" placeholder="Senha de demonstração" />
-              <Input label="Confirmar senha" type="password" placeholder="Repita a senha" />
+              {(
+                [
+                  ['name', 'Nome completo', 'text', 'Nome do representante'],
+                  ['email', 'E-mail', 'email', 'nome@empresa.com.br'],
+                  ['password', 'Senha', 'password', 'Senha de demonstração'],
+                  ['confirm', 'Confirmar senha', 'password', 'Repita a senha'],
+                ] as const
+              ).map(([key, label, type, placeholder]) => (
+                <Input
+                  key={key}
+                  label={label}
+                  type={type}
+                  placeholder={placeholder}
+                  value={access[key]}
+                  onChange={(event) =>
+                    setAccess((previous) => ({ ...previous, [key]: event.target.value }))
+                  }
+                />
+              ))}
               <Button label="Próxima tela" onClick={() => navigateTo(1)} />
             </div>
           </div>
@@ -123,7 +140,7 @@ export function KycFullPreview() {
         </main>
       )}
 
-      {step === 5 && <BlindPayIndividualKyc previewOnly />}
+      {step === 5 && <BlindPayComplement previewOnly />}
     </div>
   )
 }

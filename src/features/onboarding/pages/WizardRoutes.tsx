@@ -5,6 +5,8 @@ import { useCompanyRegistration } from '../hooks/useCompanyRegistration'
 import type { CompanyData } from '../types/registration'
 import { useRepresentativeSubmission } from '../hooks/useRepresentativeSubmission'
 import { useComplianceSubmission } from '../hooks/useComplianceSubmission'
+import { useAveniaTerms } from '../hooks/useAveniaTerms'
+import { AveniaTermsConsent } from '../components/AveniaTermsConsent/AveniaTermsConsent'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 
 import LivenessStep from '@/features/onboarding/pages/LivenessStep'
@@ -20,6 +22,7 @@ const AccessState = z.object({
   email: z.string(),
   senha: z.string(),
   confirmarSenha: z.string(),
+  termsVersion: z.string().min(1),
 })
 const CompanyState = z.object({
   razaoSocial: z.string(),
@@ -96,8 +99,28 @@ export function TwoFactorRoute() {
 export function ComplianceRoute() {
   const { kycVerificationId } = useParams()
   const { saving, serverError, handleContinue } = useComplianceSubmission(kycVerificationId)
+  const aveniaTerms = useAveniaTerms(kycVerificationId)
 
-  return <ComplianceStep onContinue={handleContinue} saving={saving} serverError={serverError} />
+  return (
+    <ComplianceStep
+      onContinue={async (data) => {
+        // O aceite dos termos da Avenia vem antes do envio do documento de identidade.
+        if (await aveniaTerms.ensureAccepted()) await handleContinue(data)
+      }}
+      saving={saving}
+      serverError={serverError}
+      beforeSubmit={
+        <AveniaTermsConsent
+          terms={aveniaTerms.terms}
+          loadFailed={aveniaTerms.loadFailed}
+          checked={aveniaTerms.checked}
+          error={aveniaTerms.error}
+          onCheck={aveniaTerms.check}
+          onRetry={aveniaTerms.retry}
+        />
+      }
+    />
+  )
 }
 
 export function LivenessRoute() {
