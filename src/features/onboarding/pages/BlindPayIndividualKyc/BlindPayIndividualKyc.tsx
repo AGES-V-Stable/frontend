@@ -231,7 +231,9 @@ export function BlindPayIndividualKyc({ previewOnly = false }: Props) {
   const fieldClasses =
     'w-full rounded-lg border border-sage-500 bg-surface px-3 py-3 text-sm text-slate-900 focus-visible:outline-2 focus-visible:outline-primary'
   const statusText = status?.kycStatus === 'approved'
-    ? 'Aprovado pela BlindPay'
+    ? status.amlStatus === 'clear'
+      ? 'Identidade aprovada e triagem AML liberada pela BlindPay'
+      : 'Identidade aprovada; a triagem AML ainda não está liberada'
     : status?.kycStatus === 'rejected'
       ? 'KYC rejeitado; contate o suporte para novo cadastro'
       : status?.kycStatus === 'compliance_request'
