@@ -1,4 +1,5 @@
 import { Stepper } from '@/shared/components/Stepper'
+import logo from '@/shared/assets/navigation/logo.png'
 
 const steps = ['Acesso', 'Empresa', 'Representante', 'Compliance', 'Conclusão']
 
@@ -14,7 +15,7 @@ export function RegistrationHeader({
   return (
     <>
       <header className="flex flex-col items-center text-center">
-        <span className="text-2xl font-bold tracking-widest text-primary">V-STABLE</span>
+        <img src={logo} alt="V-Stable" className="h-12 w-auto object-contain" />
         <h1 className="mt-2 flex min-h-10 items-center text-2xl font-bold text-slate-900">
           Cadastro Institucional
         </h1>

@@ -26,6 +26,7 @@ describe('RegistrationComplete Page Component', () => {
     expect(screen.getByText(/nossa equipe de compliance vai analisar/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Acompanhar status' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Voltar para o início' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'V-Stable' })).toBeInTheDocument()
   })
 
   it('navigates to status page when clicking Acompanhar status', async () => {

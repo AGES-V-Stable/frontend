@@ -7,6 +7,10 @@ import { TwoFactorAuthContainer } from './TwoFactorAuthContainer'
 const sampleUri =
   'otpauth://totp/V-Stable:usuario@empresa.com?secret=JBSWY3DPEHPK3PXP&issuer=V-Stable'
 
+// A chave manual fica recolhida atrás de "Não consegue escanear?".
+const revealSecret = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Não consegue escanear?' }))
+
 describe('TwoFactorAuthContainer', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -25,6 +29,7 @@ describe('TwoFactorAuthContainer', () => {
         description="Proteja sua conta utilizando 2FA."
       />,
     )
+    revealSecret()
 
     expect(screen.getByText('Configurar Autenticação de Dois Fatores')).toBeInTheDocument()
     expect(screen.getByText('Proteja sua conta utilizando 2FA.')).toBeInTheDocument()
@@ -68,6 +73,7 @@ describe('TwoFactorAuthContainer', () => {
     })
 
     render(<TwoFactorAuthContainer otpauthUri={sampleUri} />)
+    revealSecret()
 
     const copyButton = screen.getByRole('button', { name: 'Copiar chave secreta' })
     await act(async () => {
@@ -89,6 +95,7 @@ describe('TwoFactorAuthContainer', () => {
     const writeTextMock = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText: writeTextMock } })
     render(<TwoFactorAuthContainer otpauthUri={sampleUri} />)
+    revealSecret()
 
     // When o usuário clica em Copiar
     await act(async () => {
@@ -102,12 +109,14 @@ describe('TwoFactorAuthContainer', () => {
 
   it('utiliza a prop secret explícita quando informada', () => {
     render(<TwoFactorAuthContainer otpauthUri={sampleUri} secret="CUSTOMSECRET123" />)
+    revealSecret()
 
     expect(screen.getByText('CUST OMSE CRET 123')).toBeInTheDocument()
   })
 
   it('extrai o segredo mesmo de uma URI com formato não padrão através do fallback de regex', () => {
     render(<TwoFactorAuthContainer otpauthUri="invalid-url-scheme:totp?secret=FALLBACKSECRET123" />)
+    revealSecret()
     expect(screen.getByText('FALL BACK SECR ET12 3')).toBeInTheDocument()
   })
 
@@ -119,6 +128,7 @@ describe('TwoFactorAuthContainer', () => {
     })
 
     render(<TwoFactorAuthContainer otpauthUri={sampleUri} />)
+    revealSecret()
 
     const copyButton = screen.getByRole('button', { name: 'Copiar chave secreta' })
     await act(async () => {
@@ -126,6 +136,65 @@ describe('TwoFactorAuthContainer', () => {
     })
 
     expect(screen.queryByText('✓ Copiado!')).not.toBeInTheDocument()
+  })
+
+  it('keeps the manual key folded behind a subtle "Não consegue escanear?" button', () => {
+    // Given a ativação com QR Code
+    render(<TwoFactorAuthContainer otpauthUri={sampleUri} />)
+    const toggle = screen.getByRole('button', { name: 'Não consegue escanear?' })
+
+    // Then a chave começa escondida
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('JBSW Y3DP EHPK 3PXP')).not.toBeInTheDocument()
+
+    // When o usuário pede a chave
+    fireEvent.click(toggle)
+
+    // Then a chave aparece, com o Copiar
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('JBSW Y3DP EHPK 3PXP')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copiar chave secreta' })).toBeInTheDocument()
+  })
+
+  it('shows two short numbered steps when activating with a QR Code', () => {
+    // Given a ativação com QR Code
+    render(<TwoFactorAuthContainer otpauthUri={sampleUri} />)
+
+    // Then os passos aparecem numerados, sem os títulos e instruções longas de antes
+    expect(screen.getByText('Escaneie o QR Code com seu app autenticador.')).toBeInTheDocument()
+    expect(screen.getByText('Digite o código que o app mostrar.')).toBeInTheDocument()
+    expect(screen.getByText('Passo 1:')).toHaveClass('sr-only')
+    expect(screen.queryByText('Inserir código de verificação')).not.toBeInTheDocument()
+  })
+
+  it('shows no extra instruction inside the code box when there is no QR Code', () => {
+    // Given só o código, com a descrição do cartão
+    render(<TwoFactorAuthContainer description="Digite o código do seu app autenticador." />)
+
+    // Then a única instrução é a descrição
+    expect(screen.getByText('Digite o código do seu app autenticador.')).toBeInTheDocument()
+    expect(screen.queryByText(/Passo/)).not.toBeInTheDocument()
+  })
+
+  it('offers "Não tenho os códigos" in recovery mode only when the page handles it', () => {
+    // Given um consumidor sem o próximo passo
+    const { unmount } = render(<TwoFactorAuthContainer />)
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
+
+    // Then o link não aparece
+    expect(screen.queryByRole('button', { name: 'Não tenho os códigos' })).not.toBeInTheDocument()
+    unmount()
+
+    // Given um consumidor com o próximo passo
+    const onMissingRecoveryCodes = vi.fn()
+    render(<TwoFactorAuthContainer onMissingRecoveryCodes={onMissingRecoveryCodes} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
+
+    // When o usuário diz que não tem os códigos
+    fireEvent.click(screen.getByRole('button', { name: 'Não tenho os códigos' }))
+
+    // Then a página é avisada
+    expect(onMissingRecoveryCodes).toHaveBeenCalledTimes(1)
   })
 
   it('oculta a seção do QR Code quando otpauthUri não é fornecido', () => {
@@ -281,7 +350,7 @@ describe('TwoFactorAuthContainer', () => {
     render(<TwoFactorAuthContainer />)
 
     expect(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+      screen.getByRole('button', { name: 'Não consigo usar o autenticador' }),
     ).toBeInTheDocument()
   })
 
@@ -289,14 +358,14 @@ describe('TwoFactorAuthContainer', () => {
     const { unmount } = render(<TwoFactorAuthContainer otpauthUri={sampleUri} />)
 
     expect(
-      screen.queryByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+      screen.queryByRole('button', { name: 'Não consigo usar o autenticador' }),
     ).not.toBeInTheDocument()
 
     unmount()
 
     render(<TwoFactorAuthContainer otpauthUri={sampleUri} allowRecovery />)
     expect(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+      screen.getByRole('button', { name: 'Não consigo usar o autenticador' }),
     ).toBeInTheDocument()
   })
 
@@ -307,25 +376,21 @@ describe('TwoFactorAuthContainer', () => {
     expect(screen.getByRole('timer')).toBeInTheDocument()
 
     const recoveryLink = screen.getByRole('button', {
-      name: 'Perdi meu celular / Usar código de recuperação',
+      name: 'Não consigo usar o autenticador',
     })
     fireEvent.click(recoveryLink)
 
     expect(screen.queryByPlaceholderText('000000')).not.toBeInTheDocument()
     expect(screen.queryByRole('timer')).not.toBeInTheDocument()
     expect(screen.getByTestId('recovery-code-input')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Voltar para código do autenticador' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Usar o autenticador' })).toBeInTheDocument()
   })
 
   it('formata para maiúsculo e dispara onVerifyRecovery com o código ao submeter', () => {
     const handleVerifyRecovery = vi.fn()
     render(<TwoFactorAuthContainer onVerifyRecovery={handleVerifyRecovery} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
 
     const recoveryInput = screen.getByTestId('recovery-code-input')
     const submitBtn = screen.getByRole('button', { name: 'Verificar código de recuperação' })
@@ -347,9 +412,7 @@ describe('TwoFactorAuthContainer', () => {
     const handleVerifyRecovery = vi.fn()
     render(<TwoFactorAuthContainer onVerifyRecovery={handleVerifyRecovery} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
 
     const recoveryInput = screen.getByTestId('recovery-code-input')
     fireEvent.change(recoveryInput, { target: { value: 'emerg-123' } })
@@ -373,9 +436,7 @@ describe('TwoFactorAuthContainer', () => {
       ),
     ).toBeInTheDocument()
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
 
     expect(screen.queryByText('Autenticação em duas etapas')).not.toBeInTheDocument()
     expect(
@@ -383,28 +444,26 @@ describe('TwoFactorAuthContainer', () => {
         'Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta.',
       ),
     ).not.toBeInTheDocument()
-    expect(screen.getByText('Código de recuperação de emergência')).toBeInTheDocument()
+    expect(
+      screen.getByText('Use um dos códigos de recuperação que você salvou ao ativar o 2FA.'),
+    ).toBeInTheDocument()
   })
 
   it('notifica onRecoveryModeChange ao alternar entre os modos', () => {
     const handleModeChange = vi.fn()
     render(<TwoFactorAuthContainer onRecoveryModeChange={handleModeChange} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
     expect(handleModeChange).toHaveBeenCalledWith(true)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Voltar para código do autenticador' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usar o autenticador' }))
     expect(handleModeChange).toHaveBeenCalledWith(false)
   })
 
   it('limita o campo de código de recuperação a 8 caracteres alfanuméricos', () => {
     render(<TwoFactorAuthContainer />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
 
     const input = screen.getByTestId('recovery-code-input')
     fireEvent.change(input, { target: { value: 'abcdefghijk123' } })
@@ -415,13 +474,11 @@ describe('TwoFactorAuthContainer', () => {
   it('permite retornar do modo de recuperação para o modo TOTP de 6 dígitos', () => {
     render(<TwoFactorAuthContainer />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
 
     expect(screen.getByTestId('recovery-code-input')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Voltar para código do autenticador' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usar o autenticador' }))
 
     expect(screen.queryByTestId('recovery-code-input')).not.toBeInTheDocument()
     expect(screen.getByPlaceholderText('000000')).toBeInTheDocument()
@@ -449,9 +506,7 @@ describe('TwoFactorAuthContainer', () => {
     const handleBack = vi.fn()
     render(<TwoFactorAuthContainer onBack={handleBack} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
 
     const backBtn = screen.getByRole('button', { name: 'Voltar' })
     expect(backBtn).toBeInTheDocument()

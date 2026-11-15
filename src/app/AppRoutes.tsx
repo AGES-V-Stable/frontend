@@ -201,7 +201,19 @@ function RoutedApplication() {
   const { pathname } = useLocation()
   const [supportChatOpen, setSupportChatOpen] = useState(false)
   const admin = isStoredAdmin()
-  const icon = (src: string) => <img src={src} alt="" />
+  // O SVG vira máscara e a cor vem do texto do item: cinza no inativo, verde no selecionado.
+  const icon = (src: string) => (
+    <span
+      data-testid="navigation-icon"
+      className="block size-5 bg-current"
+      style={{
+        maskImage: `url("${src}")`,
+        maskSize: 'contain',
+        maskRepeat: 'no-repeat',
+        maskPosition: 'center',
+      }}
+    />
+  )
   const item = (id: string, label: string, path: string, src: string): NavigationItem => ({
     id,
     label,

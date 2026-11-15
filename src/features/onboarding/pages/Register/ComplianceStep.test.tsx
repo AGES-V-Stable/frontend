@@ -213,9 +213,13 @@ describe('ComplianceStep', () => {
     expect(onContinue).not.toHaveBeenCalled()
   })
 
-  it('displays the V-STABLE brand header', () => {
+  it('shows the V-Stable logo image in the header instead of plain text', () => {
+    // Given a etapa de compliance do cadastro
     renderComponent()
-    expect(screen.getByText('V-STABLE')).toBeInTheDocument()
+
+    // Then o topo mostra o logo, com nome acessível, e não o texto solto
+    expect(screen.getByRole('img', { name: 'V-Stable' })).toBeInTheDocument()
+    expect(screen.queryByText('V-STABLE')).not.toBeInTheDocument()
   })
 
   it('displays the file upload area with instructions', () => {
