@@ -47,14 +47,13 @@ export function describeKycStatus(status: IndividualKycStatus): KycStatusView {
         tone: 'warning',
         title: 'Informações adicionais solicitadas',
         description:
-          'A BlindPay pediu informações complementares. Entre em contato com o suporte V-Stable.',
+          'A BlindPay pediu informações complementares. Responda abaixo para liberar as operações.',
       }
     case 'rejected':
       return {
         tone: 'danger',
         title: 'Verificação recusada',
-        description:
-          'A BlindPay recusou a verificação. Um novo cadastro precisa ser aberto pelo suporte.',
+        description: 'A BlindPay recusou a verificação. Corrija os dados e envie um novo cadastro.',
       }
     case 'pending_review':
       return {

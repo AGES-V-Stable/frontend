@@ -6,6 +6,9 @@ import {
   loadIndividualKycStatus,
   startIndividualKycTerms,
   submitIndividualKyc,
+  restartIndividualKyc,
+  loadIndividualKycRfi,
+  submitIndividualKycRfi,
 } from '@/features/onboarding/api/blindpayIndividualKyc'
 import { BlindPayComplement } from './BlindPayComplement'
 import { describeKycStatus, isKycPending, kycErrorMessage } from './kycStatus'
@@ -20,6 +23,10 @@ vi.mock('@/features/onboarding/api/blindpayIndividualKyc', () => ({
   loadIndividualKycStatus: vi.fn(),
   startIndividualKycTerms: vi.fn(),
   submitIndividualKyc: vi.fn(),
+  restartIndividualKyc: vi.fn(),
+  loadIndividualKycRfi: vi.fn(),
+  submitIndividualKycRfi: vi.fn(),
+  uploadIndividualKycRfiDocument: vi.fn(),
 }))
 
 const image = (name: string) => new File(['jpeg'], name, { type: 'image/jpeg' })
@@ -62,6 +69,9 @@ beforeEach(() => {
   vi.mocked(loadIndividualKycStatus).mockReset()
   vi.mocked(startIndividualKycTerms).mockReset()
   vi.mocked(submitIndividualKyc).mockReset()
+  vi.mocked(restartIndividualKyc).mockReset()
+  vi.mocked(loadIndividualKycRfi).mockReset()
+  vi.mocked(submitIndividualKycRfi).mockReset()
 })
 
 describe('validation', () => {
@@ -290,5 +300,75 @@ describe('BlindPayComplement (integração)', () => {
     render(<BlindPayComplement />)
 
     expect(await screen.findByText(/não está habilitada neste ambiente/)).toBeInTheDocument()
+  })
+
+  it('lets a rejected holder correct the data and start a new registration', async () => {
+    vi.mocked(loadIndividualKycStatus).mockResolvedValue({
+      termsAccepted: true,
+      submitted: true,
+      kycStatus: 'rejected',
+      amlStatus: null,
+    })
+    vi.mocked(restartIndividualKyc).mockResolvedValue(notStarted)
+    const user = userEvent.setup()
+    render(<BlindPayComplement />)
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Corrigir dados e enviar novo cadastro' }),
+    )
+
+    expect(restartIndividualKyc).toHaveBeenCalledOnce()
+    expect(
+      await screen.findByRole('heading', { name: 'Dados pessoais do titular' }),
+    ).toBeInTheDocument()
+  })
+
+  it('answers the BlindPay information request from the status screen', async () => {
+    vi.mocked(loadIndividualKycStatus).mockResolvedValue({
+      termsAccepted: true,
+      submitted: true,
+      kycStatus: 'compliance_request',
+      amlStatus: null,
+    })
+    vi.mocked(loadIndividualKycRfi).mockResolvedValue({
+      open: true,
+      rfiId: 'rfi_1',
+      expiresAt: null,
+      sections: [
+        {
+          title: 'Perfil',
+          description: null,
+          supportingDocument: null,
+          fields: [
+            {
+              key: 'occupation',
+              label: 'Ocupação',
+              required: true,
+              multiple: false,
+              documentType: null,
+              options: [],
+            },
+          ],
+        },
+      ],
+    })
+    vi.mocked(submitIndividualKycRfi).mockResolvedValue({
+      termsAccepted: true,
+      submitted: true,
+      kycStatus: 'verifying',
+      amlStatus: null,
+    })
+    const user = userEvent.setup()
+    render(<BlindPayComplement />)
+
+    await user.click(await screen.findByRole('button', { name: 'Enviar informações' }))
+    expect(screen.getByText('Campo obrigatório.')).toBeInTheDocument()
+    expect(submitIndividualKycRfi).not.toHaveBeenCalled()
+
+    await user.type(screen.getByLabelText('Ocupação *'), 'Engenheira')
+    await user.click(screen.getByRole('button', { name: 'Enviar informações' }))
+
+    expect(submitIndividualKycRfi).toHaveBeenCalledWith({ occupation: 'Engenheira' })
+    expect(await screen.findByText('Verificação em análise')).toBeInTheDocument()
   })
 })

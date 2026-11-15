@@ -5,9 +5,11 @@ import { Stepper } from '@/shared/components/Stepper'
 import { maskCEP, maskCPF, maskPhone } from '@/shared/utils/masks'
 import {
   loadIndividualKycStatus,
+  restartIndividualKyc,
   startIndividualKycTerms,
   submitIndividualKyc,
 } from '@/features/onboarding/api/blindpayIndividualKyc'
+import { BlindPayRfiForm } from './BlindPayRfiForm'
 import type {
   IndividualKycProfile,
   IndividualKycStatus,
@@ -643,9 +645,30 @@ export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
     )
   }
 
+  /** A BlindPay não edita um cadastro recusado: o titular corrige os dados e envia outro. */
+  async function restart() {
+    if (previewOnly) return
+    setBusy(true)
+    setNotice('')
+    try {
+      setStatus(await restartIndividualKyc())
+      setStep(0)
+      setConfirmed(false)
+      setTermsUrl(null)
+    } catch (error) {
+      setNotice(
+        kycErrorMessage(error, 'Não foi possível iniciar um novo cadastro. Tente novamente.'),
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function renderStatus(current: IndividualKycStatus) {
     const view = describeKycStatus(current)
     const pending = isKycPending(current)
+    const rfiOpen =
+      current.kycStatus === 'compliance_request' || current.kycStatus === 'approved_rfi'
     return (
       <section className="mx-auto w-full max-w-xl space-y-5 py-8 text-center">
         <h2 className="text-xl font-bold text-slate-900">Situação da sua verificação</h2>
@@ -655,6 +678,14 @@ export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
         </div>
         {pending && (
           <p className="text-xs text-slate-600">Esta página se atualiza automaticamente.</p>
+        )}
+        {rfiOpen && !previewOnly && <BlindPayRfiForm onSubmitted={setStatus} />}
+        {current.kycStatus === 'rejected' && (
+          <Button
+            label={busy ? 'Iniciando...' : 'Corrigir dados e enviar novo cadastro'}
+            disabled={busy || previewOnly}
+            onClick={() => void restart()}
+          />
         )}
         <Button
           label={busy ? 'Atualizando...' : 'Atualizar situação'}

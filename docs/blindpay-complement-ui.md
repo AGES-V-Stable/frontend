@@ -28,3 +28,10 @@ Arquivos ficam só em memória até o envio (até 3 MB cada). Não há reenvio a
     npm run build
 
 Testes em `src/features/onboarding/pages/BlindPayComplement/BlindPayComplement.test.tsx`.
+
+## Compliance no cadastro
+
+- **Tela de acesso**: aceite obrigatório dos termos de uso e da política de privacidade vigentes (`TermsConsent`, compartilhado com o convite). A versão aceita segue no estado do wizard até `submitOnboarding`.
+- **Etapa de documentos**: aceite dos termos da Avenia (`AveniaTermsConsent` e `useAveniaTerms`) antes do upload do documento. O backend recusa a finalização do KYC sem esse aceite.
+- **KYC BlindPay recusado**: botão para corrigir os dados e enviar um novo cadastro.
+- **Pedido de informações (RFI)**: formulário montado a partir dos campos que a BlindPay pede (texto, opções ou documentos).
