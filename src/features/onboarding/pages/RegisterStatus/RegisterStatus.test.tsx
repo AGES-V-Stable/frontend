@@ -52,12 +52,12 @@ function renderPage() {
   )
 }
 
-function stubApi(onboardingResponse: Response, companyStatus: string | null = 'UNDER_REVIEW') {
+function stubApi(onboardingResponse: Response) {
   const fetcher = vi.fn(async (url: string) => {
     if (url.endsWith('/v1/onboarding/me')) return onboardingResponse.clone()
     if (url.endsWith('/v1/auth/2fa/setup'))
       return json({ otpauthUri: 'otpauth://totp/V-Stable:u1?secret=JBSWY3DPEHPK3PXP' })
-    return json({ overallStatus: companyStatus })
+    throw new Error(`Unexpected request: ${url}`)
   })
   vi.stubGlobal('fetch', fetcher)
   return fetcher
@@ -86,35 +86,22 @@ describe('RegisterStatus Page Component', () => {
     ).toBeInTheDocument()
   })
 
-  it('given KYC and company approved, when rendered, then it shows the approved card', async () => {
-    stubApi(json({ ...onboarding, status: 'APPROVED' }), 'APPROVED')
+  it('given approved onboarding, when rendered, then it shows the approved card using only onboarding/me', async () => {
+    const fetcher = stubApi(json({ ...onboarding, status: 'APPROVED' }))
 
     renderPage()
 
     expect(await screen.findByText('Cadastro aprovado')).toBeInTheDocument()
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    expect(fetcher.mock.calls[0][0]).toMatch(/\/v1\/onboarding\/me$/)
   })
 
-  it('given a rejected company, when rendered, then it shows the not approved card', async () => {
-    stubApi(json({ ...onboarding, status: 'APPROVED' }), 'REJECTED')
+  it('given rejected onboarding, when rendered, then it shows the not approved card', async () => {
+    stubApi(json({ ...onboarding, status: 'REJECTED' }))
 
     renderPage()
 
     expect(await screen.findByText('Cadastro não aprovado')).toBeInTheDocument()
-  })
-
-  it('given a company status failure, when rendered, then the registration stays under review', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string) =>
-        url.endsWith('/v1/onboarding/me')
-          ? json({ ...onboarding, status: 'APPROVED' })
-          : json({}, 500),
-      ),
-    )
-
-    renderPage()
-
-    expect(await screen.findByText('Seu cadastro está em análise')).toBeInTheDocument()
   })
 
   it('given a pending document, when rendered, then it resumes the registration', async () => {
@@ -164,11 +151,13 @@ describe('RegisterStatus Page Component', () => {
     renderPage()
     await screen.findByText('Seu cadastro está em análise')
     const callsBefore = fetcher.mock.calls.length
+    fetcher.mockImplementation(async () => json({ ...onboarding, status: 'APPROVED' }))
 
     await user.click(screen.getByRole('button', { name: 'Atualizar status' }))
 
-    await waitFor(() => expect(fetcher.mock.calls.length).toBeGreaterThan(callsBefore))
-    expect(await screen.findByText('Seu cadastro está em análise')).toBeInTheDocument()
+    expect(await screen.findByText('Cadastro aprovado')).toBeInTheDocument()
+    expect(fetcher).toHaveBeenCalledTimes(callsBefore + 1)
+    expect(fetcher.mock.calls.every(([url]) => url.endsWith('/v1/onboarding/me'))).toBe(true)
   })
 
   it('given a registration under review without 2FA, when rendered, then it asks to activate 2FA first', async () => {

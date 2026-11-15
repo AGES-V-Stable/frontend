@@ -24,9 +24,6 @@ export const CurrentOnboardingSchema = z.object({
   documentSubmitted: z.boolean(),
   livenessSubmitted: z.boolean(),
 })
-export const CompanyComplianceStatusSchema = z.object({
-  overallStatus: ComplianceStatusSchema.nullable(),
-})
 export const DocumentUploadSchema = z.object({
   id: z.string().min(1),
   uploadUrlFront: z.url(),

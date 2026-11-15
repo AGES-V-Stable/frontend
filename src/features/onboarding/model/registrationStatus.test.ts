@@ -41,14 +41,11 @@ describe('pendingOnboardingPath', () => {
 
 describe('registrationCardStatus', () => {
   it.each([
-    ['REJECTED', 'APPROVED', ComplianceStatus.NOT_APPROVED],
-    ['APPROVED', 'REJECTED', ComplianceStatus.NOT_APPROVED],
-    ['APPROVED', 'APPROVED', ComplianceStatus.APPROVED],
-    ['APPROVED', 'UNDER_REVIEW', ComplianceStatus.IN_REVIEW],
-    ['APPROVED', null, ComplianceStatus.IN_REVIEW],
-    ['UNDER_REVIEW', 'APPROVED', ComplianceStatus.IN_REVIEW],
-    ['PENDING', null, ComplianceStatus.IN_REVIEW],
-  ] as const)('maps KYC %s and company %s to %s', (kyc, company, expected) => {
-    expect(registrationCardStatus(kyc, company)).toBe(expected)
+    ['REJECTED', ComplianceStatus.NOT_APPROVED],
+    ['APPROVED', ComplianceStatus.APPROVED],
+    ['UNDER_REVIEW', ComplianceStatus.IN_REVIEW],
+    ['PENDING', ComplianceStatus.IN_REVIEW],
+  ] as const)('maps onboarding status %s to %s', (status, expected) => {
+    expect(registrationCardStatus(status)).toBe(expected)
   })
 })

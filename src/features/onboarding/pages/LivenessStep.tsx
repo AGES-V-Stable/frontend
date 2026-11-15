@@ -56,7 +56,8 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
     // usuário — se essa chamada viesse depois do await abaixo, o navegador não
     // reconheceria mais a "user activation" do clique e bloquearia o pop-up de
     // verdade (independente de "noopener"). Não passamos "noopener" nas
-    // features: com ele, o Chrome/Firefox retornam null de propósito mesmo
+    // features (nem "noreferrer", que também ativa "noopener"): com eles,
+    // o Chrome/Firefox retorna null de propósito mesmo
     // quando a aba abre com sucesso (não há referência pra devolver) — em vez
     // disso, zeramos `.opener` manualmente pelo mesmo isolamento de segurança.
     //
@@ -66,7 +67,7 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
     // iniciada no backend, então seguimos para o estado "pending" normalmente
     // e oferecemos um link manual, em vez de forçar o usuário a ficar preso na
     // tela de "Iniciar verificação facial".
-    const livenessTab = window.open('', '_blank', 'noreferrer')
+    const livenessTab = window.open('', '_blank')
     if (livenessTab) livenessTab.opener = null
 
     try {

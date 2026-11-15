@@ -46,6 +46,7 @@ async function waitForCompanyLoaded() {
 
 describe('BeneficiaryCreate', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.mocked(useSession).mockReturnValue({
       status: 'authenticated',
       user: { ...currentUser, accountType: 'USER', roles: ['ROLE_USER'] },
@@ -137,7 +138,7 @@ describe('BeneficiaryCreate', () => {
 
     await waitFor(() =>
       expect(createBeneficiary).toHaveBeenCalledWith('company-1', {
-        beneficiaryType: 'Pessoa jurídica',
+        beneficiaryType: 'LEGAL_ENTITY',
         legalName: 'Fornecedor Global Ltda.',
         identificationDocument: '12345678900',
         country: 'Brasil',
@@ -169,6 +170,9 @@ describe('BeneficiaryCreate', () => {
       '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
     )
     await user.selectOptions(screen.getByLabelText('Rede blockchain *'), 'Polygon')
+    await user.selectOptions(screen.getByLabelText('Moeda de recebimento *'), 'USDC')
+    await user.selectOptions(screen.getByLabelText('Custódia da wallet *'), 'propria')
+    await user.type(screen.getByLabelText('País do beneficiário (código de 2 letras) *'), 'br')
     await user.type(screen.getByLabelText('Apelido do beneficiário *'), 'Fornecedor cripto')
     await user.click(screen.getByLabelText(/confirmo que os dados/i))
 
@@ -176,7 +180,7 @@ describe('BeneficiaryCreate', () => {
 
     await waitFor(() =>
       expect(createBeneficiary).toHaveBeenCalledWith('company-1', {
-        beneficiaryType: 'Pessoa jurídica',
+        beneficiaryType: 'LEGAL_ENTITY',
         legalName: 'Fornecedor Global Ltda.',
         identificationDocument: '12345678900',
         country: 'Brasil',
@@ -186,7 +190,47 @@ describe('BeneficiaryCreate', () => {
         walletAddress: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
         blockchainNetwork: 'polygon',
         nickname: 'Fornecedor cripto',
+        currency: 'USDC',
+        isSelfCustody: true,
+        counterpartyName: 'Fornecedor Global Ltda.',
+        counterpartyCountry: 'BR',
       }),
+    )
+  })
+
+  it('requires an institution name and forwards false custody for an exchange wallet', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+    await waitForCompanyLoaded()
+    await fillIdentification(user)
+    await user.selectOptions(screen.getByLabelText('Tipo de beneficiário *'), 'Pessoa física')
+    await user.click(screen.getByRole('tab', { name: 'Wallet cripto' }))
+    await user.type(screen.getByLabelText('Endereço da wallet *'), '0xabc')
+    await user.selectOptions(screen.getByLabelText('Rede blockchain *'), 'Polygon')
+    await user.selectOptions(screen.getByLabelText('Moeda de recebimento *'), 'USDC')
+    await user.selectOptions(screen.getByLabelText('Custódia da wallet *'), 'instituicao')
+    await user.type(screen.getByLabelText('País do beneficiário (código de 2 letras) *'), 'br')
+    await user.type(screen.getByLabelText('Apelido do beneficiário *'), 'Exchange wallet')
+    await user.click(screen.getByLabelText(/confirmo que os dados/i))
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+    expect(createBeneficiary).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Instituição custodiante *')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+    await user.type(screen.getByLabelText('Instituição custodiante *'), 'Test Exchange')
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+    await waitFor(() =>
+      expect(createBeneficiary).toHaveBeenCalledWith(
+        'company-1',
+        expect.objectContaining({
+          beneficiaryType: 'INDIVIDUAL',
+          currency: 'USDC',
+          isSelfCustody: false,
+          custodianName: 'Test Exchange',
+          counterpartyCountry: 'BR',
+        }),
+      ),
     )
   })
 

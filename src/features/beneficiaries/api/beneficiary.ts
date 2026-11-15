@@ -18,6 +18,11 @@ export interface BeneficiaryCreatePayload {
   nickname?: string
   walletAddress?: string
   blockchainNetwork?: string
+  isSelfCustody?: boolean
+  custodianName?: string
+  counterpartyName?: string
+  counterpartyCountry?: string
+  isSameEconomicGroup?: boolean
 }
 
 export interface GetBeneficiariesParams {
