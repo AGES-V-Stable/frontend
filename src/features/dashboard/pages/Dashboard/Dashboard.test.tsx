@@ -570,9 +570,12 @@ it('shows the exchange rate to the client and opens the details on the dashboard
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
   fireEvent.click(screen.getByRole('button', { name: 'Detalhes' }))
-  fireEvent.click(
-    within(screen.getByRole('dialog')).getByRole('button', { name: 'Abrir detalhe completo' }),
-  )
+  const openFull = within(screen.getByRole('dialog')).getByRole('button', {
+    name: 'Abrir detalhe completo',
+  })
+  // O botão fica à esquerda do rodapé do painel
+  expect(openFull.parentElement).toHaveClass('justify-start')
+  fireEvent.click(openFull)
 
   expect(screen.getByLabelText('Rota atual')).toHaveTextContent('/app/transferencias/s1')
 })

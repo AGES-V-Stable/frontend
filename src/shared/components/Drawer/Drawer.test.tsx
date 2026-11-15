@@ -5,6 +5,35 @@ import userEvent from '@testing-library/user-event'
 import { Drawer } from '@/shared/components/Drawer/Drawer'
 
 describe('Drawer', () => {
+  it('keeps the footer buttons on the right by default and on the left when asked', () => {
+    // Given um painel com o alinhamento padrão
+    const { unmount } = render(
+      <Drawer open title="Detalhes" onClose={vi.fn()} actions={[{ label: 'Abrir' }]}>
+        conteúdo
+      </Drawer>,
+    )
+
+    // Then os botões ficam à direita
+    expect(screen.getByRole('button', { name: 'Abrir' }).parentElement).toHaveClass('justify-end')
+    unmount()
+
+    // Given um painel que pede os botões à esquerda
+    render(
+      <Drawer
+        open
+        title="Detalhes"
+        onClose={vi.fn()}
+        actions={[{ label: 'Abrir' }]}
+        actionsAlign="start"
+      >
+        conteúdo
+      </Drawer>,
+    )
+
+    // Then os botões ficam à esquerda
+    expect(screen.getByRole('button', { name: 'Abrir' }).parentElement).toHaveClass('justify-start')
+  })
+
   it('does not render when closed', () => {
     render(
       <Drawer open={false} title="Test Drawer" onClose={vi.fn()}>
