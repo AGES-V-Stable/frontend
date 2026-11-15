@@ -38,6 +38,19 @@ describe('RepresentativeStep', () => {
     expect(screen.getByText('Representante').closest('li')).toHaveAttribute('aria-current', 'step')
   })
 
+  it('uses the same select style for Cargo / Função as for the state', () => {
+    // Given a etapa do representante vazia
+    render(<RepresentativeStep onContinue={vi.fn()} />)
+
+    // Then o cargo usa o select compartilhado, com "Selecione o cargo" fora da lista
+    const role = screen.getByLabelText('Cargo / Função *')
+    expect(role).toHaveClass('border-sage-500', 'h-[50px]')
+    expect(role.querySelectorAll('option:not([value=""])')).toHaveLength(5)
+    const placeholder = role.querySelector('option[value=""]')
+    expect(placeholder).toHaveTextContent('Selecione o cargo')
+    expect(placeholder).toHaveAttribute('hidden')
+  })
+
   it('uses the same state select as the company step', () => {
     // Given a etapa do representante vazia
     render(<RepresentativeStep onContinue={vi.fn()} />)

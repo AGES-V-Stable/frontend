@@ -15,6 +15,7 @@ const CARGOS = [
   'Procurador(a)',
   'Representante legal',
 ]
+const CARGO_OPTIONS = CARGOS.map((cargo) => ({ value: cargo, label: cargo }))
 
 interface RepresentativeStepProps {
   initialValues?: Partial<RepresentativeData>
@@ -122,29 +123,16 @@ export function RepresentativeStep({
                 <label htmlFor="cargo" className="mb-1 block text-sm font-medium text-gray-700">
                   Cargo / Função *
                 </label>
-                <select
+                <Select
                   id="cargo"
-                  value={formData.cargo_funcao}
+                  placeholder="Selecione o cargo"
+                  options={CARGO_OPTIONS}
                   disabled={saving}
+                  value={formData.cargo_funcao}
                   onChange={(e) => handleInputChange('cargo_funcao', e.target.value)}
-                  className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.cargo_funcao ? 'border-red-700' : 'border-gray-300'}`}
-                  aria-invalid={!!errors.cargo_funcao}
-                  aria-describedby={errors.cargo_funcao ? 'cargo-error' : undefined}
-                >
-                  <option value="" disabled>
-                    Selecione...
-                  </option>
-                  {CARGOS.map((cargo) => (
-                    <option key={cargo} value={cargo}>
-                      {cargo}
-                    </option>
-                  ))}
-                </select>
-                {errors.cargo_funcao && (
-                  <p id="cargo-error" role="alert" className="mt-1 text-sm text-red-700">
-                    {errors.cargo_funcao}
-                  </p>
-                )}
+                  error={errors.cargo_funcao}
+                  className="h-[50px] text-sm!"
+                />
               </div>
 
               <div>
