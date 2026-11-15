@@ -127,13 +127,9 @@ export const Drawer = ({ open, title, onClose, children, actions = [] }: DrawerP
         {/* Footer */}
         {actions.length > 0 && (
           <div
-            className="
-              flex
-              justify-end
-              gap-[12px]
-              border-t border-gray-200
-              px-[24px] py-[20px]
-            "
+            // Marca o rodapé para o botão flutuante de suporte subir e não cobrir estes botões.
+            data-drawer-footer=""
+            className="flex justify-end gap-[12px] border-t border-gray-200 px-[24px] py-[20px]"
           >
             {actions.map((action, index) => (
               <Button key={index} {...action} className={`!w-auto ${action.className ?? ''}`} />

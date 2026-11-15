@@ -5,6 +5,20 @@ import userEvent from '@testing-library/user-event'
 import { Drawer } from '@/shared/components/Drawer/Drawer'
 
 describe('Drawer', () => {
+  it('keeps the footer buttons on the right and marks the footer for the support button', () => {
+    // Given um painel com botões no rodapé
+    render(
+      <Drawer open title="Detalhes" onClose={vi.fn()} actions={[{ label: 'Abrir' }]}>
+        conteúdo
+      </Drawer>,
+    )
+
+    // Then os botões ficam à direita, e o rodapé fica marcado para o botão de suporte subir
+    const footer = screen.getByRole('button', { name: 'Abrir' }).parentElement
+    expect(footer).toHaveClass('justify-end')
+    expect(footer).toHaveAttribute('data-drawer-footer')
+  })
+
   it('does not render when closed', () => {
     render(
       <Drawer open={false} title="Test Drawer" onClose={vi.fn()}>

@@ -14,6 +14,8 @@ export type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'value' 
   options: SelectOption[]
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
   error?: string
+  /** Texto do campo vazio: aparece com o campo fechado, mas não é uma opção da lista. */
+  placeholder?: string
 }
 
 /** Lista de opções com o mesmo visual e acessibilidade do Input. */
@@ -23,6 +25,7 @@ function Select({
   error,
   id,
   options,
+  placeholder,
   className = '',
   style,
   ...selectProps
@@ -41,6 +44,11 @@ function Select({
       style={inside ? { paddingLeft: `calc(1.25rem + ${label?.length ?? 0}ch)`, ...style } : style}
       className={`w-full border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 ${inside ? 'py-2.5 pr-3 text-[14px] font-medium text-slate-700' : 'py-3.5 px-3 text-[16px] text-slate-900'} ${error ? 'border-red-700' : 'border-sage-500'} ${className}`}
     >
+      {placeholder && (
+        <option value="" disabled hidden>
+          {placeholder}
+        </option>
+      )}
       {options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}

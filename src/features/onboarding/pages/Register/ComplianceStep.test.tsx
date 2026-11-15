@@ -39,6 +39,18 @@ describe('ComplianceStep', () => {
     expect(screen.getByRole('button', { name: /continuar/i })).toBeInTheDocument()
   })
 
+  it('uses the same select style as the state and the role in the registration', () => {
+    // Given a etapa de compliance vazia
+    renderComponent()
+
+    // Then o tipo de documento usa o select compartilhado, com o texto de abertura fora da lista
+    const type = screen.getByLabelText(/tipo de documento/i)
+    expect(type).toHaveClass('border-sage-500', 'h-[50px]')
+    const placeholder = type.querySelector('option[value=""]')
+    expect(placeholder).toHaveTextContent('Selecione o tipo de documento')
+    expect(placeholder).toHaveAttribute('hidden')
+  })
+
   it('shows validation errors on submit with empty form', async () => {
     const user = userEvent.setup()
     renderComponent()

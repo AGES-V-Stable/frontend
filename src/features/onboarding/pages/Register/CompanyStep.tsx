@@ -5,6 +5,8 @@ import { maskCEP, maskCNPJ } from '@/shared/utils/masks'
 import { isValidCNPJ } from '@/shared/utils/validators'
 import type { CompanyData } from '@/features/onboarding/types/registration'
 import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
+import { Select } from '@/shared/components/Select'
+import { BRAZILIAN_STATE_OPTIONS } from '@/features/onboarding/model/brazilianStates'
 
 export type { CompanyData } from '@/features/onboarding/types/registration'
 
@@ -28,7 +30,7 @@ const fields: { name: Field; label: string; placeholder: string; required: boole
   { name: 'cnpj', label: 'CNPJ', placeholder: '00.000.000/0000-00', required: true },
   { name: 'cep', label: 'CEP', placeholder: '00000-000', required: true },
   { name: 'cidade', label: 'Cidade', placeholder: 'Ex: São Paulo', required: false },
-  { name: 'estado', label: 'Estado', placeholder: 'Ex: SP, RJ', required: true },
+  { name: 'estado', label: 'Estado', placeholder: '', required: true },
 ]
 const requiredMessages: Record<Exclude<Field, 'cidade'>, string> = {
   razaoSocial: 'Informe a razão social.',
@@ -135,21 +137,37 @@ export function CompanyStep({
               key={name}
               className="flex min-h-[102px] items-center [&_label]:mb-1 [&_label]:font-medium"
             >
-              <Input
-                id={`company-${name}`}
-                name={name}
-                label={`${label}${required ? ' *' : ''}`}
-                placeholder={placeholder}
-                required={required}
-                disabled={saving}
-                value={data[name]}
-                onChange={(event) => change(name, event.target.value)}
-                error={errors[name]}
-                inputMode={
-                  name === 'cnpj' || (name === 'cep' && brazil(data.pais)) ? 'numeric' : 'text'
-                }
-                className="h-[50px] text-sm!"
-              />
+              {name === 'estado' ? (
+                <Select
+                  id={`company-${name}`}
+                  name={name}
+                  label={`${label}${required ? ' *' : ''}`}
+                  placeholder="Selecione o estado"
+                  options={BRAZILIAN_STATE_OPTIONS}
+                  required={required}
+                  disabled={saving}
+                  value={data[name]}
+                  onChange={(event) => change(name, event.target.value)}
+                  error={errors[name]}
+                  className="h-[50px] text-sm!"
+                />
+              ) : (
+                <Input
+                  id={`company-${name}`}
+                  name={name}
+                  label={`${label}${required ? ' *' : ''}`}
+                  placeholder={placeholder}
+                  required={required}
+                  disabled={saving}
+                  value={data[name]}
+                  onChange={(event) => change(name, event.target.value)}
+                  error={errors[name]}
+                  inputMode={
+                    name === 'cnpj' || (name === 'cep' && brazil(data.pais)) ? 'numeric' : 'text'
+                  }
+                  className="h-[50px] text-sm!"
+                />
+              )}
             </div>
           ))}
         </div>

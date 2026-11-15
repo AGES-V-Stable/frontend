@@ -7,6 +7,7 @@ import type {
   TipoDocumento,
 } from '@/features/onboarding/types/compliance'
 import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
+import { Select } from '@/shared/components/Select'
 
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png']
@@ -165,28 +166,19 @@ export default function ComplianceStep({
               >
                 Tipo de Documento <span className="text-red-700">*</span>
               </label>
-              <select
+              {/* Mesmo select do Estado e do Cargo no cadastro. */}
+              <Select
                 id="tipoDocumento"
-                value={form.tipoDocumento}
+                placeholder="Selecione o tipo de documento"
+                options={TIPO_DOCUMENTO_OPTIONS}
                 disabled={saving}
+                value={form.tipoDocumento}
                 onChange={(e) =>
                   handleChange('tipoDocumento', e.target.value as TipoDocumento | '')
                 }
-                className={`w-full border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ${errors.tipoDocumento ? 'border-red-700' : 'border-gray-300'}`}
-                aria-describedby={errors.tipoDocumento ? 'tipoDocumento-error' : undefined}
-              >
-                <option value="">Selecione...</option>
-                {TIPO_DOCUMENTO_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {errors.tipoDocumento && (
-                <p id="tipoDocumento-error" className="text-red-700 text-xs mt-1">
-                  {errors.tipoDocumento}
-                </p>
-              )}
+                error={errors.tipoDocumento}
+                className="h-[50px] text-sm!"
+              />
             </div>
 
             <div className="mb-4">

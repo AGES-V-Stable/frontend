@@ -20,6 +20,25 @@ describe('Select', () => {
     ])
   })
 
+  it('shows the placeholder in the closed field without offering it as an option', () => {
+    // Given um select vazio com texto de abertura
+    render(
+      <Select
+        label="Estado"
+        value=""
+        placeholder="Selecione o estado"
+        options={options}
+        onChange={vi.fn()}
+      />,
+    )
+
+    // Then o texto de abertura existe, mas não pode ser escolhido na lista
+    const placeholder = screen.getByLabelText('Estado').querySelector('option[value=""]')
+    expect(placeholder).toHaveTextContent('Selecione o estado')
+    expect(placeholder).toBeDisabled()
+    expect(placeholder).toHaveAttribute('hidden')
+  })
+
   it('reports the chosen option', () => {
     const chosen: string[] = []
     render(

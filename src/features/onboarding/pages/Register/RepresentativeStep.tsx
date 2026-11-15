@@ -5,6 +5,8 @@ import type { RepresentativeData } from '@/features/onboarding/types/registratio
 import { maskCEP, maskCPF, maskPhone } from '@/shared/utils/masks'
 import { isValidCPF } from '@/shared/utils/validators'
 import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
+import { BRAZILIAN_STATE_OPTIONS } from '@/features/onboarding/model/brazilianStates'
+import { Select } from '@/shared/components/Select'
 
 const CARGOS = [
   'Sócio-administrador',
@@ -13,36 +15,7 @@ const CARGOS = [
   'Procurador(a)',
   'Representante legal',
 ]
-
-const ESTADOS = [
-  { sigla: 'AC', nome: 'Acre' },
-  { sigla: 'AL', nome: 'Alagoas' },
-  { sigla: 'AP', nome: 'Amapá' },
-  { sigla: 'AM', nome: 'Amazonas' },
-  { sigla: 'BA', nome: 'Bahia' },
-  { sigla: 'CE', nome: 'Ceará' },
-  { sigla: 'DF', nome: 'Distrito Federal' },
-  { sigla: 'ES', nome: 'Espírito Santo' },
-  { sigla: 'GO', nome: 'Goiás' },
-  { sigla: 'MA', nome: 'Maranhão' },
-  { sigla: 'MT', nome: 'Mato Grosso' },
-  { sigla: 'MS', nome: 'Mato Grosso do Sul' },
-  { sigla: 'MG', nome: 'Minas Gerais' },
-  { sigla: 'PA', nome: 'Pará' },
-  { sigla: 'PB', nome: 'Paraíba' },
-  { sigla: 'PR', nome: 'Paraná' },
-  { sigla: 'PE', nome: 'Pernambuco' },
-  { sigla: 'PI', nome: 'Piauí' },
-  { sigla: 'RJ', nome: 'Rio de Janeiro' },
-  { sigla: 'RN', nome: 'Rio Grande do Norte' },
-  { sigla: 'RS', nome: 'Rio Grande do Sul' },
-  { sigla: 'RO', nome: 'Rondônia' },
-  { sigla: 'RR', nome: 'Roraima' },
-  { sigla: 'SC', nome: 'Santa Catarina' },
-  { sigla: 'SP', nome: 'São Paulo' },
-  { sigla: 'SE', nome: 'Sergipe' },
-  { sigla: 'TO', nome: 'Tocantins' },
-]
+const CARGO_OPTIONS = CARGOS.map((cargo) => ({ value: cargo, label: cargo }))
 
 interface RepresentativeStepProps {
   initialValues?: Partial<RepresentativeData>
@@ -150,29 +123,16 @@ export function RepresentativeStep({
                 <label htmlFor="cargo" className="mb-1 block text-sm font-medium text-gray-700">
                   Cargo / Função *
                 </label>
-                <select
+                <Select
                   id="cargo"
-                  value={formData.cargo_funcao}
+                  placeholder="Selecione o cargo"
+                  options={CARGO_OPTIONS}
                   disabled={saving}
+                  value={formData.cargo_funcao}
                   onChange={(e) => handleInputChange('cargo_funcao', e.target.value)}
-                  className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.cargo_funcao ? 'border-red-700' : 'border-gray-300'}`}
-                  aria-invalid={!!errors.cargo_funcao}
-                  aria-describedby={errors.cargo_funcao ? 'cargo-error' : undefined}
-                >
-                  <option value="" disabled>
-                    Selecione...
-                  </option>
-                  {CARGOS.map((cargo) => (
-                    <option key={cargo} value={cargo}>
-                      {cargo}
-                    </option>
-                  ))}
-                </select>
-                {errors.cargo_funcao && (
-                  <p id="cargo-error" role="alert" className="mt-1 text-sm text-red-700">
-                    {errors.cargo_funcao}
-                  </p>
-                )}
+                  error={errors.cargo_funcao}
+                  className="h-[50px] text-sm!"
+                />
               </div>
 
               <div>
@@ -290,29 +250,17 @@ export function RepresentativeStep({
                 <label htmlFor="estado" className="mb-1 block text-sm font-medium text-gray-700">
                   Estado *
                 </label>
-                <select
+                {/* Mesmo campo da etapa Empresa: lista compartilhada e texto de abertura fora da lista. */}
+                <Select
                   id="estado"
-                  value={formData.estado}
+                  placeholder="Selecione o estado"
+                  options={BRAZILIAN_STATE_OPTIONS}
                   disabled={saving}
+                  value={formData.estado}
                   onChange={(e) => handleInputChange('estado', e.target.value)}
-                  className={`w-full rounded-md border p-2 focus:border-primary focus:ring-primary ${errors.estado ? 'border-red-700' : 'border-gray-300'}`}
-                  aria-invalid={!!errors.estado}
-                  aria-describedby={errors.estado ? 'estado-error' : undefined}
-                >
-                  <option value="" disabled>
-                    Selecione...
-                  </option>
-                  {ESTADOS.map((estado) => (
-                    <option key={estado.sigla} value={estado.sigla}>
-                      {estado.nome}
-                    </option>
-                  ))}
-                </select>
-                {errors.estado && (
-                  <p id="estado-error" role="alert" className="mt-1 text-sm text-red-700">
-                    {errors.estado}
-                  </p>
-                )}
+                  error={errors.estado}
+                  className="h-[50px] text-sm!"
+                />
               </div>
               <div>
                 <label htmlFor="pais" className="mb-1 block text-sm font-medium text-gray-700">

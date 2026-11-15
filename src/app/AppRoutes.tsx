@@ -53,6 +53,7 @@ import { NavBar } from './components/NavBar'
 import type { NavigationItem } from './components/NavBar'
 import logo from '@/shared/assets/navigation/logo.png'
 import homeIcon from '@/shared/assets/navigation/home.svg'
+import topUpIcon from '@/shared/assets/navigation/top-up.svg'
 import beneficiariesIcon from '@/shared/assets/navigation/beneficiaries.svg'
 import clientsIcon from '@/shared/assets/navigation/clients.svg'
 import transfersIcon from '@/shared/assets/navigation/transfers.svg'
@@ -251,7 +252,7 @@ function RoutedApplication() {
       : [
           item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
           ...(canAddSimulatedBalance(user)
-            ? [item('mock-top-up', 'Adicionar saldo', PATHS.MOCK_TOP_UP, homeIcon)]
+            ? [item('mock-top-up', 'Adicionar saldo', PATHS.MOCK_TOP_UP, topUpIcon)]
             : []),
           item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
           // O item abre a criação de transferência: só aparece para quem pode criar.

@@ -1,0 +1,8 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Icons" stroke="#64748B" stroke-width="1.67" stroke-linecap="round" stroke-linejoin="round">
+<ellipse cx="8" cy="5.5" rx="5" ry="2"/>
+<path d="M3 5.5v3c0 1.1 2.24 2 5 2s5-.9 5-2v-3"/>
+<path d="M3 8.5v3c0 1.1 2.24 2 5 2"/>
+<path d="M15 10.5v6M12 13.5h6"/>
+</g>
+</svg>
