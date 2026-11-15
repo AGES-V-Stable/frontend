@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Select } from '@/shared/components/Select'
 
 export interface BeneficiaryFilterValues {
   companyOrCnpj: string
@@ -43,7 +44,7 @@ export function BeneficiaryFilters({
   }
 
   const inputClassName =
-    'h-11 w-full rounded-md border border-sage-500 bg-white px-3 text-sm text-slate-900 placeholder:text-gray-500 focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+    'h-11 w-full rounded-lg border border-sage-500 bg-surface px-3 text-sm text-slate-900 placeholder:text-gray-500 focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
   return (
     <form
@@ -78,22 +79,21 @@ export function BeneficiaryFilters({
           />
         </label>
 
-        <label className="text-xs font-medium text-slate-900">
-          País
-          <select
-            aria-label="País"
-            className={`${inputClassName} mt-1.5`}
+        <div className="text-xs font-medium text-slate-900">
+          <label htmlFor="beneficiary-filter-country" className="mb-1.5 block">
+            País
+          </label>
+          <Select
+            id="beneficiary-filter-country"
             value={filters.country}
             onChange={(event) => updateFilter('country', event.target.value)}
-          >
-            <option value="">Todos os países</option>
-            {countries.map((country) => (
-              <option key={country} value={country}>
-                {country}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={[
+              { value: '', label: 'Todos os países' },
+              ...countries.map((country) => ({ value: country, label: country })),
+            ]}
+            className="h-11 py-0! text-sm!"
+          />
+        </div>
 
         <button
           type="button"

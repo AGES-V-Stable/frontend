@@ -39,6 +39,19 @@ describe('Select', () => {
     expect(placeholder).toHaveAttribute('hidden')
   })
 
+  it('draws its own chevron with a right inset, and keeps the text clear of it', () => {
+    // Given um select do componente
+    render(<Select label="Estado" value="a" options={options} onChange={vi.fn()} />)
+
+    // Then a seta nativa some, a seta própria fica a 16px da borda e o texto reserva espaço para ela
+    const select = screen.getByLabelText('Estado')
+    expect(select).toHaveClass('appearance-none', 'pr-10')
+    const chevron = screen.getByTestId('select-chevron')
+    expect(chevron).toHaveAttribute('aria-hidden', 'true')
+    expect(chevron).toHaveClass('right-4', 'pointer-events-none', 'size-[18px]')
+    expect(chevron).toHaveAttribute('stroke-width', '2')
+  })
+
   it('reports the chosen option', () => {
     const chosen: string[] = []
     render(
@@ -89,5 +102,7 @@ describe('Select', () => {
     const select = screen.getByLabelText('Período')
     expect(select.parentElement?.className).toContain('relative')
     expect(select).toHaveStyle({ paddingLeft: 'calc(1.25rem + 7ch)' })
+    // O rótulo fica numa camada acima do campo, senão o fundo do select o esconde
+    expect(screen.getByText('Período')).toHaveClass('absolute', 'z-10')
   })
 })
