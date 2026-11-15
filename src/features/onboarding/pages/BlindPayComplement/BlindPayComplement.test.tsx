@@ -23,12 +23,12 @@ describe('BlindPayComplement', () => {
     expect(validateBlindPayUpload(new File([], 'selfie.png', { type: 'image/png' }), 'selfie')).toMatch(/vazio/)
     expect(
       validateBlindPayUpload(
-        new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'comprovante.pdf', {
+        new File([new Uint8Array(3 * 1024 * 1024 + 1)], 'comprovante.pdf', {
           type: 'application/pdf',
         }),
         'proof',
       ),
-    ).toMatch(/10 MB/)
+    ).toMatch(/3 MB/)
     expect(validateBlindPayUpload(photo(), 'selfie')).toBeNull()
     expect(validateBlindPayUpload(proof(), 'proof')).toBeNull()
   })
