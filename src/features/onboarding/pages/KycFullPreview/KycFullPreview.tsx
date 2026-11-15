@@ -5,6 +5,7 @@ import { CompanyStep } from '@/features/onboarding/pages/Register/CompanyStep'
 import { RepresentativeStep } from '@/features/onboarding/pages/Register/RepresentativeStep'
 import ComplianceStep from '@/features/onboarding/pages/Register/ComplianceStep'
 import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
+import { BlindPayIndividualKyc } from '@/features/onboarding/pages/BlindPayIndividualKyc/BlindPayIndividualKyc'
 import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
 
 const SCREENS = [
@@ -14,9 +15,10 @@ const SCREENS = [
   'Documentos Avenia',
   'Verificação facial',
   'Complementação BlindPay',
+  'KYC BlindPay (individual)',
 ] as const
 
-type ScreenIndex = 0 | 1 | 2 | 3 | 4 | 5
+type ScreenIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6
 
 /**
  * Rota exclusivamente de desenvolvimento para revisar o percurso visual de KYC.
@@ -119,6 +121,7 @@ export function KycFullPreview() {
         </main>
       )}
 
+      {step === 6 && <BlindPayIndividualKyc previewOnly />}
       {step === 5 && (
         <div>
           <div className="mx-auto max-w-[1300px] px-4 pt-5 text-sm text-slate-600 md:px-8">
