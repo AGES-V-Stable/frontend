@@ -58,7 +58,6 @@ function Login({ resolveDestination }: LoginProps) {
   const [otpauthUri, setOtpauthUri] = useState<string | undefined>()
   const [totpCode, setTotpCode] = useState('')
   const [totpError, setTotpError] = useState('')
-  const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<LoginErrors>({})
   const [sessionExpired] = useState(wasSessionExpired)
@@ -169,13 +168,12 @@ function Login({ resolveDestination }: LoginProps) {
         {step !== 'RECOVERY_REQUEST' && (
           <div className="flex flex-col gap-y-[10px] text-center">
             <h1 className="text-slate-900 text-[32px] font-bold">
-              {step === '2FA' ? 'Verificação de Segurança' : 'Bem-vindo à V-Stable!'}
+              {step === '2FA' ? 'Verificação em duas etapas' : 'Bem-vindo à V-Stable!'}
             </h1>
-            {!(step === '2FA' && isRecoveryMode) && (
+            {/* No 2FA o cartão já diz o que fazer; um subtítulo aqui repetiria a instrução. */}
+            {step !== '2FA' && (
               <p className="text-slate-500 text-[18px] font-semibold">
-                {step === '2FA'
-                  ? 'Confirme o acesso com o código de 6 dígitos'
-                  : 'Acesse sua conta com suas credenciais'}
+                Acesse sua conta com suas credenciais
               </p>
             )}
           </div>
@@ -194,15 +192,11 @@ function Login({ resolveDestination }: LoginProps) {
         {step === 'RECOVERY_REQUEST' ? (
           <TwoFactorRecoveryRequest initialEmail={email} onCancel={() => setStep('CREDENTIALS')} />
         ) : step === '2FA' ? (
-          <div className="flex flex-col w-[560px] gap-y-4">
+          <div className="flex w-full max-w-[440px] flex-col gap-y-4">
             <TwoFactorAuthContainer
               otpauthUri={otpauthUri}
-              title="Autenticação em duas etapas"
-              description={
-                otpauthUri
-                  ? 'Escaneie o QR Code abaixo com seu aplicativo autenticador ou insira o código de 6 dígitos gerado.'
-                  : 'Insira o código de 6 dígitos gerado pelo seu aplicativo autenticador para acessar a conta.'
-              }
+              // Na ativação os passos numerados bastam; depois, uma frase só.
+              description={otpauthUri ? undefined : 'Digite o código do seu app autenticador.'}
               value={totpCode}
               onChange={(value) => {
                 setTotpCode(value)
@@ -210,32 +204,25 @@ function Login({ resolveDestination }: LoginProps) {
               }}
               onVerify={handleVerify2FA}
               onVerifyRecovery={handleVerify2FA}
-              onRecoveryModeChange={setIsRecoveryMode}
+              onMissingRecoveryCodes={() => setStep('RECOVERY_REQUEST')}
               error={totpError}
               loading={submitting}
-              submitLabel="Verificar e Entrar"
+              submitLabel={otpauthUri ? 'Ativar e entrar' : 'Entrar'}
             />
             <button
               type="button"
-              onClick={() => setStep('RECOVERY_REQUEST')}
-              className="text-sm font-medium text-slate-600 hover:text-primary transition-colors text-center underline cursor-pointer py-1"
-            >
-              Não tenho acesso ao autenticador nem aos códigos de recuperação
-            </button>
-            <Button
-              type="button"
-              label="Voltar para o login"
-              variant="secondary"
               disabled={submitting}
+              className="self-center py-1 text-sm font-medium text-slate-600 underline underline-offset-2 transition-colors hover:text-primary cursor-pointer disabled:cursor-not-allowed"
               onClick={() => {
                 setStep('CREDENTIALS')
                 setTotpCode('')
                 setTotpError('')
                 setChallengeToken(undefined)
                 setOtpauthUri(undefined)
-                setIsRecoveryMode(false)
               }}
-            />
+            >
+              Voltar ao login
+            </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-y-[50px]">

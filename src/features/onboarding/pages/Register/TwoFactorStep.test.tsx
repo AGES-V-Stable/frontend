@@ -116,5 +116,6 @@ it('blocks activation after setup fails and allows a retry', async () => {
   expect(twoFactorService.activate).not.toHaveBeenCalled()
   expect(onContinue).not.toHaveBeenCalled()
   await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
-  expect(await screen.findByText('TEST SECR ET12 3')).toBeInTheDocument()
+  await userEvent.click(await screen.findByRole('button', { name: 'Não consegue escanear?' }))
+  expect(screen.getByText('TEST SECR ET12 3')).toBeInTheDocument()
 })

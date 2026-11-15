@@ -166,6 +166,7 @@ it('shows a setup failure without a QR code and lets the user retry', async () =
 
   await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
 
-  expect(await screen.findByText('TEST SECR ET12 3')).toBeInTheDocument()
+  await userEvent.click(await screen.findByRole('button', { name: 'Não consegue escanear?' }))
+  expect(screen.getByText('TEST SECR ET12 3')).toBeInTheDocument()
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })

@@ -21,6 +21,8 @@ export interface TwoFactorAuthContainerProps {
   onVerifyRecovery?: (recoveryCode: string) => void
   /** Notifica alterações no modo de recuperação (true = modo emergência, false = modo TOTP) */
   onRecoveryModeChange?: (isRecovery: boolean) => void
+  /** Próximo passo para quem também não tem os códigos de recuperação (ex.: pedir ajuda ao admin) */
+  onMissingRecoveryCodes?: () => void
   /** Mensagem de erro de código inválido ou expirado */
   error?: string
   /** Indica se a operação está em processamento */
@@ -61,6 +63,24 @@ function groupSecret(secret: string): string {
   return secret.match(/.{1,4}/g)?.join(' ') ?? secret
 }
 
+/** Passo numerado da ativação: o número é visual; o leitor de tela ouve "Passo N:". */
+function StepLine({ number, children }: { number: number; children: React.ReactNode }) {
+  return (
+    <p className="flex items-start gap-2 text-sm text-slate-900">
+      <span
+        aria-hidden="true"
+        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-xs font-bold text-emerald-800"
+      >
+        {number}
+      </span>
+      <span>
+        <span className="sr-only">Passo {number}: </span>
+        {children}
+      </span>
+    </p>
+  )
+}
+
 /** Calcula o estado exato e sincronizado do ciclo TOTP de 30 segundos (RFC 6238) */
 function getTotpCycleState() {
   const now = Date.now()
@@ -83,6 +103,7 @@ export function TwoFactorAuthContainer({
   allowRecovery,
   onVerifyRecovery,
   onRecoveryModeChange,
+  onMissingRecoveryCodes,
   error,
   loading = false,
   loadingLabel,
@@ -97,6 +118,7 @@ export function TwoFactorAuthContainer({
 }: TwoFactorAuthContainerProps) {
   const [internalCode, setInternalCode] = useState('')
   const [copied, setCopied] = useState(false)
+  const [showSecret, setShowSecret] = useState(false)
   const [isRecoveryMode, setIsRecoveryMode] = useState(false)
   const [recoveryCode, setRecoveryCode] = useState('')
   const [timerState, setTimerState] = useState(getTotpCycleState)
@@ -202,12 +224,14 @@ export function TwoFactorAuthContainer({
 
   return (
     <div
-      className={`rounded-xl border border-sage-300 bg-white p-6 shadow-xs ${className}`}
+      className={`@container rounded-xl border border-sage-300 bg-white p-6 shadow-xs ${className}`}
       data-testid="two-factor-auth-container"
     >
       {/* O cabeçalho só é exibido fora do modo de recuperação */}
       {!isRecoveryMode && (title || description) && (
-        <div className="mb-6 flex flex-col gap-1 border-b border-sage-200 pb-4">
+        <div
+          className={`flex flex-col gap-1 ${title ? 'mb-6 border-b border-sage-200 pb-4' : 'mb-4'}`}
+        >
           {title && <h2 className="text-base font-bold text-slate-900">{title}</h2>}
           {description && <p className="text-sm text-slate-500">{description}</p>}
         </div>
@@ -216,7 +240,8 @@ export function TwoFactorAuthContainer({
       <div
         className={
           showQrSection
-            ? 'grid grid-cols-1 items-start gap-8 md:grid-cols-2'
+            ? // As colunas dependem da largura do cartão, não da janela: no Login (560px) fica uma só.
+              'grid grid-cols-1 items-start gap-6 @2xl:grid-cols-2 @2xl:gap-8'
             : onBack
               ? 'mx-auto flex w-full max-w-[480px] flex-col'
               : 'mx-auto flex w-full max-w-[420px] flex-col'
@@ -226,19 +251,9 @@ export function TwoFactorAuthContainer({
         {showQrSection && (
           <section
             aria-label="Configuração do aplicativo autenticador"
-            className="flex flex-col items-center gap-4 text-center md:items-start md:border-r md:border-sage-200 md:pr-8 md:text-left"
+            className="flex flex-col items-center gap-4 text-center @2xl:items-start @2xl:border-r @2xl:border-sage-200 @2xl:pr-8 @2xl:text-left"
           >
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Passo 1
-              </span>
-              <h3 className="text-sm font-bold text-slate-900">Escanear código de autenticação</h3>
-              <p className="text-sm text-slate-500">
-                Abra o <strong>Google Authenticator</strong>,{' '}
-                <strong>Microsoft Authenticator</strong> ou outro app compatível no seu celular e
-                escaneie o QR Code abaixo:
-              </p>
-            </div>
+            <StepLine number={1}>Escaneie o QR Code com seu app autenticador.</StepLine>
 
             <div className="rounded-xl border border-sage-300 bg-white p-3 shadow-xs">
               <QRCodeSVG
@@ -250,24 +265,37 @@ export function TwoFactorAuthContainer({
             </div>
 
             {effectiveSecret && (
-              <div className="flex w-full flex-col gap-1.5 rounded-lg bg-slate-50 p-3 text-sm">
-                <span className="font-medium text-slate-600">Não consegue escanear?</span>
-                <span className="text-slate-500">
-                  Adicione a conta manualmente utilizando esta chave secreta:
-                </span>
-                <div className="flex items-center justify-between gap-2 rounded-md border border-sage-300 bg-white px-2.5 py-1.5">
-                  <code className="min-w-0 select-all break-words font-mono text-xs font-semibold tracking-wider text-slate-900">
-                    {groupSecret(effectiveSecret)}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={handleCopySecret}
-                    className="shrink-0 text-xs font-semibold text-primary transition-colors hover:text-primary-hover hover:underline cursor-pointer"
-                    aria-label="Copiar chave secreta"
+              <div className="flex w-full flex-col items-center gap-2 @2xl:items-start">
+                <button
+                  type="button"
+                  onClick={() => setShowSecret((open) => !open)}
+                  aria-expanded={showSecret}
+                  aria-controls="two-factor-secret"
+                  className="text-sm text-slate-600 underline underline-offset-2 transition-colors hover:text-primary cursor-pointer"
+                >
+                  Não consegue escanear?
+                </button>
+                {showSecret && (
+                  <div
+                    id="two-factor-secret"
+                    className="flex w-full flex-col gap-1.5 rounded-lg bg-slate-50 p-3 text-left text-sm"
                   >
-                    {copied ? '✓ Copiado!' : 'Copiar'}
-                  </button>
-                </div>
+                    <span className="text-slate-600">Digite esta chave no app:</span>
+                    <div className="flex items-center justify-between gap-2 rounded-md border border-sage-300 bg-white px-2.5 py-1.5">
+                      <code className="min-w-0 select-all break-words font-mono text-xs font-semibold tracking-wider text-slate-900">
+                        {groupSecret(effectiveSecret)}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={handleCopySecret}
+                        className="shrink-0 text-xs font-semibold text-primary transition-colors hover:text-primary-hover hover:underline cursor-pointer"
+                        aria-label="Copiar chave secreta"
+                      >
+                        {copied ? '✓ Copiado!' : 'Copiar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -279,15 +307,9 @@ export function TwoFactorAuthContainer({
             aria-label="Código de recuperação de emergência"
             className="flex flex-col gap-4 w-full"
           >
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-bold text-slate-900">
-                Código de recuperação de emergência
-              </h3>
-              <p className="text-sm text-slate-500">
-                Insira um dos códigos de backup gerados para acessar sua conta sem o aplicativo
-                autenticador:
-              </p>
-            </div>
+            <p className="text-sm text-slate-600">
+              Use um dos códigos de recuperação que você salvou ao ativar o 2FA.
+            </p>
 
             <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
@@ -369,14 +391,28 @@ export function TwoFactorAuthContainer({
                 />
               )}
 
-              <button
-                type="button"
-                onClick={handleSwitchToTotp}
-                disabled={isBusy}
-                className="text-xs font-medium text-primary hover:text-primary-hover hover:underline transition-colors text-center cursor-pointer -mt-1"
+              <div
+                className={`flex flex-wrap gap-3 ${onMissingRecoveryCodes ? 'justify-between' : 'justify-center'}`}
               >
-                Voltar para código do autenticador
-              </button>
+                {onMissingRecoveryCodes && (
+                  <button
+                    type="button"
+                    onClick={onMissingRecoveryCodes}
+                    disabled={isBusy}
+                    className="text-sm font-medium text-primary underline underline-offset-2 hover:text-primary-hover cursor-pointer"
+                  >
+                    Não tenho os códigos
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSwitchToTotp}
+                  disabled={isBusy}
+                  className="text-sm font-medium text-slate-600 underline underline-offset-2 hover:text-primary cursor-pointer"
+                >
+                  Usar o autenticador
+                </button>
+              </div>
             </form>
           </section>
         ) : (
@@ -384,17 +420,8 @@ export function TwoFactorAuthContainer({
             aria-label="Verificação do código de 6 dígitos"
             className="flex flex-col gap-4 w-full"
           >
-            <div className="flex flex-col gap-1">
-              {showQrSection && (
-                <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                  Passo 2
-                </span>
-              )}
-              <h3 className="text-sm font-bold text-slate-900">Inserir código de verificação</h3>
-              <p className="text-sm text-slate-500">
-                Digite o código de 6 dígitos gerado pelo aplicativo autenticador:
-              </p>
-            </div>
+            {/* Sem QR Code, a descrição do cartão já diz o que fazer. */}
+            {showQrSection && <StepLine number={2}>Digite o código que o app mostrar.</StepLine>}
 
             <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
@@ -496,9 +523,9 @@ export function TwoFactorAuthContainer({
                   type="button"
                   onClick={handleSwitchToRecovery}
                   disabled={isBusy}
-                  className="text-xs font-medium text-primary hover:text-primary-hover hover:underline transition-colors text-center cursor-pointer -mt-1"
+                  className="text-sm font-medium text-primary underline underline-offset-2 hover:text-primary-hover transition-colors text-center cursor-pointer"
                 >
-                  Perdi meu celular / Usar código de recuperação
+                  Não consigo usar o autenticador
                 </button>
               )}
             </form>

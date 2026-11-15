@@ -555,14 +555,12 @@ describe('TransferCreate', () => {
     await goToAuth()
 
     expect(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
+      screen.getByRole('button', { name: 'Não consigo usar o autenticador' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('timer')).toBeInTheDocument()
 
     // Clica no botão de recuperação
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Perdi meu celular / Usar código de recuperação' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Não consigo usar o autenticador' }))
     await advance()
 
     // Timer e input de 6 dígitos somem
