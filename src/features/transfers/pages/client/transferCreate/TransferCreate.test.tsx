@@ -69,13 +69,18 @@ const renderPage = async () => {
   await advance()
 }
 
+// Os valores só ficam liberados depois que o beneficiário é escolhido.
+const chooseBeneficiary = (beneficiary: Beneficiary = atlas) =>
+  fireEvent.change(beneficiarySelect(), { target: { value: beneficiary.id } })
+
 const typeSourceAmount = async (text: string) => {
+  expect(sourceInput()).toBeEnabled()
   fireEvent.change(sourceInput(), { target: { value: text } })
   await advance(DEBOUNCE_MS)
 }
 
 const fillStep0 = async () => {
-  fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
+  chooseBeneficiary()
   fireEvent.change(screen.getByLabelText('Descrição'), {
     target: { value: 'Pagamento de importação' },
   })
@@ -150,6 +155,41 @@ describe('TransferCreate', () => {
     expect(screen.getByText('Autenticação')).toBeInTheDocument()
   })
 
+  it('asks for the beneficiary before the amounts, since the destination currency depends on it', async () => {
+    // Given o formulário de dados da transferência
+    await renderPage()
+
+    // Then o campo Beneficiário vem antes dos valores de origem e de destino
+    const destinationInput = screen.getByLabelText('Valor de Destino*')
+    expect(
+      beneficiarySelect().compareDocumentPosition(sourceInput()) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      beneficiarySelect().compareDocumentPosition(destinationInput) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('keeps both amount fields locked, with an explanation, until a beneficiary is chosen', async () => {
+    // Given o formulário sem beneficiário escolhido
+    await renderPage()
+
+    // Then os dois valores ficam bloqueados e a tela diz o motivo
+    expect(sourceInput()).toBeDisabled()
+    expect(screen.getByLabelText('Valor de Destino*')).toBeDisabled()
+    expect(screen.getByText('Escolha o beneficiário para informar o valor.')).toBeInTheDocument()
+
+    // When o usuário escolhe o beneficiário
+    fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
+
+    // Then os dois valores são liberados e a explicação some
+    expect(sourceInput()).toBeEnabled()
+    expect(screen.getByLabelText('Valor de Destino*')).toBeEnabled()
+    expect(
+      screen.queryByText('Escolha o beneficiário para informar o valor.'),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows the currency symbol of each side inside the amount fields', async () => {
     await renderPage()
 
@@ -169,6 +209,7 @@ describe('TransferCreate', () => {
 
   it('requests a single SOURCE quote after the debounce while the user is still typing', async () => {
     await renderPage()
+    chooseBeneficiary()
 
     fireEvent.change(sourceInput(), { target: { value: '12' } })
     fireEvent.change(sourceInput(), { target: { value: '12500' } })
@@ -187,6 +228,7 @@ describe('TransferCreate', () => {
 
   it('shows the values returned by the backend, only formatted', async () => {
     await renderPage()
+    chooseBeneficiary()
 
     await typeSourceAmount('125000')
 
@@ -198,6 +240,7 @@ describe('TransferCreate', () => {
 
   it('quotes by DESTINATION when the destination amount is edited and fills the source amount', async () => {
     await renderPage()
+    chooseBeneficiary()
 
     fireEvent.change(destinationInput(), { target: { value: '24235,14' } })
     await advance(DEBOUNCE_MS)
@@ -211,6 +254,7 @@ describe('TransferCreate', () => {
 
   it('hides the previous quote while a new one is loading', async () => {
     await renderPage()
+    chooseBeneficiary()
     await typeSourceAmount('125000')
     vi.mocked(getTransferQuote).mockReturnValue(new Promise(() => {}))
 
@@ -223,11 +267,11 @@ describe('TransferCreate', () => {
 
   it('shows the backend message on a 422 quote error, keeps no stale values and allows a retry', async () => {
     await renderPage()
+    chooseBeneficiary()
     await typeSourceAmount('125000')
     vi.mocked(getTransferQuote).mockRejectedValueOnce(
       httpError(422, 'Usuário não possui verificação KYC associada'),
     )
-    fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
 
     await typeSourceAmount('130000')
 
@@ -247,6 +291,7 @@ describe('TransferCreate', () => {
   it('shows a generic message when the quote fails for another reason', async () => {
     vi.mocked(getTransferQuote).mockRejectedValueOnce(httpError(503, 'Avenia fora do ar'))
     await renderPage()
+    chooseBeneficiary()
 
     await typeSourceAmount('125000')
 
@@ -257,6 +302,7 @@ describe('TransferCreate', () => {
 
   it('does not request a quote for an invalid amount', async () => {
     await renderPage()
+    chooseBeneficiary()
 
     await typeSourceAmount('0')
 
@@ -266,6 +312,7 @@ describe('TransferCreate', () => {
 
   it('quotes again with the currency of the selected beneficiary', async () => {
     await renderPage()
+    chooseBeneficiary()
     await typeSourceAmount('125000')
 
     fireEvent.change(beneficiarySelect(), { target: { value: euroSupplier.id } })
@@ -280,6 +327,7 @@ describe('TransferCreate', () => {
 
   it('clears the value derived from the previous quote when the beneficiary currency changes', async () => {
     await renderPage()
+    chooseBeneficiary()
     await typeSourceAmount('125000')
     expect(destinationInput()).not.toHaveValue('')
 
@@ -304,10 +352,16 @@ describe('TransferCreate', () => {
     expect(createTransfer).not.toHaveBeenCalled()
   })
 
-  it('blocks advancing from Passo 0 when beneficiary is not selected', async () => {
+  it('blocks advancing from Passo 0 when the beneficiary is cleared after quoting', async () => {
+    // Given uma cotação feita com o beneficiário escolhido
     await renderPage()
+    chooseBeneficiary()
     await typeSourceAmount('125000')
 
+    // When o usuário volta o beneficiário para "Selecione"
+    fireEvent.change(beneficiarySelect(), { target: { value: '' } })
+
+    // Then não dá para continuar
     expect(continueButton()).toBeDisabled()
   })
 
@@ -528,7 +582,7 @@ describe('TransferCreate', () => {
 
   it('clears the form and returns to step 0 when Cancelar is clicked in Passo 0', async () => {
     await renderPage()
-    fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
+    chooseBeneficiary()
     await typeSourceAmount('125000')
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))

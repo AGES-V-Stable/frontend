@@ -237,39 +237,6 @@ function LegacyTransferCreate() {
               </select>
             </div>
 
-            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-6">
-              <Input
-                id="transfer-sourceAmount"
-                label="Valor de origem*"
-                prefix={currencySymbol(SOURCE_CURRENCY)}
-                inputMode="decimal"
-                placeholder="0,00"
-                value={values.sourceAmount}
-                disabled={submitting}
-                onChange={(event) => handleAmountChange('SOURCE', event.target.value)}
-                error={amountType === 'SOURCE' ? amountError : undefined}
-                className="h-12 text-[14px]!"
-              />
-              <span
-                aria-hidden="true"
-                className="hidden h-12 w-7 items-center justify-center text-slate-700 md:mt-[25px] md:flex"
-              >
-                <ActionIcon id="transfers" />
-              </span>
-              <Input
-                id="transfer-destinationAmount"
-                label="Valor de Destino*"
-                prefix={currencySymbol(destinationCurrency)}
-                inputMode="decimal"
-                placeholder="0,00"
-                value={values.destinationAmount}
-                disabled={submitting}
-                onChange={(event) => handleAmountChange('DESTINATION', event.target.value)}
-                error={amountType === 'DESTINATION' ? amountError : undefined}
-                className="h-12 text-[14px]!"
-              />
-            </div>
-
             <div className="flex flex-col gap-1">
               <label htmlFor="transfer-beneficiaryId" className="text-[14px] text-sage-800">
                 Beneficiário*
@@ -297,6 +264,45 @@ function LegacyTransferCreate() {
                   Não foi possível carregar os beneficiários.
                 </p>
               )}
+            </div>
+
+            {!values.beneficiaryId && (
+              <p className="text-sm text-slate-600">
+                Escolha o beneficiário para informar o valor.
+              </p>
+            )}
+
+            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[1fr_auto_1fr] md:gap-6">
+              <Input
+                id="transfer-sourceAmount"
+                label="Valor de origem*"
+                prefix={currencySymbol(SOURCE_CURRENCY)}
+                inputMode="decimal"
+                placeholder="0,00"
+                value={values.sourceAmount}
+                disabled={submitting || !values.beneficiaryId}
+                onChange={(event) => handleAmountChange('SOURCE', event.target.value)}
+                error={amountType === 'SOURCE' ? amountError : undefined}
+                className="h-12 text-[14px]! disabled:cursor-not-allowed disabled:bg-slate-100"
+              />
+              <span
+                aria-hidden="true"
+                className="hidden h-12 w-7 items-center justify-center text-slate-700 md:mt-[25px] md:flex"
+              >
+                <ActionIcon id="transfers" />
+              </span>
+              <Input
+                id="transfer-destinationAmount"
+                label="Valor de Destino*"
+                prefix={currencySymbol(destinationCurrency)}
+                inputMode="decimal"
+                placeholder="0,00"
+                value={values.destinationAmount}
+                disabled={submitting || !values.beneficiaryId}
+                onChange={(event) => handleAmountChange('DESTINATION', event.target.value)}
+                error={amountType === 'DESTINATION' ? amountError : undefined}
+                className="h-12 text-[14px]! disabled:cursor-not-allowed disabled:bg-slate-100"
+              />
             </div>
 
             <div className="flex flex-col gap-1">
