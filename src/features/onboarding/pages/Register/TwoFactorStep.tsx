@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/shared/components/Button'
 import { RecoveryCodesContainer, TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
 import { twoFactorService } from '@/features/auth'
+import logo from '@/shared/assets/navigation/logo.png'
 
 export interface TwoFactorStepProps {
   kycVerificationId: string
@@ -64,7 +65,7 @@ export function TwoFactorStep({ onContinue, onSkip }: TwoFactorStepProps) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-10 px-4 bg-slate-50">
       <div className="mb-8">
-        <span className="text-2xl font-bold tracking-widest text-primary">V-STABLE</span>
+        <img src={logo} alt="V-Stable" className="h-12 w-auto object-contain" />
       </div>
 
       <div className="bg-white rounded-2xl shadow-md w-full max-w-2xl p-6 md:p-8 flex flex-col gap-6">

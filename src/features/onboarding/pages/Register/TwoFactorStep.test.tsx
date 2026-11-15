@@ -36,6 +36,7 @@ describe('TwoFactorStep', () => {
     render(<TwoFactorStep kycVerificationId="kyc-123" onContinue={vi.fn()} onSkip={vi.fn()} />)
 
     expect(screen.getByRole('heading', { name: 'Segurança da Conta (2FA)' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'V-Stable' })).toBeInTheDocument()
     expect(
       await screen.findByText('Configuração de Segurança em Duas Etapas (2FA)'),
     ).toBeInTheDocument()
