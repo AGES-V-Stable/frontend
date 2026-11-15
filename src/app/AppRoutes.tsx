@@ -33,6 +33,7 @@ import { MockTopUp } from '@/features/dashboard/pages/MockTopUp/MockTopUp'
 import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
 import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
+import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
 import {
   CompanyRoute,
@@ -379,6 +380,7 @@ export default function AppRoutes() {
           <Route path={PATHS.SETTINGS} element={<Settings />} />
         </Route>
         <Route path={PATHS.COMPANY_SETUP} element={<CompanySetupRoute />} />
+        <Route path={PATHS.BLINDPAY_COMPLEMENT} element={<BlindPayComplement />} />
       </Route>
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
       <Route path="/beneficiarios/novo" element={<LegacyRedirect to={PATHS.BENEFICIARIES_NEW} />} />

@@ -13,6 +13,7 @@ export const PATHS = {
   REGISTER_COMPLETE: '/register/:kycVerificationId/concluido',
   ADMIN_CLIENTS: '/admin/clientes-pme',
   REGISTER_STATUS: '/register/status',
+  BLINDPAY_COMPLEMENT: '/register/blindpay/complementar',
   FORGOT_PASSWORD: '/esqueci-senha',
   ADMIN_TRANSFERS: '/admin/transferencias',
   ADMIN_BENEFICIARIES: '/admin/beneficiarios',
