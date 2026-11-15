@@ -23,11 +23,15 @@ const SELECT_CLASS = `${FIELD_CLASS} h-12 appearance-none pr-10`
 const SELECT_CHEVRON = (
   <svg
     aria-hidden="true"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-    className="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-slate-600"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="pointer-events-none absolute right-4 top-1/2 size-[18px] -translate-y-1/2 text-slate-700"
   >
-    <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" />
+    <path d="m6 9 6 6 6-6" />
   </svg>
 )
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Select } from '@/shared/components/Select'
 
 export interface BeneficiaryFilterValues {
   companyOrCnpj: string
@@ -78,22 +79,21 @@ export function BeneficiaryFilters({
           />
         </label>
 
-        <label className="text-xs font-medium text-slate-900">
-          País
-          <select
-            aria-label="País"
-            className={`${inputClassName} mt-1.5`}
+        <div className="text-xs font-medium text-slate-900">
+          <label htmlFor="beneficiary-filter-country" className="mb-1.5 block">
+            País
+          </label>
+          <Select
+            id="beneficiary-filter-country"
             value={filters.country}
             onChange={(event) => updateFilter('country', event.target.value)}
-          >
-            <option value="">Todos os países</option>
-            {countries.map((country) => (
-              <option key={country} value={country}>
-                {country}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={[
+              { value: '', label: 'Todos os países' },
+              ...countries.map((country) => ({ value: country, label: country })),
+            ]}
+            className="h-11 py-0! text-sm!"
+          />
+        </div>
 
         <button
           type="button"

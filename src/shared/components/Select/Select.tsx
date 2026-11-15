@@ -35,26 +35,44 @@ function Select({
   const errorId = error ? `${selectId}-error` : undefined
   const inside = labelPlacement === 'inside' && !!label
 
+  // A seta nativa fica colada na borda; esta tem recuo próprio e o texto não passa por baixo dela.
   const field = (
-    <select
-      {...selectProps}
-      id={selectId}
-      aria-invalid={!!error}
-      aria-describedby={errorId}
-      style={inside ? { paddingLeft: `calc(1.25rem + ${label?.length ?? 0}ch)`, ...style } : style}
-      className={`w-full border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 ${inside ? 'py-2.5 pr-3 text-[14px] font-medium text-slate-700' : 'py-3.5 px-3 text-[16px] text-slate-900'} ${error ? 'border-red-700' : 'border-sage-500'} ${className}`}
-    >
-      {placeholder && (
-        <option value="" disabled hidden>
-          {placeholder}
-        </option>
-      )}
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <div className="relative">
+      <select
+        {...selectProps}
+        id={selectId}
+        aria-invalid={!!error}
+        aria-describedby={errorId}
+        style={
+          inside ? { paddingLeft: `calc(1.25rem + ${label?.length ?? 0}ch)`, ...style } : style
+        }
+        className={`peer w-full appearance-none border rounded-lg bg-surface pr-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 ${inside ? 'py-2.5 text-[14px] font-medium text-slate-700' : 'py-3.5 pl-3 text-[16px] text-slate-900'} ${error ? 'border-red-700' : 'border-sage-500'} ${className}`}
+      >
+        {placeholder && (
+          <option value="" disabled hidden>
+            {placeholder}
+          </option>
+        )}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <svg
+        aria-hidden="true"
+        data-testid="select-chevron"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="pointer-events-none absolute right-4 top-1/2 size-[18px] -translate-y-1/2 text-slate-700 peer-disabled:opacity-50"
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    </div>
   )
 
   return (
