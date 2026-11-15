@@ -40,7 +40,6 @@ export function SettlementDrawer({
       open={settlement !== null}
       title="Detalhes da transferência"
       onClose={onClose}
-      actionsAlign="start"
       actions={
         settlement
           ? [

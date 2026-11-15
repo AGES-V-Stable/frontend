@@ -5,37 +5,18 @@ import userEvent from '@testing-library/user-event'
 import { Drawer } from '@/shared/components/Drawer/Drawer'
 
 describe('Drawer', () => {
-  it('keeps the footer buttons on the right by default and on the left when asked', () => {
-    // Given um painel com o alinhamento padrão
-    const { unmount } = render(
+  it('keeps the footer buttons on the right and marks the footer for the support button', () => {
+    // Given um painel com botões no rodapé
+    render(
       <Drawer open title="Detalhes" onClose={vi.fn()} actions={[{ label: 'Abrir' }]}>
         conteúdo
       </Drawer>,
     )
 
-    // Then os botões ficam à direita
-    expect(screen.getByRole('button', { name: 'Abrir' }).parentElement).toHaveClass('justify-end')
-    // And o rodapé fica marcado, para o botão flutuante de suporte subir acima dele
-    expect(screen.getByRole('button', { name: 'Abrir' }).parentElement).toHaveAttribute(
-      'data-drawer-footer',
-    )
-    unmount()
-
-    // Given um painel que pede os botões à esquerda
-    render(
-      <Drawer
-        open
-        title="Detalhes"
-        onClose={vi.fn()}
-        actions={[{ label: 'Abrir' }]}
-        actionsAlign="start"
-      >
-        conteúdo
-      </Drawer>,
-    )
-
-    // Then os botões ficam à esquerda
-    expect(screen.getByRole('button', { name: 'Abrir' }).parentElement).toHaveClass('justify-start')
+    // Then os botões ficam à direita, e o rodapé fica marcado para o botão de suporte subir
+    const footer = screen.getByRole('button', { name: 'Abrir' }).parentElement
+    expect(footer).toHaveClass('justify-end')
+    expect(footer).toHaveAttribute('data-drawer-footer')
   })
 
   it('does not render when closed', () => {

@@ -7,21 +7,12 @@ export interface DrawerProps {
   onClose: () => void
   children: React.ReactNode
   actions?: ButtonProps[]
-  /** Lado dos botões no rodapé (padrão: direita). */
-  actionsAlign?: 'start' | 'end'
 }
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-export const Drawer = ({
-  open,
-  title,
-  onClose,
-  children,
-  actions = [],
-  actionsAlign = 'end',
-}: DrawerProps) => {
+export const Drawer = ({ open, title, onClose, children, actions = [] }: DrawerProps) => {
   const dialogRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
   const onCloseRef = useRef(onClose)
@@ -138,9 +129,7 @@ export const Drawer = ({
           <div
             // Marca o rodapé para o botão flutuante de suporte subir e não cobrir estes botões.
             data-drawer-footer=""
-            className={`flex gap-[12px] border-t border-gray-200 px-[24px] py-[20px] ${
-              actionsAlign === 'start' ? 'justify-start' : 'justify-end'
-            }`}
+            className="flex justify-end gap-[12px] border-t border-gray-200 px-[24px] py-[20px]"
           >
             {actions.map((action, index) => (
               <Button key={index} {...action} className={`!w-auto ${action.className ?? ''}`} />
