@@ -16,12 +16,21 @@ describe('BlindPayComplement', () => {
 
     expect(screen.getByText('Informe o país que emitiu o documento.')).toBeInTheDocument()
     expect(screen.getByText('Envie uma selfie em JPG ou PNG.')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Documento de identificação e selfie' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Documento de identificação e selfie' }),
+    ).toBeInTheDocument()
   })
 
   it('validates accepted formats, file sizes and empty files', () => {
-    expect(validateBlindPayUpload(new File(['x'], 'documento.pdf', { type: 'application/pdf' }), 'selfie')).toMatch(/JPG ou PNG/)
-    expect(validateBlindPayUpload(new File([], 'selfie.png', { type: 'image/png' }), 'selfie')).toMatch(/vazio/)
+    expect(
+      validateBlindPayUpload(
+        new File(['x'], 'documento.pdf', { type: 'application/pdf' }),
+        'selfie',
+      ),
+    ).toMatch(/JPG ou PNG/)
+    expect(
+      validateBlindPayUpload(new File([], 'selfie.png', { type: 'image/png' }), 'selfie'),
+    ).toMatch(/vazio/)
     expect(
       validateBlindPayUpload(
         new File([new Uint8Array(3 * 1024 * 1024 + 1)], 'comprovante.pdf', {
@@ -43,19 +52,26 @@ describe('BlindPayComplement', () => {
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(screen.getByRole('heading', { name: 'Comprovante de endereço' })).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText('Tipo de comprovante de endereço *'), 'electricity')
+    await user.selectOptions(
+      screen.getByLabelText('Tipo de comprovante de endereço *'),
+      'electricity',
+    )
     await user.upload(screen.getByLabelText('Selecionar comprovante de endereço'), proof())
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(screen.getByRole('heading', { name: 'Aceite dos termos BlindPay' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Abrir termos BlindPay (indisponível)' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Abrir termos BlindPay (indisponível)' }),
+    ).toBeDisabled()
 
     await user.click(screen.getByRole('button', { name: 'Ver revisão' }))
     expect(screen.getByRole('heading', { name: 'Revisão das informações' })).toBeInTheDocument()
     expect(screen.getByText('Conta de energia')).toBeInTheDocument()
     expect(screen.getByText('comprovante.pdf')).toBeInTheDocument()
     expect(screen.getByText('selfie.jpg')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Enviar para BlindPay (indisponível)' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Enviar para BlindPay (indisponível)' }),
+    ).toBeDisabled()
   })
 
   it('returns to the previous step without deleting the entered data', async () => {

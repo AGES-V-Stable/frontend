@@ -86,16 +86,17 @@ export function KycFullPreview() {
       )}
 
       {step === 1 && (
-        <CompanyStep
-          onCancel={() => navigateTo(0)}
-          onContinue={() => navigateTo(2)}
-        />
+        <CompanyStep onCancel={() => navigateTo(0)} onContinue={() => navigateTo(2)} />
       )}
 
       {step === 2 && <RepresentativeStep onContinue={() => navigateTo(3)} />}
 
       {step === 3 && (
-        <ComplianceStep onContinue={async () => { navigateTo(4) }} />
+        <ComplianceStep
+          onContinue={async () => {
+            navigateTo(4)
+          }}
+        />
       )}
 
       {step === 4 && (
@@ -108,11 +109,14 @@ export function KycFullPreview() {
             <section className="mx-auto flex w-full max-w-xl flex-col items-center gap-5 py-8 text-center">
               <h2 className="text-xl font-bold text-slate-900">Verificação facial (Avenia)</h2>
               <p className="text-sm leading-6 text-slate-600">
-                No fluxo real, o usuário inicia a verificação facial pela Avenia e retorna
-                para consultar a conclusão. Esta prévia não inicia liveness nem gera um ID
-                de verificação.
+                No fluxo real, o usuário inicia a verificação facial pela Avenia e retorna para
+                consultar a conclusão. Esta prévia não inicia liveness nem gera um ID de
+                verificação.
               </p>
-              <div role="status" className="w-full rounded-lg border border-amber-700 bg-amber-50 p-4 text-sm text-amber-700">
+              <div
+                role="status"
+                className="w-full rounded-lg border border-amber-700 bg-amber-50 p-4 text-sm text-amber-700"
+              >
                 Simulação visual: nenhuma verificação de identidade foi realizada.
               </div>
               <Button label="Visualizar complementação BlindPay" onClick={() => navigateTo(5)} />
@@ -125,8 +129,8 @@ export function KycFullPreview() {
       {step === 5 && (
         <div>
           <div className="mx-auto max-w-[1300px] px-4 pt-5 text-sm text-slate-600 md:px-8">
-            Campos adicionais do representante. O backend atual da BlindPay opera o
-            onboarding KYB empresarial; esta prévia não equivale a um KYC individual enviado.
+            Campos adicionais do representante. O backend atual da BlindPay opera o onboarding KYB
+            empresarial; esta prévia não equivale a um KYC individual enviado.
           </div>
           <BlindPayComplement />
         </div>

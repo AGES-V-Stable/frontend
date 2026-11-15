@@ -37,12 +37,20 @@ describe('BlindPayIndividualKyc', () => {
 
     expect(screen.getByRole('heading', { name: 'Documentos e selfie' })).toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('Tipo de documento *'), 'PASSPORT')
-    await user.upload(screen.getByLabelText('Passaporte *'), new File(['jpg'], 'passaporte.jpg', { type: 'image/jpeg' }))
-    await user.upload(screen.getByLabelText('Selfie do rosto *'), new File(['jpg'], 'selfie.jpg', { type: 'image/jpeg' }))
+    await user.upload(
+      screen.getByLabelText('Passaporte *'),
+      new File(['jpg'], 'passaporte.jpg', { type: 'image/jpeg' }),
+    )
+    await user.upload(
+      screen.getByLabelText('Selfie do rosto *'),
+      new File(['jpg'], 'selfie.jpg', { type: 'image/jpeg' }),
+    )
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(screen.getByRole('heading', { name: 'Aceite dos termos BlindPay' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Iniciar aceite (desativado na prévia)' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Iniciar aceite (desativado na prévia)' }),
+    ).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     expect(screen.getByRole('heading', { name: 'Revisão e envio' })).toBeInTheDocument()

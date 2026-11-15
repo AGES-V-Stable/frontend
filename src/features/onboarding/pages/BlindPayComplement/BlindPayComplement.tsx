@@ -167,7 +167,10 @@ export function BlindPayComplement() {
           {step === 0 && (
             <div className="grid gap-8 md:grid-cols-2">
               <div className="space-y-3">
-                <label htmlFor="issuing-country" className="block text-sm font-medium text-sage-800">
+                <label
+                  htmlFor="issuing-country"
+                  className="block text-sm font-medium text-sage-800"
+                >
                   País de emissão do documento *
                 </label>
                 <input
@@ -232,7 +235,8 @@ export function BlindPayComplement() {
                   ))}
                 </select>
                 <p className="text-xs text-slate-600">
-                  Os tipos apresentados são opções de interface. A correspondência com os códigos da API será definida na integração.
+                  Os tipos apresentados são opções de interface. A correspondência com os códigos da
+                  API será definida na integração.
                 </p>
                 {errors.proofType && (
                   <p id="proof-type-error" role="alert" className="text-sm text-red-700">
@@ -255,13 +259,19 @@ export function BlindPayComplement() {
 
           {step === 2 && (
             <section className="mx-auto w-full max-w-3xl space-y-5 rounded-xl border border-sage-300 bg-surface p-6">
-              <h3 className="text-base font-semibold text-slate-900">Aceite em ambiente hospedado</h3>
+              <h3 className="text-base font-semibold text-slate-900">
+                Aceite em ambiente hospedado
+              </h3>
               <p className="text-sm leading-6 text-slate-600">
                 O aceite dos termos da BlindPay é separado dos termos da V-Stable. A confirmação
                 deve ocorrer no ambiente oficial do provedor e ser validada pelo backend.
               </p>
-              <div role="status" className="rounded-lg border border-sage-300 bg-white p-4 text-sm text-slate-700">
-                Integração pendente: ainda não há link de aceite nem confirmação retornados pelo backend.
+              <div
+                role="status"
+                className="rounded-lg border border-sage-300 bg-white p-4 text-sm text-slate-700"
+              >
+                Integração pendente: ainda não há link de aceite nem confirmação retornados pelo
+                backend.
               </div>
               <Button type="button" label="Abrir termos BlindPay (indisponível)" disabled />
               <p className="text-xs text-slate-600">
@@ -279,7 +289,9 @@ export function BlindPayComplement() {
               <dl className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-lg border border-sage-300 bg-surface p-4">
                   <dt className="text-sm text-slate-600">País de emissão</dt>
-                  <dd className="mt-2 break-words font-medium text-slate-900">{issuingCountry.trim()}</dd>
+                  <dd className="mt-2 break-words font-medium text-slate-900">
+                    {issuingCountry.trim()}
+                  </dd>
                 </div>
                 <div className="rounded-lg border border-sage-300 bg-surface p-4">
                   <dt className="text-sm text-slate-600">Selfie</dt>
@@ -294,7 +306,10 @@ export function BlindPayComplement() {
                   <dd className="mt-2 break-all font-medium text-slate-900">{proof?.name}</dd>
                 </div>
               </dl>
-              <div role="status" className="rounded-lg border border-amber-700 bg-amber-50 p-4 text-sm text-amber-700">
+              <div
+                role="status"
+                className="rounded-lg border border-amber-700 bg-amber-50 p-4 text-sm text-amber-700"
+              >
                 Aceite BlindPay pendente. Submissão bloqueada até implementar os endpoints de upload
                 e a confirmação oficial do aceite no servidor.
               </div>
@@ -316,10 +331,7 @@ export function BlindPayComplement() {
             </div>
             {step < 3 ? (
               <div className="w-full sm:w-52">
-                <Button
-                  label={step === 2 ? 'Ver revisão' : 'Continuar'}
-                  type="submit"
-                />
+                <Button label={step === 2 ? 'Ver revisão' : 'Continuar'} type="submit" />
               </div>
             ) : (
               <div className="w-full sm:w-64">
