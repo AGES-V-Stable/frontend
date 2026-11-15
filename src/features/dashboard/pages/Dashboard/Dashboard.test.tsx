@@ -371,67 +371,10 @@ it('shows balance and transacted volume beside the accumulated savings for the c
   ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado', 'Câmbio Atual'])
 })
 
-it('submits a simulated deposit in BRL and refreshes the displayed balance', async () => {
-  let balance = '25000.00'
-  const fetcher = vi.fn(async (url: string) => {
-    if (url === '/v1/balance/simulated-deposits') balance = '25020.50'
-    if (url.startsWith('/v1/balance')) {
-      return new Response(JSON.stringify({ availableBalanceBrl: balance }))
-    }
-    return reply(url)
-  })
-  vi.stubGlobal('fetch', fetcher)
-  renderDashboard()
-
-  await screen.findByText('R$ 25.000,00')
-  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
-  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
-  const amount = within(modal).getByLabelText('Valor do crédito simulado (R$)')
-  fireEvent.change(amount, { target: { value: '20,50' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo simulado' }))
-
-  expect(await screen.findByText('R$ 25.020,50')).toBeInTheDocument()
-  expect(modal).not.toBeInTheDocument()
-  expect(fetcher).toHaveBeenCalledWith(
-    '/v1/balance/simulated-deposits',
-    expect.objectContaining({ method: 'POST', body: JSON.stringify({ amount: '20.50' }) }),
-  )
-})
-
-it('keeps the entered amount and explains why the deposit was rejected', async () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string) =>
-      url === '/v1/balance/simulated-deposits'
-        ? new Response(JSON.stringify({ code: 'KYC_NOT_APPROVED', message: 'x' }), { status: 403 })
-        : reply(url),
-    ),
-  )
-  renderDashboard()
-
-  await screen.findByText('R$ 25.000,00')
-  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
-  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
-  const amount = within(modal).getByLabelText('Valor do crédito simulado (R$)')
-  fireEvent.change(amount, { target: { value: '20,50' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo simulado' }))
-
-  expect(await within(modal).findByRole('alert')).toHaveTextContent(
-    'Conclua a verificação de identidade para adicionar saldo.',
-  )
-  expect(amount).toHaveValue('20,50')
-  expect(screen.getByText('R$ 25.000,00')).toBeInTheDocument()
-  fireEvent.click(within(modal).getByRole('button', { name: 'Cancelar' }))
-  expect(modal).not.toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
-  const reopened = screen.getByRole('dialog', { name: 'Adicionar saldo simulado' })
-  expect(within(reopened).getByLabelText('Valor do crédito simulado (R$)')).toHaveValue('')
-  expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument()
-})
-
-it.each(['OPERATOR', 'VIEWER'] as const)(
-  'does not offer the simulated deposit to the %s, who could never confirm it',
+it.each(['OWNER', 'OPERATOR', 'VIEWER'] as const)(
+  'shows the balance to the %s without an Adicionar saldo button, which lives in the menu',
   async (role) => {
+    // Given a empresa no Dashboard, com qualquer perfil
     givenSession(sessionUser(role))
     vi.stubGlobal(
       'fetch',
@@ -439,6 +382,7 @@ it.each(['OPERATOR', 'VIEWER'] as const)(
     )
     renderDashboard()
 
+    // Then o saldo aparece, sem o botão de crédito no card
     expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Adicionar saldo' })).not.toBeInTheDocument()
   },
