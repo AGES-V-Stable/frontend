@@ -27,6 +27,7 @@ jobs:
             src/features/onboarding/api/blindpayIndividualKyc.ts \
             src/features/onboarding/pages/BlindPayComplement/BlindPayComplement.tsx \
             src/features/onboarding/pages/BlindPayComplement/BlindPayComplement.test.tsx \
+            src/features/onboarding/pages/BlindPayComplement/validation.ts \
             src/features/onboarding/pages/BlindPayIndividualKyc/BlindPayIndividualKyc.tsx \
             src/features/onboarding/pages/BlindPayIndividualKyc/BlindPayIndividualKyc.test.tsx \
             src/features/onboarding/pages/KycFullPreview/KycFullPreview.tsx
@@ -37,6 +38,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git add src/features/onboarding
           if ! git diff --cached --quiet; then
-            git commit -m "style(onboarding): aplica Prettier aos novos componentes KYC"
+            HUSKY=0 git commit -m "style(onboarding): aplica Prettier aos novos componentes KYC"
             git push origin HEAD:feat/blindpay-onboarding-complementar
           fi
