@@ -35,6 +35,7 @@ import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
 import { KycFullPreview } from '@/features/onboarding/pages/KycFullPreview/KycFullPreview'
+import { BlindPayIndividualKyc } from '@/features/onboarding/pages/BlindPayIndividualKyc/BlindPayIndividualKyc'
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
 import {
   CompanyRoute,
@@ -342,6 +343,7 @@ export default function AppRoutes() {
         <>
           <Route path="/dev/blindpay/complementar" element={<BlindPayComplement />} />
           <Route path="/dev/kyc/fluxo-completo" element={<KycFullPreview />} />
+          <Route path="/dev/kyc/blindpay" element={<BlindPayIndividualKyc previewOnly />} />
         </>
       )}
       <Route element={<RoleGuard role="ADMIN" />}>
@@ -387,6 +389,7 @@ export default function AppRoutes() {
           <Route path={PATHS.SETTINGS} element={<Settings />} />
         </Route>
         <Route path={PATHS.COMPANY_SETUP} element={<CompanySetupRoute />} />
+        <Route path={PATHS.BLINDPAY_KYC} element={<BlindPayIndividualKyc />} />
         <Route path={PATHS.BLINDPAY_COMPLEMENT} element={<BlindPayComplement />} />
       </Route>
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
