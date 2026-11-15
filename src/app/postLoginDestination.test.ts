@@ -19,13 +19,26 @@ const onboarding = {
 function stubApi({
   onboarding: onboardingResponse,
   me = () => new Response('{}', { status: 500 }),
+  blindPay = () =>
+    new Response(
+      JSON.stringify({
+        termsAccepted: true,
+        submitted: true,
+        kycStatus: 'approved',
+        amlStatus: 'clear',
+      }),
+    ),
 }: {
   onboarding: () => Response
   me?: () => Response
+  blindPay?: () => Response
 }) {
-  const fetcher = vi.fn(async (url: string) =>
-    url === '/v1/users/me' ? me() : onboardingResponse(),
-  )
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === '/v1/users/me') return me()
+    if (url === '/v1/onboarding/me') return onboardingResponse()
+    if (url === '/v1/blindpay/kyc') return blindPay()
+    return new Response('{}', { status: 404 })
+  })
   vi.stubGlobal('fetch', fetcher)
   return fetcher
 }
@@ -61,6 +74,59 @@ describe('postLoginDestination', () => {
     saveLoginToken(userToken)
     stubApi({
       onboarding: () => new Response(JSON.stringify({ ...onboarding, status: 'APPROVED' })),
+    })
+
+    expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.TRANSFERS)
+  })
+
+  it('sends a company owner with pending BlindPay data to the complement screen', async () => {
+    saveLoginToken(userToken)
+    const owner = {
+      ...userWithMembership,
+      companyAccess: { ...userWithMembership.companyAccess, role: 'OWNER' },
+    }
+    stubApi({
+      onboarding: () => new Response(JSON.stringify({ ...onboarding, status: 'APPROVED' })),
+      me: () => new Response(JSON.stringify(owner)),
+      blindPay: () =>
+        new Response(
+          JSON.stringify({
+            termsAccepted: false,
+            submitted: false,
+            kycStatus: null,
+            amlStatus: null,
+          }),
+        ),
+    })
+
+    expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.BLINDPAY_KYC)
+  })
+
+  it('finishes the Avenia onboarding before opening the BlindPay complement', async () => {
+    saveLoginToken(userToken)
+    const fetcher = stubApi({
+      onboarding: () => new Response(JSON.stringify({ ...onboarding, livenessSubmitted: false })),
+      me: () => new Response(JSON.stringify(userWithoutCompany)),
+      blindPay: () =>
+        new Response(
+          JSON.stringify({
+            termsAccepted: false,
+            submitted: false,
+            kycStatus: null,
+            amlStatus: null,
+          }),
+        ),
+    })
+
+    expect(await postLoginDestination(null)).toBe('/register/kyc-1/compliance/liveness')
+    expect(fetcher).not.toHaveBeenCalledWith('/v1/blindpay/kyc', expect.anything())
+  })
+
+  it('does not block login when BlindPay is disabled in the current environment', async () => {
+    saveLoginToken(userToken)
+    stubApi({
+      onboarding: () => new Response(JSON.stringify({ ...onboarding, status: 'APPROVED' })),
+      blindPay: () => new Response('{}', { status: 503 }),
     })
 
     expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.TRANSFERS)

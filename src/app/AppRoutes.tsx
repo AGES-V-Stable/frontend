@@ -48,6 +48,7 @@ import { PATHS, transferDetailsPath } from '@/shared/navigation/paths'
 import { maskCNPJ } from '@/shared/utils/masks'
 import { postLoginDestination } from './postLoginDestination'
 import { ApplicationShell } from './components/ApplicationShell'
+import { BlindPayKycAccess } from './components/BlindPayKycAccess'
 import { NavBar } from './components/NavBar'
 import type { NavigationItem } from './components/NavBar'
 import logo from '@/shared/assets/navigation/logo.png'
@@ -341,8 +342,21 @@ function DashboardRoute({ admin = false }: { admin?: boolean }) {
         </p>
       }
     >
-      <Dashboard admin={admin} />
+      <Dashboard
+        admin={admin}
+        blindPayAccess={admin ? undefined : <BlindPayKycAccess variant="dashboard" />}
+      />
     </Suspense>
+  )
+}
+
+function BlindPayComplementRoute({ previewOnly = false }: { previewOnly?: boolean }) {
+  const navigate = useNavigate()
+  return (
+    <BlindPayComplement
+      previewOnly={previewOnly}
+      onPostpone={() => void navigate(PATHS.DASHBOARD)}
+    />
   )
 }
 
@@ -352,9 +366,12 @@ export default function AppRoutes() {
       <Route path={PATHS.HOME} element={<RoleLanding />} />
       {import.meta.env.DEV && (
         <>
-          <Route path="/dev/blindpay/complementar" element={<BlindPayComplement previewOnly />} />
+          <Route
+            path="/dev/blindpay/complementar"
+            element={<BlindPayComplementRoute previewOnly />}
+          />
           <Route path="/dev/kyc/fluxo-completo" element={<KycFullPreview />} />
-          <Route path="/dev/kyc/blindpay" element={<BlindPayComplement previewOnly />} />
+          <Route path="/dev/kyc/blindpay" element={<BlindPayComplementRoute previewOnly />} />
         </>
       )}
       <Route element={<RoleGuard role="ADMIN" />}>
@@ -397,10 +414,19 @@ export default function AppRoutes() {
       </Route>
       <Route element={<RoleGuard />}>
         <Route element={<RoutedApplication />}>
-          <Route path={PATHS.SETTINGS} element={<Settings />} />
+          <Route
+            path={PATHS.SETTINGS}
+            element={
+              <Settings
+                blindPayAccess={
+                  isStoredAdmin() ? undefined : <BlindPayKycAccess variant="settings" />
+                }
+              />
+            }
+          />
         </Route>
         <Route path={PATHS.COMPANY_SETUP} element={<CompanySetupRoute />} />
-        <Route path={PATHS.BLINDPAY_KYC} element={<BlindPayComplement />} />
+        <Route path={PATHS.BLINDPAY_KYC} element={<BlindPayComplementRoute />} />
         <Route
           path={PATHS.BLINDPAY_COMPLEMENT}
           element={<Navigate replace to={PATHS.BLINDPAY_KYC} />}

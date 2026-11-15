@@ -154,6 +154,8 @@ const TONE_CLASSES = {
 interface Props {
   /** Nunca contata o backend nem a BlindPay. Usado apenas em rotas de prévia do Vite DEV. */
   previewOnly?: boolean
+  /** Permite adiar o KYC sem perder o acesso à aplicação. */
+  onPostpone?: () => void
 }
 
 /**
@@ -161,7 +163,7 @@ interface Props {
  * Arquivos ficam apenas em memória até o envio; o aceite dos termos acontece na
  * página hospedada da BlindPay e só vale após o backend receber o webhook assinado.
  */
-export function BlindPayComplement({ previewOnly = false }: Props) {
+export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
   const [step, setStep] = useState<Step>(0)
   const [personal, setPersonal] = useState<PersonalData>(EMPTY_PERSONAL_DATA)
   const [idDocType, setIdDocType] = useState<IdDocType>('ID_CARD')
@@ -745,6 +747,25 @@ export function BlindPayComplement({ previewOnly = false }: Props) {
             Dados e documentos do titular para validação do cadastro na BlindPay.
           </p>
         </header>
+        {onPostpone && !status?.submitted && (
+          <section className="flex flex-col gap-3 rounded-lg border border-sage-300 bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Prefere continuar depois?</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Você pode acessar a plataforma agora e retomar esta verificação pelo Dashboard ou
+                por Configurações.
+              </p>
+            </div>
+            <div className="w-full shrink-0 sm:w-48">
+              <Button
+                type="button"
+                variant="secondary"
+                label="Fazer mais tarde"
+                onClick={onPostpone}
+              />
+            </div>
+          </section>
+        )}
         {previewOnly && (
           <p
             role="status"

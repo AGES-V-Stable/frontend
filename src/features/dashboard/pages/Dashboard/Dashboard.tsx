@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import type { ZodType } from 'zod'
 import {
@@ -339,7 +339,13 @@ function ChartCard({
 }
 
 /** Dashboard do épico AGES-V-Stable/cicd#44, nas visões de cliente e de administrador. */
-export function Dashboard({ admin = false }: { admin?: boolean }) {
+export function Dashboard({
+  admin = false,
+  blindPayAccess,
+}: {
+  admin?: boolean
+  blindPayAccess?: ReactNode
+}) {
   const navigate = useNavigate()
   const [filters, setFilters] = useState<Filters>(() =>
     toDashboardFilters(DEFAULT_FILTER_FORM, todayInSaoPaulo(), admin),
@@ -435,6 +441,7 @@ export function Dashboard({ admin = false }: { admin?: boolean }) {
             : 'Liquidações registradas • Valores consolidados em BRL'}
         </p>
       </header>
+      {!admin && blindPayAccess}
       <div className={`grid gap-4 sm:grid-cols-2 ${admin ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
         {!admin && <ClientBalanceCard />}
         <SavingsCard admin={admin} filters={filters} />

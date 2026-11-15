@@ -133,6 +133,17 @@ describe('kycStatus', () => {
 })
 
 describe('BlindPayComplement (prévia)', () => {
+  it('allows postponing the complement to continue using the platform', async () => {
+    const onPostpone = vi.fn()
+    const user = userEvent.setup()
+    render(<BlindPayComplement previewOnly onPostpone={onPostpone} />)
+
+    await user.click(screen.getByRole('button', { name: 'Fazer mais tarde' }))
+
+    expect(onPostpone).toHaveBeenCalledTimes(1)
+    expect(screen.getByText(/retomar esta verificação pelo Dashboard/)).toBeInTheDocument()
+  })
+
   it('shows required validation without leaving the personal data step', async () => {
     const user = userEvent.setup()
     render(<BlindPayComplement previewOnly />)
