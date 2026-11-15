@@ -45,9 +45,9 @@ export function MemberTable({
         <span className="flex flex-col gap-1">
           <span className="text-sm font-medium">
             {person(item).name}
-            {isViewer(item) && <span className="font-normal text-slate-500"> (você)</span>}
+            {isViewer(item) && <span className="font-normal text-slate-600"> (você)</span>}
           </span>
-          <span className="text-xs text-slate-500">{person(item).email}</span>
+          <span className="text-[13px] text-slate-600">{person(item).email}</span>
         </span>
       ),
     },
@@ -97,18 +97,33 @@ export function MemberTable({
     },
   ]
 
+  const entityLabel = peopleCount === 1 ? 'membro' : 'pessoas'
+
+  // Cartão próprio, como o do Dashboard: título, linhas, paginação e rodapé com o mesmo recuo.
   return (
-    <Table
-      compact
-      title="Pessoas com acesso"
-      subtitle="Gestão exclusiva do proprietário"
-      footer={footer}
-      totalRecords={peopleCount}
-      entityLabel={peopleCount === 1 ? 'membro' : 'pessoas'}
-      columns={columns}
-      data={items}
-      pagination={pagination}
-      emptyMessage="Nenhuma pessoa encontrada."
-    />
+    <section
+      aria-labelledby="member-table-title"
+      className="flex flex-col rounded-xl border border-sage-300 bg-white pt-6"
+    >
+      <div className="px-6">
+        <h2 id="member-table-title" className="text-[18px] font-medium text-slate-900">
+          Pessoas com acesso
+        </h2>
+        <p aria-live="polite" className="mt-1 text-[12px] text-slate-600">
+          {`${peopleCount} ${entityLabel} · Gestão exclusiva do proprietário`}
+        </p>
+      </div>
+      <div className="px-6">
+        <Table
+          compact
+          entityLabel={entityLabel}
+          columns={columns}
+          data={items}
+          pagination={pagination}
+          emptyMessage="Nenhuma pessoa encontrada."
+        />
+      </div>
+      {footer && <div className="px-6 pb-6">{footer}</div>}
+    </section>
   )
 }
