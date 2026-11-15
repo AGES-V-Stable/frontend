@@ -169,6 +169,21 @@ it('paints every menu icon with the item text color, so only the selected one tu
   expect(dashboard).toHaveClass('text-emerald-800')
   expect(members).toHaveClass('text-slate-500')
 })
+it('gives Adicionar saldo its own coins icon instead of repeating the Dashboard one', async () => {
+  // Given a proprietária da empresa logada, que vê o item Adicionar saldo
+  saveLoginToken('login')
+  renderRoute()
+  const nav = await screen.findByRole('navigation')
+  const topUp = within(nav).queryByRole('button', { name: 'Adicionar saldo' })
+  if (!topUp) throw new Error('o usuário do teste deveria ver Adicionar saldo')
+
+  // Then o ícone é o de moedas, diferente do ícone do Dashboard
+  const icon = (button: HTMLElement) =>
+    within(button).getByTestId('navigation-icon').style.maskImage
+  // O SVG chega embutido no código; as moedas são as elipses do desenho
+  expect(icon(topUp)).toContain('ellipse')
+  expect(icon(topUp)).not.toBe(icon(within(nav).getByRole('button', { name: 'Dashboard' })))
+})
 it('opens the company dashboard from the Dashboard item, with balance and transacted volume', async () => {
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')
