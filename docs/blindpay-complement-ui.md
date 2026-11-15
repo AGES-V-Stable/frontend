@@ -2,8 +2,8 @@
 
 A rota autenticada **/register/blindpay/complementar** apresenta quatro telas independentes do cadastro Avenia atual:
 
-1. País de emissão do documento e arquivo de selfie (JPG/PNG, até 10 MB).
-2. Tipo e arquivo do comprovante de endereço (PDF/JPG/PNG, até 10 MB).
+1. País de emissão do documento e arquivo de selfie (JPG/PNG, até 3 MB).
+2. Tipo e arquivo do comprovante de endereço (PDF/JPG/PNG, até 3 MB).
 3. Aceite **hospedado** dos termos BlindPay (não confundir com aceite V-Stable).
 4. Revisão dos itens selecionados e do estado pendente.
 
