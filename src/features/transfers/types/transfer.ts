@@ -41,6 +41,8 @@ export interface TransferQuoteRequest {
   amountType: TransferAmountType
   sourceCurrency?: string
   destinationCurrency?: string
+  beneficiaryId?: string
+  paymentMethod?: TransferPaymentMethod
 }
 
 export interface TransferQuoteResponse {

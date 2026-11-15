@@ -64,9 +64,11 @@ const backButton = () => screen.getByRole('button', { name: 'Voltar' })
 const confirmTransferButton = () => screen.getByRole('button', { name: /Confirmar transferência/i })
 const totpInput = () => screen.getByLabelText('Código de autenticação')
 
-const renderPage = async () => {
+const renderPage = async (selectBeneficiary = true) => {
   render(<TransferCreate />)
   await advance()
+  if (selectBeneficiary && screen.queryByRole('option', { name: 'Atlas Imports LLC' }))
+    fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
 }
 
 const typeSourceAmount = async (text: string) => {
@@ -141,6 +143,30 @@ describe('TransferCreate', () => {
     expect(getTransferQuote).not.toHaveBeenCalled()
   })
 
+  it('does not quote without a selected beneficiary and sends the full route once selected', async () => {
+    await renderPage(false)
+    await typeSourceAmount('100')
+    expect(getTransferQuote).not.toHaveBeenCalled()
+    fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
+    await advance(DEBOUNCE_MS)
+    expect(getTransferQuote).toHaveBeenCalledWith(
+      expect.objectContaining({ beneficiaryId: atlas.id, paymentMethod: 'PIX' }),
+      expect.any(AbortSignal),
+    )
+  })
+
+  it('invalidates and requotes when the payment method changes', async () => {
+    await renderPage()
+    await typeSourceAmount('100')
+    fireEvent.change(screen.getByLabelText('Método de Pagamento*'), { target: { value: 'PIX' } })
+    expect(continueButton()).toBeDisabled()
+    await advance(DEBOUNCE_MS)
+    expect(getTransferQuote).toHaveBeenLastCalledWith(
+      expect.objectContaining({ beneficiaryId: atlas.id, paymentMethod: 'PIX' }),
+      expect.any(AbortSignal),
+    )
+  })
+
   it('shows the transfer steps with Dados as the current one', async () => {
     await renderPage()
 
@@ -180,7 +206,14 @@ describe('TransferCreate', () => {
 
     expect(getTransferQuote).toHaveBeenCalledTimes(1)
     expect(getTransferQuote).toHaveBeenCalledWith(
-      { amount: 125000, amountType: 'SOURCE', sourceCurrency: 'BRL', destinationCurrency: 'USD' },
+      {
+        amount: 125000,
+        amountType: 'SOURCE',
+        sourceCurrency: 'BRL',
+        destinationCurrency: 'USD',
+        beneficiaryId: atlas.id,
+        paymentMethod: 'PIX',
+      },
       expect.any(AbortSignal),
     )
   })
@@ -278,6 +311,25 @@ describe('TransferCreate', () => {
     expect(screen.getByText('€')).toBeInTheDocument()
   })
 
+  it('requotes for another beneficiary even when the currency is unchanged', async () => {
+    vi.mocked(getCompanyBeneficiaries).mockResolvedValue({
+      content: [atlas, { ...euroSupplier, currency: 'USD' }],
+      totalElements: 2,
+      totalPages: 1,
+      number: 0,
+      size: 100,
+    })
+    await renderPage()
+    await typeSourceAmount('100')
+    fireEvent.change(beneficiarySelect(), { target: { value: euroSupplier.id } })
+    expect(continueButton()).toBeDisabled()
+    await advance(DEBOUNCE_MS)
+    expect(getTransferQuote).toHaveBeenLastCalledWith(
+      expect.objectContaining({ beneficiaryId: euroSupplier.id, destinationCurrency: 'USD' }),
+      expect.any(AbortSignal),
+    )
+  })
+
   it('clears the value derived from the previous quote when the beneficiary currency changes', async () => {
     await renderPage()
     await typeSourceAmount('125000')
@@ -305,7 +357,7 @@ describe('TransferCreate', () => {
   })
 
   it('blocks advancing from Passo 0 when beneficiary is not selected', async () => {
-    await renderPage()
+    await renderPage(false)
     await typeSourceAmount('125000')
 
     expect(continueButton()).toBeDisabled()
@@ -316,7 +368,7 @@ describe('TransferCreate', () => {
     await goToReview()
 
     expect(screen.getByText('Atlas Imports LLC')).toBeInTheDocument()
-    expect(screen.getByText('Saldo em Conta')).toBeInTheDocument()
+    expect(screen.getByText('PIX')).toBeInTheDocument()
     expect(screen.getByText('Pagamento de importação')).toBeInTheDocument()
     expect(screen.getAllByText('1 USD = R$ 5,16').length).toBeGreaterThan(0)
     expect(screen.getAllByText('0,45% • R$ 562,50').length).toBeGreaterThan(0)
@@ -387,7 +439,7 @@ describe('TransferCreate', () => {
       amountType: 'SOURCE',
       sourceCurrency: 'BRL',
       destinationCurrency: 'USD',
-      paymentMethod: 'ACCOUNT_BALANCE',
+      paymentMethod: 'PIX',
       beneficiaryId: atlas.id,
       description: 'Pagamento de importação',
       totpCode: '123456',
@@ -516,7 +568,7 @@ describe('TransferCreate', () => {
       amountType: 'SOURCE',
       sourceCurrency: 'BRL',
       destinationCurrency: 'USD',
-      paymentMethod: 'ACCOUNT_BALANCE',
+      paymentMethod: 'PIX',
       beneficiaryId: atlas.id,
       description: 'Pagamento de importação',
       totpCode: 'ABCD-1234',

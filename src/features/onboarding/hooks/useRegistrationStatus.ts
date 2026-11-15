@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ApiError, getCompanyComplianceStatus, getCurrentOnboarding } from '../api/onboarding'
+import { ApiError, getCurrentOnboarding } from '../api/onboarding'
 import { pendingOnboardingPath, registrationCardStatus } from '../model/registrationStatus'
 import type { ComplianceStatus } from '../components/ComplianceStatusCard/ComplianceStatusType'
 
@@ -23,11 +23,7 @@ export function useRegistrationStatus() {
       const onboarding = await getCurrentOnboarding(signal)
       const path = pendingOnboardingPath(onboarding)
       if (path) return { kind: 'resume', path }
-      // O status da empresa complementa o KYC; sem ele, o cadastro segue em análise.
-      const company = onboarding.companyId
-        ? await getCompanyComplianceStatus(onboarding.companyId, signal).catch(() => null)
-        : null
-      return { kind: 'status', status: registrationCardStatus(onboarding.status, company) }
+      return { kind: 'status', status: registrationCardStatus(onboarding.status) }
     }
     load().then(
       (next) => {

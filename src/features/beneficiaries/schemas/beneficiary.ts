@@ -22,6 +22,11 @@ export const BeneficiarySchema = z.object({
   walletAddress: z.string().nullish(),
   blockchainNetwork: z.string().nullish(),
   walletMemo: z.string().nullish(),
+  isSelfCustody: z.boolean().nullish(),
+  custodianName: z.string().nullish(),
+  counterpartyName: z.string().nullish(),
+  counterpartyCountry: z.string().nullish(),
+  isSameEconomicGroup: z.boolean().nullish(),
 })
 export const BeneficiariesPageSchema = z.object({
   content: z.array(BeneficiarySchema),

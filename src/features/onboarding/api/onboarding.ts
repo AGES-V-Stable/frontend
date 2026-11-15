@@ -4,13 +4,11 @@ import {
   KycResultSchema,
   PersonalDataSchema,
   CurrentOnboardingSchema,
-  CompanyComplianceStatusSchema,
 } from '../schemas/responses'
 import type { CompanyData } from '@/features/onboarding/types/registration'
 import type {
   CurrentOnboarding,
   KycPersonalPayload,
-  KycStatus,
   RepresentativeData,
 } from '@/features/onboarding/types/onboarding'
 
@@ -99,19 +97,6 @@ export async function submitKyc(kycVerificationId: string, personal: KycPersonal
 /** Situação do cadastro do representante autenticado, para retomá-lo ou exibi-lo. */
 export async function getCurrentOnboarding(signal?: AbortSignal): Promise<CurrentOnboarding> {
   return CurrentOnboardingSchema.parse(await request<unknown>('/onboarding/me', { signal }))
-}
-
-/** Status consolidado (KYB/AML) da empresa; null enquanto a análise não o definiu. */
-export async function getCompanyComplianceStatus(
-  companyId: string,
-  signal?: AbortSignal,
-): Promise<KycStatus | null> {
-  const result = CompanyComplianceStatusSchema.parse(
-    await request<unknown>(`/companies/${encodeURIComponent(companyId)}/compliance-status`, {
-      signal,
-    }),
-  )
-  return result.overallStatus
 }
 
 /**

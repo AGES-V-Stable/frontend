@@ -119,6 +119,8 @@ describe('getTransferQuote service', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const result = await getTransferQuote({
+      beneficiaryId: 'beneficiary-1',
+      paymentMethod: 'PIX',
       amount: 125000,
       amountType: 'SOURCE',
       sourceCurrency: 'BRL',
@@ -129,6 +131,8 @@ describe('getTransferQuote service', () => {
     expect(url).toBe('/v1/transfers/quote')
     expect(options.method).toBe('POST')
     expect(body).toEqual({
+      beneficiaryId: 'beneficiary-1',
+      paymentMethod: 'PIX',
       amount: 125000,
       amountType: 'SOURCE',
       sourceCurrency: 'BRL',

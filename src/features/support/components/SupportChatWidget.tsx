@@ -13,7 +13,7 @@ const INITIAL_SUGGESTIONS = [
 const WELCOME_MESSAGE: SupportChatMessage = {
   role: 'assistant',
   content:
-    'Olá! Sou o **Assistente Virtual da V-Stable**. Posso tirar dúvidas sobre países e moedas suportadas (como Colômbia/SWIFT vs. Wallet Cripto), configuração de 2FA, cotações e compliance KYB/AML. Como posso ajudar?',
+    'Olá! Sou o **Assistente Virtual da V-Stable**. Posso tirar dúvidas sobre países e moedas suportadas (como Colômbia/SWIFT vs. Wallet Cripto), configuração de 2FA, cotações e verificação de identidade (KYC). Como posso ajudar?',
 }
 
 export interface SupportChatWidgetProps {

@@ -15,11 +15,14 @@ interface FormData {
   enderecoWallet: string
   redeBlockchain: string
   apelidoWallet: string
+  custodiaWallet: string
+  instituicaoCustodiante: string
+  paisWallet: string
 }
 
 type Field = keyof FormData
 
-const TIPOS_BENEFICIARIO = ['Pessoa jurídica']
+const TIPOS_BENEFICIARIO = ['Pessoa jurídica', 'Pessoa física']
 const REDES_BLOCKCHAIN = ['Polygon', 'Celo', 'Ethereum', 'Gnosis', 'Moonbeam', 'Tron']
 
 const identificationFields: { name: Field; label: string; placeholder: string }[] = [
@@ -251,6 +254,73 @@ export function BeneficiaryCreate() {
                     </p>
                   )}
                 </div>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="wallet-currency">Moeda de recebimento *</label>
+                  <select
+                    id="wallet-currency"
+                    name="moedaRecebimento"
+                    value={data.moedaRecebimento}
+                    disabled={saving}
+                    onChange={(event) => change('moedaRecebimento', event.target.value)}
+                    aria-invalid={!!errors.moedaRecebimento}
+                    className="rounded-lg border border-sage-300 bg-surface p-3"
+                  >
+                    <option value="">Selecione a moeda</option>
+                    {['USDC', 'USDT', 'BRLA'].map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.moedaRecebimento && (
+                    <p role="alert" className="text-sm text-red-700">
+                      {errors.moedaRecebimento}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="wallet-custody">Custódia da wallet *</label>
+                  <select
+                    id="wallet-custody"
+                    name="custodiaWallet"
+                    value={data.custodiaWallet}
+                    disabled={saving}
+                    onChange={(event) => change('custodiaWallet', event.target.value)}
+                    aria-invalid={!!errors.custodiaWallet}
+                    className="rounded-lg border border-sage-300 bg-surface p-3"
+                  >
+                    <option value="">Selecione a custódia</option>
+                    <option value="propria">O beneficiário controla as chaves</option>
+                    <option value="instituicao">Uma instituição controla as chaves</option>
+                  </select>
+                  {errors.custodiaWallet && (
+                    <p role="alert" className="text-sm text-red-700">
+                      {errors.custodiaWallet}
+                    </p>
+                  )}
+                </div>
+                {data.custodiaWallet === 'instituicao' && (
+                  <Input
+                    id="wallet-custodian"
+                    name="instituicaoCustodiante"
+                    label="Instituição custodiante *"
+                    disabled={saving}
+                    value={data.instituicaoCustodiante}
+                    onChange={(event) => change('instituicaoCustodiante', event.target.value)}
+                    error={errors.instituicaoCustodiante}
+                  />
+                )}
+                <Input
+                  id="wallet-country"
+                  name="paisWallet"
+                  label="País do beneficiário (código de 2 letras) *"
+                  placeholder="BR"
+                  maxLength={2}
+                  disabled={saving}
+                  value={data.paisWallet}
+                  onChange={(event) => change('paisWallet', event.target.value)}
+                  error={errors.paisWallet}
+                />
                 <div className="flex min-h-[102px] items-center">
                   <Input
                     id="beneficiary-apelidoWallet"

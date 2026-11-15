@@ -43,7 +43,7 @@ interface FormValues {
 }
 
 const initialValues: FormValues = {
-  paymentMethod: 'ACCOUNT_BALANCE',
+  paymentMethod: 'PIX',
   sourceAmount: '',
   destinationAmount: '',
   beneficiaryId: '',
@@ -157,8 +157,9 @@ export function useTransferCreate() {
   }, [companyId])
 
   useEffect(() => {
-    if (!isValidAmount(editedAmount)) return
+    if (!isValidAmount(editedAmount) || !selectedBeneficiary || !values.paymentMethod) return
 
+    const paymentMethod = values.paymentMethod
     const controller = new AbortController()
     const timer = setTimeout(() => {
       getTransferQuote(
@@ -167,6 +168,8 @@ export function useTransferCreate() {
           amountType,
           sourceCurrency: SOURCE_CURRENCY,
           destinationCurrency,
+          beneficiaryId: selectedBeneficiary.id,
+          paymentMethod,
         },
         controller.signal,
       )
@@ -190,11 +193,22 @@ export function useTransferCreate() {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [editedAmount, amountType, destinationCurrency, quoteRequestId])
+  }, [
+    editedAmount,
+    amountType,
+    destinationCurrency,
+    selectedBeneficiary,
+    values.paymentMethod,
+    quoteRequestId,
+  ])
 
   // Qualquer mudança que afete a cotação invalida a anterior na hora: nada fica exibido como válido.
   function invalidateQuote(nextAmount: number | null) {
-    setQuoteState(isValidAmount(nextAmount) ? { status: 'loading' } : { status: 'idle' })
+    setQuoteState(
+      isValidAmount(nextAmount) && values.beneficiaryId && values.paymentMethod
+        ? { status: 'loading' }
+        : { status: 'idle' },
+    )
   }
 
   function handleAmountChange(type: TransferAmountType, text: string) {
@@ -218,7 +232,15 @@ export function useTransferCreate() {
       ...(currencyChanged &&
         (amountType === 'SOURCE' ? { destinationAmount: '' } : { sourceAmount: '' })),
     }))
-    if (currencyChanged) invalidateQuote(editedAmount)
+    if (beneficiaryId) invalidateQuote(editedAmount)
+    else setQuoteState({ status: 'idle' })
+    setCreatedStatus(undefined)
+  }
+
+  function handlePaymentMethodChange(paymentMethod: TransferPaymentMethod | '') {
+    setValues((previous) => ({ ...previous, paymentMethod }))
+    if (paymentMethod) invalidateQuote(editedAmount)
+    else setQuoteState({ status: 'idle' })
     setCreatedStatus(undefined)
   }
 
@@ -355,6 +377,7 @@ export function useTransferCreate() {
     withdrawalLockedUntil,
     handleAmountChange,
     handleBeneficiaryChange,
+    handlePaymentMethodChange,
     handleRetryQuote,
     handleCancel,
     handleNextStep,

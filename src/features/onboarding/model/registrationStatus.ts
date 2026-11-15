@@ -10,12 +10,9 @@ export function pendingOnboardingPath(onboarding: CurrentOnboarding): string | n
   return null
 }
 
-/** Reprovação em qualquer análise prevalece; a aprovação exige o KYC e a empresa aprovados. */
-export function registrationCardStatus(
-  kyc: KycStatus,
-  company: KycStatus | null,
-): ComplianceStatus {
-  if (kyc === 'REJECTED' || company === 'REJECTED') return ComplianceStatus.NOT_APPROVED
-  if (kyc === 'APPROVED' && company === 'APPROVED') return ComplianceStatus.APPROVED
+/** Exibe o status retornado por /v1/onboarding/me. */
+export function registrationCardStatus(status: KycStatus): ComplianceStatus {
+  if (status === 'REJECTED') return ComplianceStatus.NOT_APPROVED
+  if (status === 'APPROVED') return ComplianceStatus.APPROVED
   return ComplianceStatus.IN_REVIEW
 }
