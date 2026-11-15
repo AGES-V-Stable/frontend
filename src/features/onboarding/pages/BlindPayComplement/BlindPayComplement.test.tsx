@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
-import { BlindPayComplement, validateBlindPayUpload } from './BlindPayComplement'
+import { BlindPayComplement } from './BlindPayComplement'
+import { validateBlindPayUpload } from './validation'
 
 const photo = () => new File(['jpeg'], 'selfie.jpg', { type: 'image/jpeg' })
 const proof = () => new File(['pdf'], 'comprovante.pdf', { type: 'application/pdf' })
