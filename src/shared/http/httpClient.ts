@@ -73,7 +73,8 @@ export async function httpResponse(
       : (getLoginToken() ?? getAccessToken())
     : null
   const headers = new Headers(options.headers)
-  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type'))
+    headers.set('Content-Type', 'application/json')
   if (token) headers.set('Authorization', `Bearer ${token}`)
   let response: Response
   try {
