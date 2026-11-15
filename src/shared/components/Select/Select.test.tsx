@@ -102,5 +102,7 @@ describe('Select', () => {
     const select = screen.getByLabelText('Período')
     expect(select.parentElement?.className).toContain('relative')
     expect(select).toHaveStyle({ paddingLeft: 'calc(1.25rem + 7ch)' })
+    // O rótulo fica numa camada acima do campo, senão o fundo do select o esconde
+    expect(screen.getByText('Período')).toHaveClass('absolute', 'z-10')
   })
 })

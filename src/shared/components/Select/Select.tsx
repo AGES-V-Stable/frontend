@@ -82,11 +82,12 @@ function Select({
           {label}
         </label>
       )}
+      {/* O rótulo fica acima do campo, que agora é posicionado por causa da seta. */}
       {inside ? (
         <div className="relative">
           <label
             htmlFor={selectId}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-500"
+            className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-[12px] text-slate-500"
           >
             {label}
           </label>
