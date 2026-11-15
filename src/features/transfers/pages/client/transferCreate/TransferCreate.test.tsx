@@ -64,9 +64,11 @@ const backButton = () => screen.getByRole('button', { name: 'Voltar' })
 const confirmTransferButton = () => screen.getByRole('button', { name: /Confirmar transferência/i })
 const totpInput = () => screen.getByLabelText('Código de autenticação')
 
-const renderPage = async () => {
+const renderPage = async (selectBeneficiary = true) => {
   render(<TransferCreate />)
   await advance()
+  if (selectBeneficiary && screen.queryByRole('option', { name: 'Atlas Imports LLC' }))
+    fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
 }
 
 // Os valores só ficam liberados depois que o beneficiário é escolhido.
@@ -146,6 +148,39 @@ describe('TransferCreate', () => {
     expect(getTransferQuote).not.toHaveBeenCalled()
   })
 
+  it('does not quote without a selected beneficiary and sends the full route once selected', async () => {
+    // Given o formulário sem beneficiário: o valor fica bloqueado e nada é cotado
+    await renderPage(false)
+    expect(sourceInput()).toBeDisabled()
+    await advance(DEBOUNCE_MS)
+    expect(getTransferQuote).not.toHaveBeenCalled()
+    expect(screen.queryByText('Atualizando cotação...')).not.toBeInTheDocument()
+
+    // When o usuário escolhe o beneficiário e digita o valor
+    fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
+    fireEvent.change(sourceInput(), { target: { value: '100' } })
+
+    // Then a cotação em andamento aparece antes do debounce e sai com a rota completa
+    expect(screen.getByText('Atualizando cotação...')).toBeInTheDocument()
+    await advance(DEBOUNCE_MS)
+    expect(getTransferQuote).toHaveBeenCalledWith(
+      expect.objectContaining({ beneficiaryId: atlas.id, paymentMethod: 'PIX' }),
+      expect.any(AbortSignal),
+    )
+  })
+
+  it('invalidates and requotes when the payment method changes', async () => {
+    await renderPage()
+    await typeSourceAmount('100')
+    fireEvent.change(screen.getByLabelText('Método de Pagamento*'), { target: { value: 'PIX' } })
+    expect(continueButton()).toBeDisabled()
+    await advance(DEBOUNCE_MS)
+    expect(getTransferQuote).toHaveBeenLastCalledWith(
+      expect.objectContaining({ beneficiaryId: atlas.id, paymentMethod: 'PIX' }),
+      expect.any(AbortSignal),
+    )
+  })
+
   it('shows the transfer steps with Dados as the current one', async () => {
     await renderPage()
 
@@ -172,7 +207,7 @@ describe('TransferCreate', () => {
 
   it('keeps both amount fields locked, with an explanation, until a beneficiary is chosen', async () => {
     // Given o formulário sem beneficiário escolhido
-    await renderPage()
+    await renderPage(false)
 
     // Then os dois valores ficam bloqueados e a tela diz o motivo
     expect(sourceInput()).toBeDisabled()
@@ -221,7 +256,14 @@ describe('TransferCreate', () => {
 
     expect(getTransferQuote).toHaveBeenCalledTimes(1)
     expect(getTransferQuote).toHaveBeenCalledWith(
-      { amount: 125000, amountType: 'SOURCE', sourceCurrency: 'BRL', destinationCurrency: 'USD' },
+      {
+        amount: 125000,
+        amountType: 'SOURCE',
+        sourceCurrency: 'BRL',
+        destinationCurrency: 'USD',
+        beneficiaryId: atlas.id,
+        paymentMethod: 'PIX',
+      },
       expect.any(AbortSignal),
     )
   })
@@ -325,6 +367,25 @@ describe('TransferCreate', () => {
     expect(screen.getByText('€')).toBeInTheDocument()
   })
 
+  it('requotes for another beneficiary even when the currency is unchanged', async () => {
+    vi.mocked(getCompanyBeneficiaries).mockResolvedValue({
+      content: [atlas, { ...euroSupplier, currency: 'USD' }],
+      totalElements: 2,
+      totalPages: 1,
+      number: 0,
+      size: 100,
+    })
+    await renderPage()
+    await typeSourceAmount('100')
+    fireEvent.change(beneficiarySelect(), { target: { value: euroSupplier.id } })
+    expect(continueButton()).toBeDisabled()
+    await advance(DEBOUNCE_MS)
+    expect(getTransferQuote).toHaveBeenLastCalledWith(
+      expect.objectContaining({ beneficiaryId: euroSupplier.id, destinationCurrency: 'USD' }),
+      expect.any(AbortSignal),
+    )
+  })
+
   it('clears the value derived from the previous quote when the beneficiary currency changes', async () => {
     await renderPage()
     chooseBeneficiary()
@@ -353,8 +414,8 @@ describe('TransferCreate', () => {
   })
 
   it('blocks advancing from Passo 0 while no beneficiary is chosen', async () => {
-    // Given o formulário recém-aberto
-    await renderPage()
+    // Given o formulário recém-aberto, sem beneficiário
+    await renderPage(false)
 
     // Then não dá para continuar sem beneficiário
     expect(beneficiarySelect()).toHaveValue('')
@@ -362,13 +423,13 @@ describe('TransferCreate', () => {
   })
 
   it('keeps "Selecione" out of the option lists of both selects', async () => {
-    // Given o formulário recém-aberto
-    await renderPage()
+    // Given o formulário recém-aberto, sem beneficiário
+    await renderPage(false)
 
     // Then o beneficiário abre mostrando "Selecione", e o método já vem com a única opção
     expect(beneficiarySelect()).toHaveValue('')
     const paymentMethod = screen.getByLabelText('Método de Pagamento*')
-    expect(paymentMethod).toHaveValue('ACCOUNT_BALANCE')
+    expect(paymentMethod).toHaveValue('PIX')
 
     // And o texto "Selecione" não pode ser escolhido na lista de nenhum dos dois
     for (const [select, text] of [
@@ -387,7 +448,7 @@ describe('TransferCreate', () => {
     await goToReview()
 
     expect(screen.getByText('Atlas Imports LLC')).toBeInTheDocument()
-    expect(screen.getByText('Saldo em Conta')).toBeInTheDocument()
+    expect(screen.getByText('PIX')).toBeInTheDocument()
     expect(screen.getByText('Pagamento de importação')).toBeInTheDocument()
     expect(screen.getAllByText('1 USD = R$ 5,16').length).toBeGreaterThan(0)
     expect(screen.getAllByText('0,45% • R$ 562,50').length).toBeGreaterThan(0)
@@ -458,7 +519,7 @@ describe('TransferCreate', () => {
       amountType: 'SOURCE',
       sourceCurrency: 'BRL',
       destinationCurrency: 'USD',
-      paymentMethod: 'ACCOUNT_BALANCE',
+      paymentMethod: 'PIX',
       beneficiaryId: atlas.id,
       description: 'Pagamento de importação',
       totpCode: '123456',
@@ -585,7 +646,7 @@ describe('TransferCreate', () => {
       amountType: 'SOURCE',
       sourceCurrency: 'BRL',
       destinationCurrency: 'USD',
-      paymentMethod: 'ACCOUNT_BALANCE',
+      paymentMethod: 'PIX',
       beneficiaryId: atlas.id,
       description: 'Pagamento de importação',
       totpCode: 'ABCD-1234',

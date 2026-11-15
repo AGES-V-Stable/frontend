@@ -32,7 +32,7 @@ const SELECT_CHEVRON = (
 )
 
 const PAYMENT_METHODS: { value: TransferPaymentMethod; label: string }[] = [
-  { value: 'ACCOUNT_BALANCE', label: 'Saldo em Conta' },
+  { value: 'PIX', label: 'PIX' },
 ]
 
 const STATUS_LABELS: Record<TransactionStatus, string> = {
@@ -78,6 +78,7 @@ function LegacyTransferCreate() {
     withdrawalLockedUntil,
     handleAmountChange,
     handleBeneficiaryChange,
+    handlePaymentMethodChange,
     handleRetryQuote,
     handleCancel,
     handleNextStep,
@@ -233,12 +234,10 @@ function LegacyTransferCreate() {
                   value={values.paymentMethod}
                   disabled={submitting}
                   onChange={(event) =>
-                    setValues((previous) => ({
-                      ...previous,
-                      paymentMethod:
-                        PAYMENT_METHODS.find((method) => method.value === event.target.value)
-                          ?.value ?? '',
-                    }))
+                    handlePaymentMethodChange(
+                      PAYMENT_METHODS.find((method) => method.value === event.target.value)
+                        ?.value ?? '',
+                    )
                   }
                   className={SELECT_CLASS}
                 >

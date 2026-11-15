@@ -109,11 +109,15 @@ const toQuoteBody = ({
   amountType,
   sourceCurrency,
   destinationCurrency,
+  beneficiaryId,
+  paymentMethod,
 }: TransferQuoteRequest): TransferQuoteRequest => ({
   amount,
   amountType,
   sourceCurrency,
   destinationCurrency,
+  beneficiaryId,
+  paymentMethod,
 })
 
 /**

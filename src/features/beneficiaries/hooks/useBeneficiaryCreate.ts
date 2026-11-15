@@ -21,11 +21,14 @@ interface FormData {
   enderecoWallet: string
   redeBlockchain: string
   apelidoWallet: string
+  custodiaWallet: string
+  instituicaoCustodiante: string
+  paisWallet: string
 }
 
 type Field = keyof FormData
 
-const TIPOS_BENEFICIARIO = ['Pessoa jurídica']
+const TIPOS_BENEFICIARIO = ['Pessoa jurídica', 'Pessoa física']
 
 const identificationFields: { name: Field; label: string; placeholder: string }[] = [
   {
@@ -52,6 +55,9 @@ const initialData: FormData = {
   enderecoWallet: '',
   redeBlockchain: '',
   apelidoWallet: '',
+  custodiaWallet: '',
+  instituicaoCustodiante: '',
+  paisWallet: '',
 }
 
 const failureMessage = (error: unknown) =>
@@ -62,7 +68,14 @@ const failureMessage = (error: unknown) =>
 function fieldsForMethod(method: ReceivingMethod): Field[] {
   return method === 'conta_bancaria'
     ? ['banco', 'swiftBic', 'ibanNumeroConta', 'moedaRecebimento', 'apelidoConta']
-    : ['enderecoWallet', 'redeBlockchain', 'apelidoWallet']
+    : [
+        'enderecoWallet',
+        'redeBlockchain',
+        'apelidoWallet',
+        'moedaRecebimento',
+        'custodiaWallet',
+        'paisWallet',
+      ]
 }
 
 export function useBeneficiaryCreate() {
@@ -101,6 +114,9 @@ export function useBeneficiaryCreate() {
     if (saving) return
 
     const fieldsToValidate: Field[] = [
+      ...(method === 'wallet_cripto' && data.custodiaWallet === 'instituicao'
+        ? (['instituicaoCustodiante'] as const)
+        : []),
       'tipoBeneficiario',
       ...identificationFields.map((field) => field.name),
       ...fieldsForMethod(method),
@@ -110,6 +126,14 @@ export function useBeneficiaryCreate() {
     fieldsToValidate.forEach((name) => {
       if (!data[name].trim()) nextErrors[name] = 'Campo obrigatório.'
     })
+    if (method === 'wallet_cripto') {
+      if (data.paisWallet.trim() && !/^[a-zA-Z]{2}$/.test(data.paisWallet.trim()))
+        nextErrors.paisWallet = 'Informe o código do país com 2 letras, como BR.'
+      if (data.razaoSocial.length > 100 || /\p{Cc}/u.test(data.razaoSocial))
+        nextErrors.razaoSocial = 'Use no máximo 100 caracteres, sem quebras de linha.'
+      if (data.custodiaWallet === 'instituicao' && data.instituicaoCustodiante.length > 100)
+        nextErrors.instituicaoCustodiante = 'Use no máximo 100 caracteres.'
+    }
     setErrors(nextErrors)
 
     const confirmationInvalid = !confirmado
@@ -132,7 +156,7 @@ export function useBeneficiaryCreate() {
     }
 
     const base = {
-      beneficiaryType: data.tipoBeneficiario,
+      beneficiaryType: data.tipoBeneficiario === 'Pessoa física' ? 'INDIVIDUAL' : 'LEGAL_ENTITY',
       legalName: data.razaoSocial,
       identificationDocument: data.documentoFiscal,
       country: data.pais,
@@ -156,6 +180,13 @@ export function useBeneficiaryCreate() {
             walletAddress: data.enderecoWallet,
             blockchainNetwork: data.redeBlockchain.toLowerCase(),
             nickname: data.apelidoWallet,
+            currency: data.moedaRecebimento.trim().toUpperCase(),
+            isSelfCustody: data.custodiaWallet === 'propria',
+            ...(data.custodiaWallet === 'instituicao'
+              ? { custodianName: data.instituicaoCustodiante.trim() }
+              : {}),
+            counterpartyName: data.razaoSocial.trim(),
+            counterpartyCountry: data.paisWallet.trim().toUpperCase(),
           }
 
     setSaving(true)

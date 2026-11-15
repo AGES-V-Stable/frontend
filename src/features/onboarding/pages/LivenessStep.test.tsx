@@ -88,7 +88,7 @@ describe('LivenessStep Page Component', () => {
     // A aba é aberta em branco de forma síncrona no clique (antes do await), e só depois
     // navegada para a URL de liveness — abrir já com a URL exigiria esperar o backend
     // primeiro, o que perde a "user activation" do clique e faz o navegador bloquear.
-    expect(openMock).toHaveBeenCalledWith('', '_blank', 'noreferrer')
+    expect(openMock).toHaveBeenCalledWith('', '_blank')
     expect(openedWindow.location.href).toBe('https://avenia.io/liveness/liveness-1')
     // Sem "noopener" nas features, o retorno de window.open é confiável para detectar
     // bloqueio real — em troca, zeramos .opener manualmente pelo mesmo isolamento de segurança.
