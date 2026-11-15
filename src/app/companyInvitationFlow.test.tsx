@@ -105,7 +105,7 @@ describe('company invitation flow', () => {
 
     // And a wrong second factor neither authenticates nor consumes the invitation
     await user.type(await screen.findByLabelText('Código de autenticação'), '000000')
-    await user.click(screen.getByRole('button', { name: 'Verificar e Entrar' }))
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
     expect(await screen.findByText('Código de autenticação inválido ou expirado.')).toBeVisible()
     expect(localStorage.getItem('token')).toBeNull()
     expect(sessionStorage.getItem(INVITATION_STORAGE_KEY)).toBe(INVITATION_TOKEN)
@@ -113,7 +113,7 @@ describe('company invitation flow', () => {
     // When the correct code is informed, the user returns to confirm the invitation
     await user.clear(screen.getByLabelText('Código de autenticação'))
     await user.type(screen.getByLabelText('Código de autenticação'), '123456')
-    await user.click(screen.getByRole('button', { name: 'Verificar e Entrar' }))
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
     expect(await screen.findByText(/Você está conectado como/)).toBeInTheDocument()
     expect(requestsTo(fetchMock, ACCEPT)).toHaveLength(0)
     expect(requestsTo(fetchMock, LOGIN)[0].body).toEqual({

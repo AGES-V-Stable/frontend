@@ -57,6 +57,29 @@ describe('BeneficiaryCreate', () => {
     vi.mocked(createBeneficiary).mockResolvedValue({ id: 'beneficiary-1' })
   })
 
+  it('stacks Identificação above Dados de recebimento, with the long fields taking a whole row', async () => {
+    // Given o formulário de cadastro
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+    await waitForCompanyLoaded()
+
+    // Then as duas seções aparecem em ordem, e os campos longos ocupam a linha inteira da grade
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    expect(headings).toEqual(['Identificação', 'Dados de recebimento'])
+    const fullRow = (label: string) => screen.getByLabelText(label).closest('.md\\:col-span-2')
+    expect(fullRow('Endereço *')).not.toBeNull()
+    expect(fullRow('IBAN / número da conta *')).not.toBeNull()
+    expect(fullRow('Banco *')).toBeNull()
+
+    // When o usuário troca para wallet
+    await user.click(screen.getByRole('tab', { name: 'Wallet cripto' }))
+
+    // Then o endereço da wallet ocupa a linha inteira e os selects usam a borda dos outros campos
+    expect(fullRow('Endereço da wallet *')).not.toBeNull()
+    expect(screen.getByLabelText('Rede blockchain *')).toHaveClass('border-sage-500')
+    expect(screen.getByLabelText('Tipo de beneficiário *')).toHaveClass('border-sage-500')
+  })
+
   it('shows the bank account fields by default and switches to wallet fields on toggle', async () => {
     const user = userEvent.setup()
     render(<BeneficiaryCreate />)

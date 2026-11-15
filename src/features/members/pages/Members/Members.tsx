@@ -29,7 +29,7 @@ function PageHeader({ companyName, role, action }: PageHeaderProps) {
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-slate-900">Membros da empresa</h1>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-600">
           Gerencie quem pode acessar e operar a conta da {companyName ?? 'empresa'}.
         </p>
       </div>
@@ -178,12 +178,20 @@ function MemberManagement({ companyId, companyName, viewer }: MemberManagementPr
         }
       />
 
-      <div className="rounded-lg bg-blue-50 p-4 text-sm">
-        <p className="font-medium text-slate-900">Uma empresa, uma conta</p>
-        <p className="mt-1 text-slate-600">
-          Os membros utilizam a conta empresarial conforme suas permissões. A gestão dos acessos
-          continua com o proprietário.
-        </p>
+      <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-sky-700"
+        >
+          i
+        </span>
+        <div>
+          <p className="font-medium text-slate-900">Uma empresa, uma conta</p>
+          <p className="mt-1 text-slate-600">
+            Os membros utilizam a conta empresarial conforme suas permissões. A gestão dos acessos
+            continua com o proprietário.
+          </p>
+        </div>
       </div>
 
       {outcome && (
@@ -271,7 +279,7 @@ function MemberManagement({ companyId, companyName, viewer }: MemberManagementPr
       )}
 
       {data && (
-        <p className="text-xs text-slate-500">
+        <p className="text-[13px] text-slate-600">
           Membros com acesso não são automaticamente representantes legais da empresa.
         </p>
       )}

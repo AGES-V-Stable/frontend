@@ -36,6 +36,7 @@ describe('TwoFactorStep', () => {
     render(<TwoFactorStep kycVerificationId="kyc-123" onContinue={vi.fn()} onSkip={vi.fn()} />)
 
     expect(screen.getByRole('heading', { name: 'Segurança da Conta (2FA)' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'V-Stable' })).toBeInTheDocument()
     expect(
       await screen.findByText('Configuração de Segurança em Duas Etapas (2FA)'),
     ).toBeInTheDocument()
@@ -116,5 +117,6 @@ it('blocks activation after setup fails and allows a retry', async () => {
   expect(twoFactorService.activate).not.toHaveBeenCalled()
   expect(onContinue).not.toHaveBeenCalled()
   await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
-  expect(await screen.findByText('TEST SECR ET12 3')).toBeInTheDocument()
+  await userEvent.click(await screen.findByRole('button', { name: 'Não consegue escanear?' }))
+  expect(screen.getByText('TEST SECR ET12 3')).toBeInTheDocument()
 })

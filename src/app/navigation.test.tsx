@@ -152,6 +152,23 @@ it('renders the company menu with real company identity and available actions', 
   expect(screen.getByRole('button', { name: 'Configurações' })).toBeEnabled()
   expect(screen.getByRole('button', { name: 'Suporte' })).toBeEnabled()
 })
+it('paints every menu icon with the item text color, so only the selected one turns green', async () => {
+  // Given a empresa logada no Dashboard
+  saveLoginToken('login')
+  renderRoute()
+  const nav = await screen.findByRole('navigation')
+
+  // Then cada ícone usa o SVG como máscara e herda a cor do texto do próprio item
+  const dashboard = within(nav).getByRole('button', { name: 'Dashboard' })
+  const members = within(nav).getByRole('button', { name: 'Membros' })
+  for (const button of [dashboard, members]) {
+    const icon = within(button).getByTestId('navigation-icon')
+    expect(icon).toHaveClass('bg-current')
+    expect(icon.style.maskImage).toMatch(/^url\(/)
+  }
+  expect(dashboard).toHaveClass('text-emerald-800')
+  expect(members).toHaveClass('text-slate-500')
+})
 it('opens the company dashboard from the Dashboard item, with balance and transacted volume', async () => {
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')
