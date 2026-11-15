@@ -168,11 +168,15 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
   }
 
   return (
-    <div className="fixed right-6 bottom-6 z-50 flex flex-col items-end">
+    <div
+      data-testid="support-chat-widget"
+      // Com um painel lateral aberto, sobe acima do rodapé dele (cerca de 89px) e volta ao fechar.
+      className="fixed right-6 bottom-6 z-50 flex flex-col items-end transition-[bottom] duration-200 motion-reduce:transition-none [body:has([data-drawer-footer])_&]:bottom-28"
+    >
       {isOpen && (
         <section
           aria-label="Assistente de Suporte V-Stable"
-          className="mb-4 flex h-[540px] max-h-[calc(100dvh-110px)] w-[calc(100vw-3rem)] max-w-[410px] flex-col overflow-hidden rounded-2xl border border-sage-300 bg-white shadow-2xl"
+          className="mb-4 flex h-[540px] max-h-[calc(100dvh-110px)] [body:has([data-drawer-footer])_&]:max-h-[calc(100dvh-198px)] w-[calc(100vw-3rem)] max-w-[410px] flex-col overflow-hidden rounded-2xl border border-sage-300 bg-white shadow-2xl"
         >
           {/* Header */}
           <header className="flex items-center justify-between bg-primary px-4 py-3.5 text-white">

@@ -14,6 +14,15 @@ describe('SupportChatWidget', () => {
     vi.clearAllMocks()
   })
 
+  it('rises above a side panel footer while one is open, and returns when it closes', () => {
+    // Given o botão de suporte na página
+    render(<SupportChatWidget />)
+    const widget = screen.getByTestId('support-chat-widget')
+
+    // Then ele fica a 24px da borda e só sobe quando existe um rodapé de painel lateral na página
+    expect(widget).toHaveClass('bottom-6', '[body:has([data-drawer-footer])_&]:bottom-28')
+  })
+
   it('opens and closes via floating button and Escape key', async () => {
     const user = userEvent.setup()
     render(<SupportChatWidget />)

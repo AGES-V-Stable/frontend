@@ -15,6 +15,10 @@ describe('Drawer', () => {
 
     // Then os botões ficam à direita
     expect(screen.getByRole('button', { name: 'Abrir' }).parentElement).toHaveClass('justify-end')
+    // And o rodapé fica marcado, para o botão flutuante de suporte subir acima dele
+    expect(screen.getByRole('button', { name: 'Abrir' }).parentElement).toHaveAttribute(
+      'data-drawer-footer',
+    )
     unmount()
 
     // Given um painel que pede os botões à esquerda

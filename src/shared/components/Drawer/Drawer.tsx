@@ -136,6 +136,8 @@ export const Drawer = ({
         {/* Footer */}
         {actions.length > 0 && (
           <div
+            // Marca o rodapé para o botão flutuante de suporte subir e não cobrir estes botões.
+            data-drawer-footer=""
             className={`flex gap-[12px] border-t border-gray-200 px-[24px] py-[20px] ${
               actionsAlign === 'start' ? 'justify-start' : 'justify-end'
             }`}
