@@ -14,6 +14,7 @@ export const PATHS = {
   ADMIN_CLIENTS: '/admin/clientes-pme',
   REGISTER_STATUS: '/register/status',
   BLINDPAY_COMPLEMENT: '/register/blindpay/complementar',
+  BLINDPAY_KYC: '/kyc/blindpay',
   FORGOT_PASSWORD: '/esqueci-senha',
   ADMIN_TRANSFERS: '/admin/transferencias',
   ADMIN_BENEFICIARIES: '/admin/beneficiarios',
