@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Input } from '@/shared/components/Input'
+import { Select } from '@/shared/components/Select'
 
 export interface ClientFilterValues {
   search: string
@@ -40,8 +42,9 @@ export function ClientFilters({ statuses, cities, periods, onApply, onClear }: C
     onClear()
   }
 
-  const inputClassName =
-    'h-11 w-full rounded-md border border-sage-500 bg-white px-3 text-sm text-slate-900 placeholder:text-gray-500 focus:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+  // Mesma altura dos botões Limpar e Filtrar; o resto do visual vem dos componentes.
+  const fieldClassName = 'h-11 py-0! text-sm!'
+  const labelClassName = 'mb-1.5 block'
 
   return (
     <form
@@ -52,63 +55,66 @@ export function ClientFilters({ statuses, cities, periods, onApply, onClear }: C
       <h2 className="mb-4 text-base font-semibold text-slate-900">Filtros</h2>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.35fr_0.95fr_0.95fr_0.95fr_auto_auto] lg:items-end">
-        <label className="text-xs font-medium text-slate-900">
-          Empresa ou CNPJ
-          <input
-            className={`${inputClassName} mt-1.5`}
+        <div className="text-xs font-medium text-slate-900">
+          <label htmlFor="client-filter-search" className={labelClassName}>
+            Empresa ou CNPJ
+          </label>
+          <Input
+            id="client-filter-search"
             value={filters.search}
             onChange={(event) => updateFilter('search', event.target.value)}
             placeholder="Buscar por razão social ou CNPJ"
+            className={fieldClassName}
           />
-        </label>
+        </div>
 
-        <label className="text-xs font-medium text-slate-900">
-          Status
-          <select
-            className={`${inputClassName} mt-1.5`}
+        <div className="text-xs font-medium text-slate-900">
+          <label htmlFor="client-filter-status" className={labelClassName}>
+            Status
+          </label>
+          <Select
+            id="client-filter-status"
             value={filters.status}
             onChange={(event) => updateFilter('status', event.target.value)}
-          >
-            <option value="">Todos os status</option>
-            {statuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={[
+              { value: '', label: 'Todos os status' },
+              ...statuses.map((status) => ({ value: status, label: status })),
+            ]}
+            className={fieldClassName}
+          />
+        </div>
 
-        <label className="text-xs font-medium text-slate-900">
-          Cidade / UF
-          <select
-            className={`${inputClassName} mt-1.5`}
+        <div className="text-xs font-medium text-slate-900">
+          <label htmlFor="client-filter-city" className={labelClassName}>
+            Cidade / UF
+          </label>
+          <Select
+            id="client-filter-city"
             value={filters.city}
             onChange={(event) => updateFilter('city', event.target.value)}
-          >
-            <option value="">Todas as localidades</option>
-            {cities.map((city) => (
-              <option key={city} value={city}>
-                {city}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={[
+              { value: '', label: 'Todas as localidades' },
+              ...cities.map((city) => ({ value: city, label: city })),
+            ]}
+            className={fieldClassName}
+          />
+        </div>
 
-        <label className="text-xs font-medium text-slate-900">
-          Período de cadastro
-          <select
-            className={`${inputClassName} mt-1.5`}
+        <div className="text-xs font-medium text-slate-900">
+          <label htmlFor="client-filter-period" className={labelClassName}>
+            Período de cadastro
+          </label>
+          <Select
+            id="client-filter-period"
             value={filters.period}
             onChange={(event) => updateFilter('period', event.target.value)}
-          >
-            <option value="">Selecionar período</option>
-            {periods.map((period) => (
-              <option key={period} value={period}>
-                {period}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={[
+              { value: '', label: 'Selecionar período' },
+              ...periods.map((period) => ({ value: period, label: period })),
+            ]}
+            className={fieldClassName}
+          />
+        </div>
 
         <button
           type="button"

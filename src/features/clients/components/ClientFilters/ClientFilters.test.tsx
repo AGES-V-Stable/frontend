@@ -11,6 +11,25 @@ const options = {
 }
 
 describe('ClientFilters', () => {
+  it('uses the shared Input and Select, with the surface background and the inset chevron', () => {
+    // Given os filtros de clientes PME
+    render(<ClientFilters {...options} onApply={vi.fn()} onClear={vi.fn()} />)
+
+    // Then a busca e os três selects usam o estilo padrão dos campos, na altura dos botões
+    const fields = [
+      screen.getByLabelText('Empresa ou CNPJ'),
+      screen.getByLabelText('Status'),
+      screen.getByLabelText('Cidade / UF'),
+      screen.getByLabelText('Período de cadastro'),
+    ]
+    for (const field of fields) {
+      expect(field).toHaveClass('bg-surface', 'rounded-lg', 'border-sage-500', 'h-11')
+      expect(field).not.toHaveClass('bg-white')
+    }
+    // And cada select tem a seta própria do componente
+    expect(screen.getAllByTestId('select-chevron')).toHaveLength(3)
+  })
+
   it('submits the selected filters', async () => {
     const user = userEvent.setup()
     const onApply = vi.fn()
