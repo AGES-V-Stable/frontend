@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { HttpError, httpRequest } from '@/shared/http/httpClient'
-import { sendSupportChatMessage } from './supportChat'
+import { SupportChatRateLimitError, sendSupportChatMessage } from './supportChat'
 
 vi.mock('@/shared/http/httpClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/shared/http/httpClient')>()
@@ -40,12 +40,52 @@ describe('sendSupportChatMessage', () => {
     expect(result).toEqual(mockResponse)
   })
 
-  it('maps HTTP 423 Locked to user-friendly rate limit message', async () => {
+  it('maps HTTP 423 Locked to SupportChatRateLimitError with default 60s cooldown', async () => {
     vi.mocked(httpRequest).mockRejectedValueOnce(new HttpError('Rate limit exceeded', 423))
 
-    await expect(sendSupportChatMessage({ message: 'Oi' })).rejects.toThrow(
-      'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.',
+    const promise = sendSupportChatMessage({ message: 'Oi' })
+    await expect(promise).rejects.toBeInstanceOf(SupportChatRateLimitError)
+    await expect(promise).rejects.toMatchObject({
+      name: 'SupportChatRateLimitError',
+      message: 'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.',
+      retryAfterSeconds: 60,
+    })
+  })
+
+  it('extracts retryAfterSeconds from backend 423 message and clamps between 1 and 60', async () => {
+    vi.mocked(httpRequest).mockRejectedValueOnce(
+      new HttpError(
+        'Limite de mensagens atingido. Aguarde 42 segundos antes de enviar nova pergunta.',
+        423,
+      ),
     )
+
+    const promise = sendSupportChatMessage({ message: 'Oi' })
+    await expect(promise).rejects.toBeInstanceOf(SupportChatRateLimitError)
+    await expect(promise).rejects.toMatchObject({
+      message: 'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.',
+      retryAfterSeconds: 42,
+    })
+
+    vi.mocked(httpRequest).mockRejectedValueOnce(new HttpError('Aguarde 120 segundos.', 423))
+    await expect(sendSupportChatMessage({ message: 'Oi' })).rejects.toMatchObject({
+      retryAfterSeconds: 60,
+    })
+
+    vi.mocked(httpRequest).mockRejectedValueOnce(new HttpError('Aguarde 0 segundos.', 423))
+    await expect(sendSupportChatMessage({ message: 'Oi' })).rejects.toMatchObject({
+      retryAfterSeconds: 1,
+    })
+  })
+
+  it('falls back to HttpError retryAfterSeconds when 423 message does not include seconds', async () => {
+    vi.mocked(httpRequest).mockRejectedValueOnce(
+      new HttpError('Rate limit exceeded', 423, undefined, undefined, 25),
+    )
+
+    await expect(sendSupportChatMessage({ message: 'Oi' })).rejects.toMatchObject({
+      retryAfterSeconds: 25,
+    })
   })
 
   it('maps HTTP 400 Bad Request to validation error message', async () => {
