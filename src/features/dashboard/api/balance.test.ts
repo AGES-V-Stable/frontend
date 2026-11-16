@@ -21,7 +21,9 @@ describe('balance API', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/v1/balance',
-      expect.objectContaining({ headers: { Authorization: 'Bearer login' } }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer login' }),
+      }),
     )
   })
 

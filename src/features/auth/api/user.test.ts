@@ -39,7 +39,10 @@ it('uses login credentials even when an onboarding token exists', async () => {
   await getCurrentUser(controller.signal)
   expect(mock).toHaveBeenCalledWith('/v1/users/me', {
     signal: controller.signal,
-    headers: { Authorization: 'Bearer login' },
+    headers: expect.objectContaining({
+      Authorization: 'Bearer login',
+      'X-Request-ID': expect.any(String),
+    }),
   })
 })
 it('rejects malformed identities', async () => {

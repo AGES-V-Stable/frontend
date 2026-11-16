@@ -155,7 +155,7 @@ it('renders the company menu with real company identity and available actions', 
 it('paints every menu icon with the item text color, so only the selected one turns green', async () => {
   // Given a empresa logada no Dashboard
   saveLoginToken('login')
-  renderRoute()
+  renderRoute('/app/dashboard')
   const nav = await screen.findByRole('navigation')
 
   // Then cada ícone usa o SVG como máscara e herda a cor do texto do próprio item
@@ -166,7 +166,7 @@ it('paints every menu icon with the item text color, so only the selected one tu
     expect(icon).toHaveClass('bg-current')
     expect(icon.style.maskImage).toMatch(/^url\(/)
   }
-  expect(dashboard).toHaveClass('text-emerald-800')
+  await waitFor(() => expect(dashboard).toHaveClass('text-emerald-800'))
   expect(members).toHaveClass('text-slate-500')
 })
 it('gives Adicionar saldo its own coins icon instead of repeating the Dashboard one', async () => {
@@ -217,6 +217,47 @@ it('opens the administrative dashboard from the Dashboard item', async () => {
   // O admin não consulta saldo nem volume, que pertencem à empresa do cliente.
   expect(mock.mock.calls.some(([url]) => url === '/v1/balance')).toBe(false)
   expect(mock.mock.calls.some(([url]) => String(url).startsWith('/v1/dashboard/'))).toBe(false)
+})
+it('allows administrators to open Observability and hides it from company users', async () => {
+  role = 'ADMIN'
+  saveLoginToken(
+    `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
+  )
+  const previous = backend
+  backend = async (url) =>
+    url.startsWith('/v1/admin/observability/events')
+      ? new Response(
+          JSON.stringify({
+            content: [],
+            page: 0,
+            size: 25,
+            totalElements: 0,
+            totalPages: 0,
+            errors: 0,
+            failuresByModule: [],
+          }),
+        )
+      : previous(url)
+  renderRoute('/admin/clientes-pme')
+  const nav = await screen.findByRole('navigation')
+  await userEvent.click(within(nav).getByRole('button', { name: 'Observability' }))
+  expect(await screen.findByRole('heading', { name: 'Observability' })).toBeInTheDocument()
+  expect(screen.getByTestId('location')).toHaveTextContent('/admin/observability')
+  expect(within(nav).getByRole('button', { name: 'Observability' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+})
+
+it('denies company users the Observability route', async () => {
+  saveLoginToken('login')
+  renderRoute('/admin/observability')
+  const nav = await screen.findByRole('navigation')
+  expect(within(nav).queryByRole('button', { name: 'Observability' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Observability' })).not.toBeInTheDocument()
+  expect(mock.mock.calls.some(([url]) => String(url).startsWith('/v1/admin/observability'))).toBe(
+    false,
+  )
 })
 it('keeps the shell and identity across company pages', async () => {
   saveLoginToken('login')

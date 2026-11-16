@@ -23,7 +23,10 @@ describe('authService.login', () => {
       '/v1/auth/login',
       expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'X-Request-ID': expect.any(String),
+        }),
         body: JSON.stringify({ email: 'user@empresa.com', password: 'secret' }),
       }),
     )
@@ -204,7 +207,10 @@ describe('authService.verify2fa', () => {
       '/v1/auth/login/verify-2fa',
       expect.objectContaining({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'X-Request-ID': expect.any(String),
+        }),
         body: JSON.stringify({ challengeToken: 'challenge-123', code: '654321' }),
       }),
     )

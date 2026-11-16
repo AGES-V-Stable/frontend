@@ -29,6 +29,7 @@ import { BeneficiaryCreate } from '@/features/beneficiaries/pages/client/benefic
 import { TransferCreate } from '@/features/transfers/pages/client/transferCreate'
 import { TransferDetails } from '@/features/transfers/pages/client/transferDetails'
 import { Members } from '@/features/members/pages/Members'
+import { Observability } from '@/features/observability/pages/Observability'
 import { MockTopUp } from '@/features/dashboard/pages/MockTopUp/MockTopUp'
 import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
 import { Register } from '@/features/onboarding/pages/Register'
@@ -229,6 +230,7 @@ function RoutedApplication() {
   const items: NavigationItem[] = admin
     ? [
         item('dashboard', 'Dashboard', PATHS.ADMIN_DASHBOARD, homeIcon),
+        item('observability', 'Observability', PATHS.ADMIN_OBSERVABILITY, transfersIcon),
         item('clients', 'Clientes PME', PATHS.ADMIN_CLIENTS, clientsIcon),
         item('security-requests', 'Solicitações de Segurança', PATHS.ADMIN_SECURITY, supportIcon),
         {
@@ -288,7 +290,11 @@ function RoutedApplication() {
           : pathname.startsWith(PATHS.MEMBERS)
             ? 'members'
             : 'beneficiaries'
-  const selectedId = pathname === PATHS.MOCK_TOP_UP ? 'mock-top-up' : activeId
+  const selectedId = pathname.startsWith(PATHS.ADMIN_OBSERVABILITY)
+    ? 'observability'
+    : pathname === PATHS.MOCK_TOP_UP
+      ? 'mock-top-up'
+      : activeId
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -378,6 +384,7 @@ export default function AppRoutes() {
       <Route element={<RoleGuard role="ADMIN" />}>
         <Route element={<RoutedApplication />}>
           <Route path={PATHS.ADMIN_DASHBOARD} element={<DashboardRoute admin />} />
+          <Route path={PATHS.ADMIN_OBSERVABILITY} element={<Observability />} />
           <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
           <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
           <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />

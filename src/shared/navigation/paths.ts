@@ -3,6 +3,7 @@ export const PATHS = {
   DASHBOARD: '/app/dashboard',
   MOCK_TOP_UP: '/app/saldo/adicionar',
   ADMIN_DASHBOARD: '/admin/dashboard',
+  ADMIN_OBSERVABILITY: '/admin/observability',
   LOGIN: '/login',
   REGISTER: '/register',
   REGISTER_COMPANY: '/register/empresa',

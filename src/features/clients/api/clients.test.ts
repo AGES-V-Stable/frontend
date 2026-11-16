@@ -30,7 +30,9 @@ it('loads authenticated company summaries and adapts display fields', async () =
   })
   expect(fetchMock).toHaveBeenCalledWith(
     '/v1/companies/summaries',
-    expect.objectContaining({ headers: { Authorization: 'Bearer login' } }),
+    expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: 'Bearer login' }),
+    }),
   )
 })
 it('preserves a valid empty list', async () => {
