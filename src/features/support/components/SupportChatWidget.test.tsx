@@ -84,7 +84,7 @@ describe('SupportChatWidget', () => {
   it('sends a suggested question when clicking a quick question chip', async () => {
     const user = userEvent.setup()
     vi.mocked(sendSupportChatMessage).mockResolvedValueOnce({
-      reply: 'A V-Stable integra Avenia e BlindPay.',
+      reply: 'A empresa conta com representante e membros com permissões configuradas.',
       provider: 'vstable-assistant',
       suggestedQuestions: [],
       timestamp: '2026-11-09T18:00:00Z',
@@ -93,17 +93,23 @@ describe('SupportChatWidget', () => {
     render(<SupportChatWidget open={true} />)
 
     await user.click(
-      screen.getByRole('button', { name: 'Como funciona a integração com Avenia e BlindPay?' }),
+      screen.getByRole('button', {
+        name: 'Como funcionam o representante e os membros da empresa?',
+      }),
     )
 
     expect(sendSupportChatMessage).toHaveBeenCalledWith(
       {
-        message: 'Como funciona a integração com Avenia e BlindPay?',
+        message: 'Como funcionam o representante e os membros da empresa?',
         history: [],
       },
       expect.any(AbortSignal),
     )
-    expect(await screen.findByText('A V-Stable integra Avenia e BlindPay.')).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        'A empresa conta com representante e membros com permissões configuradas.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('displays an alert when the API returns an error', async () => {
@@ -163,7 +169,9 @@ describe('SupportChatWidget', () => {
     expect(screen.queryByText('Pergunta antiga')).not.toBeInTheDocument()
 
     await user.click(
-      screen.getByRole('button', { name: 'Como funciona a integração com Avenia e BlindPay?' }),
+      screen.getByRole('button', {
+        name: 'Como funcionam o representante e os membros da empresa?',
+      }),
     )
     expect(await screen.findByText('Resposta nova')).toBeInTheDocument()
 
@@ -212,7 +220,9 @@ describe('SupportChatWidget', () => {
       expect(timer).toHaveAttribute('aria-live', 'polite')
       expect(timer).toHaveAttribute('title', 'Tempo restante para enviar nova mensagem')
       expect(
-        screen.getByRole('button', { name: 'Como funciona a integração com Avenia e BlindPay?' }),
+        screen.getByRole('button', {
+          name: 'Como funcionam o representante e os membros da empresa?',
+        }),
       ).toBeDisabled()
       expect(screen.getByRole('alert')).toHaveTextContent(
         'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.',
