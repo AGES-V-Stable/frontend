@@ -11,6 +11,13 @@ export interface BeneficiaryCreatePayload {
   address: string
   confirmed: boolean
   receivingMethod: 'BANK_ACCOUNT' | 'CRYPTO_WALLET' | 'PIX_KEY'
+  paymentRail?: string
+  iban?: string
+  addressLine1?: string
+  city?: string
+  postalCode?: string
+  countryCode?: string
+  bankCountryCode?: string
   bankName?: string
   swiftBic?: string
   accountNumber?: string

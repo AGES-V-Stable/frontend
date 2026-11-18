@@ -51,6 +51,42 @@ describe('liveness service', () => {
       })
     })
 
+    it('accepts a redirect response with null session and validation token', async () => {
+      const response = {
+        id: 'liveness-1',
+        livenessUrl: 'https://in.sumsub.com/websdk/p/test-session',
+        sessionId: null,
+        validateLivenessToken: null,
+      }
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify(response),
+        }),
+      )
+
+      await expect(startLivenessVerification('cadastro-1')).resolves.toEqual(response)
+    })
+
+    it.each([
+      { id: '', livenessUrl: 'https://in.sumsub.com/websdk/p/test-session' },
+      { id: 'liveness-1', livenessUrl: 'invalid-url' },
+    ])('rejects invalid required redirect fields: %o', async (fields) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({ ...fields, sessionId: null, validateLivenessToken: null }),
+        }),
+      )
+
+      await expect(startLivenessVerification('cadastro-1')).rejects.toThrow()
+    })
+
     it('given our backend returns an error, when starting a liveness verification, then it should throw', async () => {
       vi.stubGlobal(
         'fetch',

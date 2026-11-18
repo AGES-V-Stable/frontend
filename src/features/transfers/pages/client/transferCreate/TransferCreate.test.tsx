@@ -130,8 +130,23 @@ describe('TransferCreate', () => {
   })
 
   afterEach(() => {
+    vi.unstubAllEnvs()
     vi.useRealTimers()
     vi.clearAllMocks()
+  })
+
+  it('keeps the original form even when the removed orchestration flag is enabled', async () => {
+    vi.stubEnv('VITE_ENABLE_ORCHESTRATED_TRANSFERS', 'true')
+    vi.resetModules()
+    const { TransferCreate: TransferPage } = await import('./TransferCreate')
+
+    render(<TransferPage />)
+    await advance()
+
+    expect(sourceInput()).toBeInTheDocument()
+    expect(destinationInput()).toBeInTheDocument()
+    expect(screen.getByLabelText('Método de Pagamento*')).toHaveValue('PIX')
+    expect(continueButton()).toBeDisabled()
   })
 
   it('starts without a quote, with Continuar disabled and the company beneficiaries listed by name', async () => {

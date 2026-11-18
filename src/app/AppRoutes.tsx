@@ -32,6 +32,7 @@ import { Members } from '@/features/members/pages/Members'
 import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
+import { BlindPayTermsReturn } from '@/app/components/BlindPayTermsReturn'
 import { KycFullPreview } from '@/features/onboarding/pages/KycFullPreview/KycFullPreview'
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
 import {
@@ -353,6 +354,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path={PATHS.HOME} element={<RoleLanding />} />
+      <Route path={PATHS.BLINDPAY_TERMS_RETURN} element={<BlindPayTermsReturn />} />
       {import.meta.env.DEV && (
         <>
           <Route
@@ -422,6 +424,7 @@ export default function AppRoutes() {
       </Route>
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
       <Route path="/beneficiarios/novo" element={<LegacyRedirect to={PATHS.BENEFICIARIES_NEW} />} />
+      <Route path="/app/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
       <Route path="/transferencias" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
       <Route path="/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
       <Route path="/transferencias/:id" element={<LegacyRedirect details />} />

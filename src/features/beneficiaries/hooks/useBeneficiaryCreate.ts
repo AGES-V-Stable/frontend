@@ -13,6 +13,11 @@ interface FormData {
   documentoFiscal: string
   pais: string
   endereco: string
+  paymentRail: string
+  countryCode: string
+  bankCountryCode: string
+  city: string
+  postalCode: string
   banco: string
   swiftBic: string
   ibanNumeroConta: string
@@ -47,6 +52,11 @@ const initialData: FormData = {
   documentoFiscal: '',
   pais: '',
   endereco: '',
+  paymentRail: 'international_swift',
+  countryCode: '',
+  bankCountryCode: '',
+  city: '',
+  postalCode: '',
   banco: '',
   swiftBic: '',
   ibanNumeroConta: '',
@@ -65,9 +75,19 @@ const failureMessage = (error: unknown) =>
     ? error.message
     : 'Não foi possível concluir a solicitação. Tente novamente.'
 
-function fieldsForMethod(method: ReceivingMethod): Field[] {
+function fieldsForMethod(method: ReceivingMethod, rail: string): Field[] {
   return method === 'conta_bancaria'
-    ? ['banco', 'swiftBic', 'ibanNumeroConta', 'moedaRecebimento', 'apelidoConta']
+    ? [
+        'paymentRail',
+        'countryCode',
+        'city',
+        'ibanNumeroConta',
+        'moedaRecebimento',
+        'apelidoConta',
+        ...(rail === 'sepa'
+          ? (['postalCode'] as const)
+          : (['banco', 'swiftBic', 'bankCountryCode'] as const)),
+      ]
     : [
         'enderecoWallet',
         'redeBlockchain',
@@ -119,13 +139,29 @@ export function useBeneficiaryCreate() {
         : []),
       'tipoBeneficiario',
       ...identificationFields.map((field) => field.name),
-      ...fieldsForMethod(method),
+      ...fieldsForMethod(method, data.paymentRail),
     ]
 
     const nextErrors: Partial<Record<Field, string>> = {}
     fieldsToValidate.forEach((name) => {
       if (!data[name].trim()) nextErrors[name] = 'Campo obrigatório.'
     })
+    if (method === 'conta_bancaria') {
+      const countryLength = data.paymentRail === 'sepa' ? 3 : 2
+      if (
+        data.countryCode.trim() &&
+        !new RegExp(`^[a-zA-Z]{${countryLength}}$`).test(data.countryCode.trim())
+      )
+        nextErrors.countryCode = `Informe o código do país com ${countryLength} letras.`
+      if (
+        data.paymentRail !== 'sepa' &&
+        data.bankCountryCode.trim() &&
+        !/^[a-zA-Z]{2}$/.test(data.bankCountryCode.trim())
+      )
+        nextErrors.bankCountryCode = 'Informe o código do país do banco com 2 letras.'
+      if (data.paymentRail === 'sepa' && data.moedaRecebimento.trim().toUpperCase() !== 'EUR')
+        nextErrors.moedaRecebimento = 'SEPA exige a moeda EUR.'
+    }
     if (method === 'wallet_cripto') {
       if (data.paisWallet.trim() && !/^[a-zA-Z]{2}$/.test(data.paisWallet.trim()))
         nextErrors.paisWallet = 'Informe o código do país com 2 letras, como BR.'
@@ -168,10 +204,23 @@ export function useBeneficiaryCreate() {
         ? {
             ...base,
             receivingMethod: 'BANK_ACCOUNT',
-            bankName: data.banco,
-            swiftBic: data.swiftBic,
-            accountNumber: data.ibanNumeroConta,
-            currency: data.moedaRecebimento,
+            paymentRail: data.paymentRail,
+            countryCode: data.countryCode.trim().toUpperCase(),
+            addressLine1: data.endereco.trim(),
+            city: data.city.trim(),
+            ...(data.paymentRail === 'sepa'
+              ? {
+                  iban: data.ibanNumeroConta.replace(/\s/g, '').toUpperCase(),
+                  postalCode: data.postalCode.trim(),
+                  ...(data.swiftBic.trim() ? { swiftBic: data.swiftBic.trim().toUpperCase() } : {}),
+                }
+              : {
+                  bankName: data.banco.trim(),
+                  swiftBic: data.swiftBic.trim().toUpperCase(),
+                  accountNumber: data.ibanNumeroConta.trim(),
+                  bankCountryCode: data.bankCountryCode.trim().toUpperCase(),
+                }),
+            currency: data.moedaRecebimento.trim().toUpperCase(),
             nickname: data.apelidoConta,
           }
         : {

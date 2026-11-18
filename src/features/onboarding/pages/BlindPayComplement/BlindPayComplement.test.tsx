@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { HttpError } from '@/shared/http/httpClient'
 import {
   loadIndividualKycStatus,
+  checkIndividualTermsReturn,
   startIndividualKycTerms,
   submitIndividualKyc,
   restartIndividualKyc,
@@ -21,6 +22,8 @@ import {
 
 vi.mock('@/features/onboarding/api/blindpayIndividualKyc', () => ({
   loadIndividualKycStatus: vi.fn(),
+  captureIndividualTermsReturn: vi.fn(),
+  checkIndividualTermsReturn: vi.fn(),
   startIndividualKycTerms: vi.fn(),
   submitIndividualKyc: vi.fn(),
   restartIndividualKyc: vi.fn(),
@@ -139,6 +142,35 @@ describe('kycStatus', () => {
     expect(kycErrorMessage(new HttpError('x', 409), 'f')).toMatch(/Já existe/)
     expect(kycErrorMessage(new HttpError('x', 500), 'fallback')).toBe('fallback')
     expect(kycErrorMessage(new Error('boom'), 'fallback')).toBe('fallback')
+  })
+})
+
+describe('manual status checks', () => {
+  it('checks completion on click without starting a polling timer', async () => {
+    const interval = vi.spyOn(window, 'setInterval')
+    vi.mocked(loadIndividualKycStatus).mockResolvedValue({
+      ...termsDone,
+      submitted: true,
+      kycStatus: 'verifying',
+    })
+    const user = userEvent.setup()
+    render(<BlindPayComplement />)
+    await screen.findByRole('button', { name: 'Verificar conclusão' })
+    expect(loadIndividualKycStatus).toHaveBeenCalledTimes(1)
+    expect(interval.mock.calls.some(([, delay]) => Number(delay) >= 1000)).toBe(false)
+    interval.mockRestore()
+    vi.mocked(loadIndividualKycStatus).mockResolvedValue({
+      ...termsDone,
+      submitted: true,
+      kycStatus: 'approved',
+      amlStatus: 'clear',
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Verificar conclusão' }))
+
+    await waitFor(() => expect(screen.getByText('Identidade aprovada')).toBeInTheDocument())
+    expect(checkIndividualTermsReturn).toHaveBeenCalled()
+    expect(loadIndividualKycStatus).toHaveBeenCalledTimes(2)
   })
 })
 
