@@ -4,11 +4,23 @@ import { Table } from '@/shared/components/Table'
 import { Button } from '@/shared/components/Button'
 import {
   getEvent,
-  getEvents,
+  getDashboard,
   type EventFilters,
-  type EventPage,
+  type EventDashboard,
+  type EventBucket,
+  type EventSummary,
+  type Severity,
   type ObservabilityEvent,
 } from '../api/events'
+import { ObservabilityCharts } from '../components/ObservabilityCharts'
+import {
+  formatDate as date,
+  localDraft,
+  periodRange,
+  resolveFilters,
+  timezone,
+  type Period,
+} from '../period'
 
 const empty: EventFilters = {
   from: '',
@@ -22,16 +34,37 @@ const empty: EventFilters = {
 }
 const inputStyle =
   'mt-1 w-full rounded-md border border-sage-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-primary'
-const date = (value: string) => new Date(value).toLocaleString('pt-BR')
 
 export function Observability() {
-  const [draft, setDraft] = useState(empty)
-  const [filters, setFilters] = useState(empty)
+  const [filters, setFilters] = useState(() => ({ ...empty, ...periodRange('24h') }))
+  const [draft, setDraft] = useState(() => localDraft(filters))
+  const [period, setPeriod] = useState<Period>('24h')
+  const [draftPeriod, setDraftPeriod] = useState<Period>('24h')
+  const [filterError, setFilterError] = useState('')
   const [page, setPage] = useState(0)
   const [revision, setRevision] = useState(0)
-  const [data, setData] = useState<EventPage | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [chartSelection, setChartSelection] = useState<{
+    bucket: Pick<EventBucket, 'from' | 'to'>
+    severity: Severity
+    filters: EventFilters
+    period: Period
+    summary: EventSummary
+  } | null>(null)
+  const requestKey = JSON.stringify([filters, page, revision])
+  const [result, setResult] = useState<{
+    key: string
+    data?: EventDashboard
+    chartSummary?: EventSummary
+    error?: boolean
+    updatedAt?: string
+  }>({
+    key: '',
+  })
+  const loading = result.key !== requestKey
+  const error = !loading && result.error
+  const dashboard = result.data
+  const chartSummary = chartSelection?.summary ?? result.chartSummary
+  const data = dashboard?.events
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<ObservabilityEvent | null>(null)
   const [detailError, setDetailError] = useState(false)
@@ -40,20 +73,28 @@ export function Observability() {
   useEffect(() => {
     const controller = new AbortController()
     const load = async () => {
-      setLoading(true)
-      setError(false)
       try {
-        const result = await getEvents(filters, page, controller.signal)
-        if (!controller.signal.aborted) setData(result)
+        const data = await getDashboard(filters, page, controller.signal)
+        if (!controller.signal.aborted)
+          setResult({
+            key: requestKey,
+            data,
+            chartSummary: chartSelection?.summary ?? data.summary,
+            updatedAt: data.summary.generatedAt,
+          })
       } catch {
-        if (!controller.signal.aborted) setError(true)
-      } finally {
-        if (!controller.signal.aborted) setLoading(false)
+        if (!controller.signal.aborted)
+          setResult((previous) => ({
+            key: requestKey,
+            error: true,
+            chartSummary: previous.chartSummary,
+            updatedAt: previous.updatedAt,
+          }))
       }
     }
     void load()
     return () => controller.abort()
-  }, [filters, page, revision])
+  }, [filters, page, revision, requestKey, chartSelection])
 
   useEffect(() => {
     if (!selectedId) return
@@ -81,16 +122,54 @@ export function Observability() {
         value={draft[key]}
         maxLength={key === 'action' ? 120 : 80}
         pattern={pattern}
+        step={type === 'datetime-local' ? '0.001' : undefined}
+        required={key === 'from' || key === 'to'}
+        disabled={(key === 'from' || key === 'to') && draftPeriod !== 'custom'}
         onChange={(event) => setDraft({ ...draft, [key]: event.target.value })}
       />
     </label>
   )
   const applyCorrelation = (id: string) => {
     const next = { ...filters, correlationId: id }
-    setDraft(next)
+    setDraft(localDraft(next))
     setFilters(next)
     setPage(0)
     setSelectedId(null)
+    setChartSelection(null)
+  }
+  const selectPoint = (bucket: Pick<EventBucket, 'from' | 'to'>, severity: Severity) => {
+    if (!chartSummary) return
+    const selected =
+      chartSelection !== null &&
+      Date.parse(chartSelection.bucket.from) === Date.parse(bucket.from) &&
+      Date.parse(chartSelection.bucket.to) === Date.parse(bucket.to) &&
+      chartSelection.severity === severity
+    const baseFilters = chartSelection?.filters ?? filters
+    const basePeriod = chartSelection?.period ?? period
+    const next = selected
+      ? baseFilters
+      : { ...baseFilters, from: bucket.from, to: bucket.to, severity }
+    setChartSelection(
+      selected
+        ? null
+        : { bucket, severity, filters: baseFilters, period: basePeriod, summary: chartSummary },
+    )
+    setFilters(next)
+    setDraft(localDraft(next))
+    setPeriod(selected ? basePeriod : 'custom')
+    setDraftPeriod(selected ? basePeriod : 'custom')
+    setFilterError('')
+    setPage(0)
+  }
+  const refresh = () => {
+    if (period !== 'custom') {
+      const next = { ...filters, ...periodRange(period) }
+      setFilters(next)
+      setDraft(localDraft(next))
+      setDraftPeriod(period)
+    }
+    setPage(0)
+    setRevision((value) => value + 1)
   }
 
   return (
@@ -103,21 +182,55 @@ export function Observability() {
               Investigue operações, integrações e falhas da aplicação.
             </p>
           </div>
-          <Button
-            label="Atualizar"
-            className="w-auto!"
-            variant="secondary"
-            onClick={() => setRevision(revision + 1)}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            {result.updatedAt && (
+              <p className="text-xs text-slate-600">
+                Última atualização: {date(result.updatedAt)} ({timezone})
+              </p>
+            )}
+            <Button
+              label="Atualizar"
+              className="w-auto!"
+              variant="secondary"
+              onClick={refresh}
+              disabled={loading}
+            />
+          </div>
         </header>
         <form
           className="grid gap-4 rounded-lg border border-sage-300 bg-white p-5 sm:grid-cols-2 xl:grid-cols-4"
           onSubmit={(event) => {
             event.preventDefault()
-            setFilters({ ...draft })
-            setPage(0)
+            try {
+              const next = resolveFilters(draft, draftPeriod)
+              setFilters(next)
+              setDraft(localDraft(next))
+              setPeriod(draftPeriod)
+              setChartSelection(null)
+              setFilterError('')
+              setPage(0)
+            } catch {
+              setFilterError('Selecione um intervalo crescente de até 90 dias.')
+            }
           }}
         >
+          <label className="text-sm text-slate-700">
+            Período
+            <select
+              className={inputStyle}
+              value={draftPeriod}
+              onChange={(event) => {
+                const value = event.target.value as Period
+                setDraftPeriod(value)
+                if (value !== 'custom') setDraft(localDraft({ ...draft, ...periodRange(value) }))
+              }}
+            >
+              <option value="1h">Última hora</option>
+              <option value="24h">Últimas 24 horas</option>
+              <option value="7d">Últimos 7 dias</option>
+              <option value="custom">Intervalo personalizado</option>
+            </select>
+          </label>
           {textFilter('from', 'De (horário local)', 'datetime-local')}
           {textFilter('to', 'Até (horário local)', 'datetime-local')}
           <label className="text-sm text-slate-700">
@@ -148,18 +261,28 @@ export function Observability() {
               <option value="asc">Mais antigos</option>
             </select>
           </label>
-          <p className="text-xs text-slate-500 sm:col-span-2">
-            Sem período: últimos 7 dias. Intervalo máximo: 90 dias, sujeito à retenção. Datas
-            exibidas no horário local.
+          <p className="text-xs text-slate-500 sm:col-span-full">
+            Intervalo máximo: 90 dias, sujeito à retenção. Datas em {timezone}; consultas em UTC. O
+            início é inclusivo e o fim exclusivo.
           </p>
-          <div className="flex gap-2 sm:col-span-2 xl:justify-end">
+          {filterError && (
+            <p role="alert" className="text-sm text-red-700 sm:col-span-full">
+              {filterError}
+            </p>
+          )}
+          <div className="flex flex-wrap justify-end gap-2 border-t border-sage-200 pt-4 sm:col-span-full">
             <Button
               label="Limpar filtros"
               variant="neutral"
               className="w-auto!"
               onClick={() => {
-                setDraft(empty)
-                setFilters(empty)
+                const next = { ...empty, ...periodRange('24h') }
+                setDraft(localDraft(next))
+                setFilters(next)
+                setPeriod('24h')
+                setDraftPeriod('24h')
+                setFilterError('')
+                setChartSelection(null)
                 setPage(0)
               }}
               type="button"
@@ -167,47 +290,31 @@ export function Observability() {
             <Button label="Aplicar filtros" className="w-auto!" type="submit" />
           </div>
         </form>
+        {chartSummary && (
+          <>
+            <p className="text-xs text-slate-600">
+              Período consultado: {date(chartSummary.from)} até {date(chartSummary.to)} ({timezone}
+              ), sujeito à retenção de eventos.
+            </p>
+            <ObservabilityCharts
+              key={`${chartSummary.from}:${chartSummary.to}`}
+              summary={chartSummary}
+              metrics={dashboard?.summary ?? chartSummary}
+              selection={chartSelection}
+              onSelect={selectPoint}
+            />
+          </>
+        )}
         {loading ? (
           <p role="status">Carregando eventos...</p>
         ) : error ? (
           <div role="alert">
             <p>Não foi possível carregar os eventos. Confira os filtros e tente novamente.</p>
-            <Button
-              label="Tentar novamente"
-              className="mt-3 w-auto!"
-              onClick={() => setRevision(revision + 1)}
-            />
+            <Button label="Tentar novamente" className="mt-3 w-auto!" onClick={refresh} />
           </div>
         ) : (
           data && (
             <>
-              <div
-                className="grid gap-4 sm:grid-cols-3"
-                aria-label="Indicadores do período filtrado"
-              >
-                <div className="rounded-lg border border-sage-300 bg-white p-5">
-                  <p className="text-sm text-slate-600">Eventos filtrados</p>
-                  <p className="text-2xl font-semibold">{data.totalElements}</p>
-                </div>
-                <div className="rounded-lg border border-sage-300 bg-white p-5">
-                  <p className="text-sm text-slate-600">Erros (ERROR)</p>
-                  <p className="text-2xl font-semibold">{data.errors}</p>
-                </div>
-                <div className="rounded-lg border border-sage-300 bg-white p-5">
-                  <p className="text-sm text-slate-600">Eventos com falha por módulo</p>
-                  {data.failuresByModule.length ? (
-                    <ul className="mt-2 text-sm">
-                      {data.failuresByModule.map((item) => (
-                        <li key={item.module}>
-                          {item.module}: {item.failures}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-2 text-sm">Nenhuma falha.</p>
-                  )}
-                </div>
-              </div>
               <Table<ObservabilityEvent>
                 title="Eventos"
                 totalRecords={data.totalElements}
