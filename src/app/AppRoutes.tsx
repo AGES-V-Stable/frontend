@@ -9,7 +9,7 @@ import {
   useNavigate,
   useParams,
 } from 'react-router'
-import { SupportChatWidget } from '@/features/support'
+import { isSupportChatEnabled, SupportChatWidget } from '@/features/support'
 import {
   AdminSecurityRequests,
   clearLoginToken,
@@ -262,13 +262,18 @@ function RoutedApplication() {
           item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
         ]
   items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
+  const supportChatEnabled = isSupportChatEnabled()
   const footerItems: NavigationItem[] = [
-    {
-      id: 'support',
-      label: 'Suporte',
-      icon: icon(supportIcon),
-      onClick: () => setSupportChatOpen((open) => !open),
-    },
+    ...(supportChatEnabled
+      ? [
+          {
+            id: 'support',
+            label: 'Suporte',
+            icon: icon(supportIcon),
+            onClick: () => setSupportChatOpen((open) => !open),
+          },
+        ]
+      : []),
     { id: 'logout', label: 'Sair', icon: icon(logoutIcon), onClick: clearLoginToken },
   ]
   const activeId = pathname.startsWith(PATHS.SETTINGS)
@@ -325,7 +330,9 @@ function RoutedApplication() {
       }
     >
       <Outlet />
-      <SupportChatWidget open={supportChatOpen} onOpenChange={setSupportChatOpen} />
+      {supportChatEnabled && (
+        <SupportChatWidget open={supportChatOpen} onOpenChange={setSupportChatOpen} />
+      )}
     </ApplicationShell>
   )
 }

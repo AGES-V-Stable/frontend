@@ -1,19 +1,48 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { sendSupportChatMessage } from '../api/supportChat'
+import {
+  SUPPORT_CHAT_MAX_REQUESTS_PER_MINUTE,
+  SUPPORT_CHAT_RATE_LIMIT_WINDOW_MS,
+  SupportChatRateLimitError,
+  sendSupportChatMessage,
+} from '../api/supportChat'
 import type { SupportChatMessage } from '../api/supportChat'
+
+const RATE_LIMIT_ERROR_MESSAGE =
+  'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.'
+
+function evaluateClientRateLimit(timestamps: number[]): {
+  recentTimestamps: number[]
+  retryAfterSeconds: number | null
+} {
+  const now = Date.now()
+  const recentTimestamps = timestamps.filter(
+    (timestamp) => now - timestamp < SUPPORT_CHAT_RATE_LIMIT_WINDOW_MS,
+  )
+
+  if (recentTimestamps.length >= SUPPORT_CHAT_MAX_REQUESTS_PER_MINUTE) {
+    const oldestTimestamp = recentTimestamps[0]
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((oldestTimestamp + SUPPORT_CHAT_RATE_LIMIT_WINDOW_MS - now) / 1000),
+    )
+    return { recentTimestamps, retryAfterSeconds }
+  }
+
+  return { recentTimestamps: [...recentTimestamps, now], retryAfterSeconds: null }
+}
 
 const INITIAL_SUGGESTIONS = [
   'Por que não consigo fazer transações com a Colômbia?',
-  'Como funciona a integração com Avenia e BlindPay?',
-  'Quais países, moedas e trilhos locais a V-Stable suporta?',
-  'Como ativar ou reconfigurar meu QR Code de 2FA?',
+  'Como funcionam o representante e os membros da empresa?',
+  'Quais países, moedas e formas de envio a V-Stable suporta?',
+  'Como ativar ou reconfigurar minha verificação em duas etapas?',
 ]
 
 const WELCOME_MESSAGE: SupportChatMessage = {
   role: 'assistant',
   content:
-    'Olá! Sou o **Assistente Virtual da V-Stable**. Posso tirar dúvidas sobre países e moedas suportadas (como Colômbia/SWIFT vs. Wallet Cripto), configuração de 2FA, cotações e verificação de identidade (KYC). Como posso ajudar?',
+    'Olá! Sou o **Assistente Virtual da V-Stable**. Posso tirar dúvidas sobre países e moedas suportadas (como Colômbia via transferência bancária vs. carteira cripto), verificação em duas etapas, cotações e verificação de identidade (KYC). Como posso ajudar?',
 }
 
 export interface SupportChatWidgetProps {
@@ -69,12 +98,27 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
   const [suggestions, setSuggestions] = useState<string[]>(INITIAL_SUGGESTIONS)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; isRateLimit: boolean } | null>(null)
+  const [cooldownSeconds, setCooldownSeconds] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const activeRequestRef = useRef<AbortController | null>(null)
+  const sentTimestampsRef = useRef<number[]>([])
+
+  const isCoolingDown = cooldownSeconds > 0
+  const visibleError = error && !(error.isRateLimit && cooldownSeconds === 0) ? error.message : null
 
   useEffect(() => () => activeRequestRef.current?.abort(), [])
+
+  useEffect(() => {
+    if (!isCoolingDown) return
+
+    const timerId = window.setInterval(() => {
+      setCooldownSeconds((prev) => (prev <= 1 ? 0 : prev - 1))
+    }, 1000)
+
+    return () => window.clearInterval(timerId)
+  }, [isCoolingDown])
 
   useEffect(() => {
     if (isOpen) {
@@ -97,7 +141,18 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
 
   async function handleSendMessage(rawText: string) {
     const trimmed = rawText.trim()
-    if (!trimmed || activeRequestRef.current) return
+    if (!trimmed || activeRequestRef.current || cooldownSeconds > 0) return
+
+    const { recentTimestamps, retryAfterSeconds } = evaluateClientRateLimit(
+      sentTimestampsRef.current,
+    )
+    sentTimestampsRef.current = recentTimestamps
+
+    if (retryAfterSeconds !== null) {
+      setCooldownSeconds(retryAfterSeconds)
+      setError({ message: RATE_LIMIT_ERROR_MESSAGE, isRateLimit: true })
+      return
+    }
 
     const controller = new AbortController()
     activeRequestRef.current = controller
@@ -139,11 +194,21 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
       }
     } catch (err) {
       if (controller.signal.aborted || activeRequestRef.current !== controller) return
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Não foi possível obter resposta do assistente no momento.',
-      )
+      if (err instanceof SupportChatRateLimitError) {
+        const retrySeconds = Number.isFinite(err.retryAfterSeconds)
+          ? Math.max(1, Math.ceil(err.retryAfterSeconds))
+          : 60
+        setCooldownSeconds(retrySeconds)
+        setError({ message: err.message, isRateLimit: true })
+        return
+      }
+      setError({
+        message:
+          err instanceof Error
+            ? err.message
+            : 'Não foi possível obter resposta do assistente no momento.',
+        isRateLimit: false,
+      })
     } finally {
       if (activeRequestRef.current === controller) {
         activeRequestRef.current = null
@@ -245,12 +310,12 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
               </div>
             )}
 
-            {error && (
+            {visibleError && (
               <p
                 role="alert"
                 className="rounded-xl border border-red-600/30 bg-red-50 px-3 py-2 text-xs text-red-700"
               >
-                {error}
+                {visibleError}
               </p>
             )}
 
@@ -265,8 +330,9 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
                     <button
                       key={question}
                       type="button"
+                      disabled={cooldownSeconds > 0}
                       onClick={() => void handleSendMessage(question)}
-                      className="cursor-pointer rounded-xl border border-sage-300 bg-white px-3 py-2 text-left text-xs font-medium text-emerald-700 transition-colors hover:border-primary hover:bg-emerald-50"
+                      className="cursor-pointer rounded-xl border border-sage-300 bg-white px-3 py-2 text-left text-xs font-medium text-emerald-700 transition-colors hover:border-primary hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {question}
                     </button>
@@ -293,9 +359,20 @@ export function SupportChatWidget({ open: controlledOpen, onOpenChange }: Suppor
               disabled={loading}
               className="h-10 min-w-0 flex-1 rounded-xl border border-sage-300 bg-surface px-3 text-xs text-slate-900 placeholder:text-placeholder focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60"
             />
+            {cooldownSeconds > 0 && (
+              <span
+                data-testid="support-chat-cooldown-timer"
+                role="timer"
+                aria-live="polite"
+                title="Tempo restante para enviar nova mensagem"
+                className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-amber-700/30 bg-amber-50 px-2.5 font-mono text-xs font-semibold tabular-nums text-amber-700"
+              >
+                {cooldownSeconds}s
+              </span>
+            )}
             <button
               type="submit"
-              disabled={loading || !input.trim()}
+              disabled={loading || cooldownSeconds > 0 || !input.trim()}
               className="h-10 shrink-0 cursor-pointer rounded-xl bg-primary px-4 text-xs font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               Enviar

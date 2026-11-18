@@ -17,7 +17,43 @@ export interface SupportChatResponse {
   timestamp: string
 }
 
+export const SUPPORT_CHAT_MAX_REQUESTS_PER_MINUTE = 15
+export const SUPPORT_CHAT_RATE_LIMIT_WINDOW_MS = 60_000
+
+export function isSupportChatEnabled(
+  value: string | undefined = import.meta.env.VITE_SUPPORT_CHAT_ENABLED,
+): boolean {
+  return value?.trim().toLowerCase() !== 'false'
+}
+
 const SUPPORT_CHAT_TIMEOUT_MS = 20_000
+const SUPPORT_CHAT_RATE_LIMIT_FALLBACK_SECONDS = 60
+
+export class SupportChatRateLimitError extends Error {
+  readonly retryAfterSeconds: number
+
+  constructor(message: string, retryAfterSeconds = 60, options?: ErrorOptions) {
+    super(message, options)
+    this.name = 'SupportChatRateLimitError'
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+function parseRetryAfterSeconds(error: HttpError): number {
+  const match = /(\d+)\s*segundos?/i.exec(error.message)
+  if (match) {
+    const parsed = Number(match[1])
+    if (Number.isFinite(parsed)) {
+      return Math.min(60, Math.max(1, parsed))
+    }
+  }
+
+  if (typeof error.retryAfterSeconds === 'number' && Number.isFinite(error.retryAfterSeconds)) {
+    return Math.min(60, Math.max(1, Math.ceil(error.retryAfterSeconds)))
+  }
+
+  return SUPPORT_CHAT_RATE_LIMIT_FALLBACK_SECONDS
+}
 
 export async function sendSupportChatMessage(
   payload: SupportChatRequest,
@@ -56,8 +92,10 @@ export async function sendSupportChatMessage(
     }
     if (error instanceof HttpError) {
       if (error.status === 423) {
-        throw new Error(
+        const retryAfterSeconds = parseRetryAfterSeconds(error)
+        throw new SupportChatRateLimitError(
           'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.',
+          retryAfterSeconds,
           { cause: error },
         )
       }

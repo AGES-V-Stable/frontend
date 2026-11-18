@@ -1,13 +1,17 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { sendSupportChatMessage } from '../api/supportChat'
+import { SupportChatRateLimitError, sendSupportChatMessage } from '../api/supportChat'
 import type { SupportChatResponse } from '../api/supportChat'
 import { SupportChatWidget } from './SupportChatWidget'
 
-vi.mock('../api/supportChat', () => ({
-  sendSupportChatMessage: vi.fn(),
-}))
+vi.mock('../api/supportChat', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/supportChat')>()
+  return {
+    ...actual,
+    sendSupportChatMessage: vi.fn(),
+  }
+})
 
 describe('SupportChatWidget', () => {
   beforeEach(() => {
@@ -80,7 +84,7 @@ describe('SupportChatWidget', () => {
   it('sends a suggested question when clicking a quick question chip', async () => {
     const user = userEvent.setup()
     vi.mocked(sendSupportChatMessage).mockResolvedValueOnce({
-      reply: 'A V-Stable integra Avenia e BlindPay.',
+      reply: 'A empresa conta com representante e membros com permissões configuradas.',
       provider: 'vstable-assistant',
       suggestedQuestions: [],
       timestamp: '2026-11-09T18:00:00Z',
@@ -89,17 +93,23 @@ describe('SupportChatWidget', () => {
     render(<SupportChatWidget open={true} />)
 
     await user.click(
-      screen.getByRole('button', { name: 'Como funciona a integração com Avenia e BlindPay?' }),
+      screen.getByRole('button', {
+        name: 'Como funcionam o representante e os membros da empresa?',
+      }),
     )
 
     expect(sendSupportChatMessage).toHaveBeenCalledWith(
       {
-        message: 'Como funciona a integração com Avenia e BlindPay?',
+        message: 'Como funcionam o representante e os membros da empresa?',
         history: [],
       },
       expect.any(AbortSignal),
     )
-    expect(await screen.findByText('A V-Stable integra Avenia e BlindPay.')).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        'A empresa conta com representante e membros com permissões configuradas.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('displays an alert when the API returns an error', async () => {
@@ -159,7 +169,9 @@ describe('SupportChatWidget', () => {
     expect(screen.queryByText('Pergunta antiga')).not.toBeInTheDocument()
 
     await user.click(
-      screen.getByRole('button', { name: 'Como funciona a integração com Avenia e BlindPay?' }),
+      screen.getByRole('button', {
+        name: 'Como funcionam o representante e os membros da empresa?',
+      }),
     )
     expect(await screen.findByText('Resposta nova')).toBeInTheDocument()
 
@@ -173,5 +185,127 @@ describe('SupportChatWidget', () => {
     })
     expect(screen.queryByText('Resposta antiga')).not.toBeInTheDocument()
     expect(screen.getByText('Resposta nova')).toBeInTheDocument()
+  })
+
+  it('shows a countdown timer near Enviar on SupportChatRateLimitError and re-enables sending after cooldown', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.mocked(sendSupportChatMessage)
+        .mockRejectedValueOnce(
+          new SupportChatRateLimitError(
+            'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.',
+            12,
+          ),
+        )
+        .mockResolvedValueOnce({
+          reply: 'Resposta após cooldown.',
+          provider: 'gemini',
+          suggestedQuestions: [],
+          timestamp: '2026-11-16T18:00:00Z',
+        })
+
+      render(<SupportChatWidget open={true} />)
+
+      const input = screen.getByPlaceholderText('Digite sua dúvida sobre a V-Stable...')
+      const sendButton = screen.getByRole('button', { name: 'Enviar' })
+
+      fireEvent.change(input, { target: { value: 'Primeira tentativa' } })
+      await act(async () => {
+        fireEvent.click(sendButton)
+      })
+
+      const timer = screen.getByTestId('support-chat-cooldown-timer')
+      expect(timer).toHaveTextContent('12s')
+      expect(timer).toHaveAttribute('role', 'timer')
+      expect(timer).toHaveAttribute('aria-live', 'polite')
+      expect(timer).toHaveAttribute('title', 'Tempo restante para enviar nova mensagem')
+      expect(
+        screen.getByRole('button', {
+          name: 'Como funcionam o representante e os membros da empresa?',
+        }),
+      ).toBeDisabled()
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.',
+      )
+
+      fireEvent.change(input, { target: { value: 'Nova pergunta' } })
+      expect(sendButton).toBeDisabled()
+
+      act(() => {
+        vi.advanceTimersByTime(5_000)
+      })
+      expect(screen.getByTestId('support-chat-cooldown-timer')).toHaveTextContent('7s')
+      expect(sendButton).toBeDisabled()
+
+      act(() => {
+        vi.advanceTimersByTime(7_000)
+      })
+      expect(screen.queryByTestId('support-chat-cooldown-timer')).not.toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(sendButton).toBeEnabled()
+
+      await act(async () => {
+        fireEvent.click(sendButton)
+      })
+      expect(sendSupportChatMessage).toHaveBeenCalledTimes(2)
+      expect(screen.getByText('Resposta após cooldown.')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('blocks the 16th message within 1 minute client-side and displays the cooldown timer without calling the API', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-11-16T12:00:00Z'))
+      vi.mocked(sendSupportChatMessage).mockResolvedValue({
+        reply: 'Ok',
+        provider: 'gemini',
+        suggestedQuestions: [],
+        timestamp: '2026-11-16T12:00:00Z',
+      })
+
+      render(<SupportChatWidget open={true} />)
+
+      const input = screen.getByPlaceholderText('Digite sua dúvida sobre a V-Stable...')
+      const sendButton = screen.getByRole('button', { name: 'Enviar' })
+
+      for (let i = 1; i <= 15; i += 1) {
+        fireEvent.change(input, { target: { value: `Pergunta ${i}` } })
+        await act(async () => {
+          fireEvent.click(sendButton)
+        })
+      }
+
+      expect(sendSupportChatMessage).toHaveBeenCalledTimes(15)
+      expect(screen.queryByTestId('support-chat-cooldown-timer')).not.toBeInTheDocument()
+
+      fireEvent.change(input, { target: { value: 'Pergunta 16' } })
+      await act(async () => {
+        fireEvent.click(sendButton)
+      })
+
+      expect(sendSupportChatMessage).toHaveBeenCalledTimes(15)
+      const timer = screen.getByTestId('support-chat-cooldown-timer')
+      expect(timer).toHaveTextContent('60s')
+      expect(sendButton).toBeDisabled()
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Muitas mensagens enviadas em sequência. Aguarde alguns segundos e tente novamente.',
+      )
+      expect(input).toHaveValue('Pergunta 16')
+
+      act(() => {
+        vi.advanceTimersByTime(60_000)
+      })
+      expect(screen.queryByTestId('support-chat-cooldown-timer')).not.toBeInTheDocument()
+      expect(sendButton).toBeEnabled()
+
+      await act(async () => {
+        fireEvent.click(sendButton)
+      })
+      expect(sendSupportChatMessage).toHaveBeenCalledTimes(16)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

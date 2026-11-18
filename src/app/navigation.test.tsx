@@ -837,3 +837,18 @@ it('given an administrator, when a request is refused, then the company context 
   expect(screen.getByText('Painel administrativo')).toBeVisible()
   expect(screen.getByTestId('location')).toHaveTextContent('/admin/clientes-pme')
 })
+
+it('hides the support menu item and chat widget when VITE_SUPPORT_CHAT_ENABLED is false', async () => {
+  vi.stubEnv('VITE_SUPPORT_CHAT_ENABLED', 'false')
+  try {
+    saveLoginToken('login')
+    renderRoute('/app/beneficiarios')
+    const nav = await screen.findByRole('navigation')
+    await screen.findByText('Atlas')
+
+    expect(within(nav).queryByRole('button', { name: 'Suporte' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('support-chat-widget')).not.toBeInTheDocument()
+  } finally {
+    vi.unstubAllEnvs()
+  }
+})
