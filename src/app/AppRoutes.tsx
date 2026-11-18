@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import {
   Link,
   Navigate,
@@ -201,7 +201,6 @@ function RoutedApplication() {
   const { user, company } = useSession()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const [supportChatOpen, setSupportChatOpen] = useState(false)
   const admin = isStoredAdmin()
   // O SVG vira máscara e a cor vem do texto do item: cinza no inativo, verde no selecionado.
   const icon = (src: string) => (
@@ -249,26 +248,16 @@ function RoutedApplication() {
         [item('members', 'Membros', PATHS.MEMBERS, membersIcon)]
       : [
           item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
-          item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
           // O item abre a criação de transferência: só aparece para quem pode criar.
           ...(hasCompanyPermission(user, 'TRANSFER_CREATE')
             ? [item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon)]
             : []),
+          item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
           item('members', 'Membros', PATHS.MEMBERS, membersIcon),
         ]
-  items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
   const supportChatEnabled = isSupportChatEnabled()
   const footerItems: NavigationItem[] = [
-    ...(supportChatEnabled
-      ? [
-          {
-            id: 'support',
-            label: 'Suporte',
-            icon: icon(supportIcon),
-            onClick: () => setSupportChatOpen((open) => !open),
-          },
-        ]
-      : []),
+    item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon),
     { id: 'logout', label: 'Sair', icon: icon(logoutIcon), onClick: clearLoginToken },
   ]
   const activeId = pathname.startsWith(PATHS.SETTINGS)
@@ -324,9 +313,7 @@ function RoutedApplication() {
       }
     >
       <Outlet />
-      {supportChatEnabled && (
-        <SupportChatWidget open={supportChatOpen} onOpenChange={setSupportChatOpen} />
-      )}
+      {supportChatEnabled && <SupportChatWidget />}
     </ApplicationShell>
   )
 }

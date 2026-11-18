@@ -149,8 +149,19 @@ it('renders the company menu with real company identity and available actions', 
   expect(within(nav).queryByText('Clientes PME')).not.toBeInTheDocument()
   expect(screen.getByText('Empresa de Teste')).toBeInTheDocument()
   expect(screen.getByText('CNPJ: 12.345.678/0001-90')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Configurações' })).toBeEnabled()
-  expect(screen.getByRole('button', { name: 'Suporte' })).toBeEnabled()
+  const sidebar = screen.getByRole('complementary', { name: 'Menu da conta' })
+  const navButtons = within(nav)
+    .getAllByRole('button')
+    .map((button) => button.textContent?.trim())
+  expect(navButtons.indexOf('Transferências')).toBeGreaterThan(-1)
+  expect(navButtons.indexOf('Beneficiários')).toBe(navButtons.indexOf('Transferências') + 1)
+  const sidebarButtons = within(sidebar)
+    .getAllByRole('button')
+    .map((button) => button.textContent?.trim())
+  expect(sidebarButtons.slice(-2)).toEqual(['Configurações', 'Sair'])
+  expect(within(sidebar).getByRole('button', { name: 'Configurações' })).toBeEnabled()
+  expect(within(sidebar).queryByRole('button', { name: 'Suporte' })).not.toBeInTheDocument()
+  expect(screen.getByTestId('support-chat-widget')).toBeInTheDocument()
 })
 it('paints every menu icon with the item text color, so only the selected one turns green', async () => {
   // Given a empresa logada no Dashboard
@@ -170,7 +181,7 @@ it('paints every menu icon with the item text color, so only the selected one tu
   expect(dashboard).toHaveClass('text-emerald-800')
   expect(members).toHaveClass('text-slate-500')
 })
-it('gives Beneficiários and Membros different icons: a person receiving and two people', async () => {
+it('gives Beneficiários and Membros different icons: an international company and two people', async () => {
   // Given a empresa logada
   saveLoginToken('login')
   renderRoute()
@@ -182,10 +193,10 @@ it('gives Beneficiários and Membros different icons: a person receiving and two
   const icon = (button: HTMLElement) =>
     within(button).getByTestId('navigation-icon').style.maskImage
   expect(icon(beneficiaries)).not.toBe(icon(members))
-  // And o de Membros tem duas pessoas (dois círculos de cabeça); o de Beneficiários, uma
-  const heads = (button: HTMLElement) => (icon(button).match(/circle/g) ?? []).length
-  expect(heads(members)).toBe(2)
-  expect(heads(beneficiaries)).toBe(1)
+  // And o de Membros tem duas pessoas (dois círculos de cabeça); o de Beneficiários, o globo da empresa internacional
+  const circles = (button: HTMLElement) => (icon(button).match(/circle/g) ?? []).length
+  expect(circles(members)).toBe(2)
+  expect(circles(beneficiaries)).toBe(1)
 })
 it('opens the company dashboard from the Dashboard item, with balance and transacted volume', async () => {
   saveLoginToken('login')
@@ -451,10 +462,10 @@ it('allows an administrator to access settings without being redirected away', a
 it('opens settings from the company menu', async () => {
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')
-  const nav = await screen.findByRole('navigation')
-  await userEvent.click(within(nav).getByRole('button', { name: 'Configurações' }))
+  const sidebar = await screen.findByRole('complementary', { name: 'Menu da conta' })
+  await userEvent.click(within(sidebar).getByRole('button', { name: 'Configurações' }))
   expect(await screen.findByRole('heading', { name: 'Configurações da Conta' })).toBeInTheDocument()
-  expect(within(nav).getByRole('button', { name: 'Configurações' })).toHaveAttribute(
+  expect(within(sidebar).getByRole('button', { name: 'Configurações' })).toHaveAttribute(
     'aria-current',
     'page',
   )
@@ -841,15 +852,15 @@ it('given an administrator, when a request is refused, then the company context 
   expect(screen.getByTestId('location')).toHaveTextContent('/admin/clientes-pme')
 })
 
-it('hides the support menu item and chat widget when VITE_SUPPORT_CHAT_ENABLED is false', async () => {
+it('hides the chat widget when VITE_SUPPORT_CHAT_ENABLED is false', async () => {
   vi.stubEnv('VITE_SUPPORT_CHAT_ENABLED', 'false')
   try {
     saveLoginToken('login')
     renderRoute('/app/beneficiarios')
-    const nav = await screen.findByRole('navigation')
+    const sidebar = await screen.findByRole('complementary', { name: 'Menu da conta' })
     await screen.findByText('Atlas')
 
-    expect(within(nav).queryByRole('button', { name: 'Suporte' })).not.toBeInTheDocument()
+    expect(within(sidebar).queryByRole('button', { name: 'Suporte' })).not.toBeInTheDocument()
     expect(screen.queryByTestId('support-chat-widget')).not.toBeInTheDocument()
   } finally {
     vi.unstubAllEnvs()
