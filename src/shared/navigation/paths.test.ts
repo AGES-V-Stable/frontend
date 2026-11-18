@@ -39,6 +39,7 @@ describe('PATHS configuration', () => {
       TRANSFERS: '/app/transferencias/nova',
       TRANSFER_DETAILS: '/app/transferencias/:id',
       SETTINGS: '/app/configuracoes',
+      SETTINGS_SECURITY_REQUESTS: '/app/configuracoes/solicitacoes-seguranca',
       MEMBERS: '/app/membros',
       COMPANY_SETUP: '/app/empresa/cadastrar',
       COMPANY_INVITATION: '/convites/empresa',

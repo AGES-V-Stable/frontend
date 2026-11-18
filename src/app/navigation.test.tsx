@@ -119,7 +119,7 @@ beforeEach(() => {
       return new Response('{"transactedVolumeBrl":"5022.50"}')
     throw new Error(`Unexpected test request: ${url}`)
   }
-  mock = vi.fn(backend)
+  mock = vi.fn((url: string) => backend(url))
   vi.stubGlobal('fetch', mock)
 })
 afterEach(() => {
@@ -150,8 +150,170 @@ it('renders the company menu with real company identity and available actions', 
   expect(screen.getByText('Empresa de Teste')).toBeInTheDocument()
   expect(screen.getByText('CNPJ: 12.345.678/0001-90')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Configurações' })).toBeEnabled()
-  expect(screen.getByRole('button', { name: 'Suporte' })).toBeEnabled()
+  expect(within(nav).queryByRole('button', { name: 'Suporte' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Abrir suporte IA' })).toBeEnabled()
 })
+it('organizes the admin sections and keeps Settings immediately above logout in the footer', async () => {
+  role = 'ADMIN'
+  saveLoginToken(`header.${btoa(JSON.stringify({ account_type: 'ADMIN' }))}.signature`)
+  renderRoute('/admin/clientes-pme')
+  const nav = await screen.findByRole('navigation')
+  const sections = within(nav).getByRole('list', { name: 'Seções da conta' })
+  const actions = within(nav).getByRole('list', { name: 'Ações da conta' })
+
+  const sectionButtons = within(sections).getAllByRole('button')
+  expect(sectionButtons).toHaveLength(4)
+  for (const [index, label] of [
+    'Dashboard',
+    'Clientes PME',
+    'Auditoria',
+    'Observability',
+  ].entries()) {
+    expect(sectionButtons[index]).toHaveAccessibleName(label)
+  }
+  expect(
+    within(actions)
+      .getAllByRole('button')
+      .map((button) => button.textContent),
+  ).toEqual(['Configurações', 'Sair'])
+  expect(within(nav).queryByText('Suporte')).not.toBeInTheDocument()
+  expect(within(nav).queryByText('Solicitações de Segurança')).not.toBeInTheDocument()
+  const activity = within(within(nav).getByRole('button', { name: 'Observability' })).getByTestId(
+    'navigation-icon',
+  )
+  const audit = within(within(nav).getByRole('button', { name: 'Auditoria' })).getByTestId(
+    'navigation-icon',
+  )
+  expect(activity).toHaveClass('size-5', 'bg-current')
+  expect(activity.style.maskImage).toMatch(/^url\(/)
+  expect(activity.style.maskImage).not.toBe(audit.style.maskImage)
+})
+
+it.each(['ADMIN', 'USER'] as const)(
+  'keeps the complete AI support flow available to %s through its floating button',
+  async (profile) => {
+    role = profile
+    saveLoginToken(`header.${btoa(JSON.stringify({ account_type: profile }))}.signature`)
+    const previous = backend
+    backend = async (url) =>
+      url === '/v1/support/chat'
+        ? new Response(
+            JSON.stringify({
+              reply: 'Você pode reconfigurar o autenticador em Configurações.',
+              provider: 'vstable-assistant',
+              suggestedQuestions: [],
+              timestamp: '2026-11-18T12:00:00Z',
+            }),
+          )
+        : previous(url)
+    renderRoute(profile === 'ADMIN' ? '/admin/clientes-pme' : '/app/beneficiarios')
+    const nav = await screen.findByRole('navigation')
+    expect(within(nav).queryByRole('button', { name: 'Suporte' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('button', { name: 'Abrir suporte IA' })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir suporte IA' }))
+    const chat = screen.getByRole('region', { name: 'Assistente de Suporte V-Stable' })
+    await userEvent.type(
+      within(chat).getByPlaceholderText('Digite sua dúvida sobre a V-Stable...'),
+      'Como reconfigurar meu autenticador?',
+    )
+    await userEvent.click(within(chat).getByRole('button', { name: 'Enviar' }))
+
+    expect(
+      await within(chat).findByText('Você pode reconfigurar o autenticador em Configurações.'),
+    ).toBeVisible()
+    const request = mock.mock.calls.find(([url]) => url === '/v1/support/chat')
+    expect(request?.[1]).toMatchObject({
+      method: 'POST',
+      body: JSON.stringify({ message: 'Como reconfigurar meu autenticador?', history: [] }),
+    })
+    expect(new Headers(request?.[1].headers).get('Authorization')).toBe(`Bearer ${getLoginToken()}`)
+    await userEvent.keyboard('{Escape}')
+    expect(
+      screen.queryByRole('region', { name: 'Assistente de Suporte V-Stable' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Abrir suporte IA' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  },
+)
+
+it('opens administrative security requests from Settings and returns with Settings selected', async () => {
+  role = 'ADMIN'
+  saveLoginToken(`header.${btoa(JSON.stringify({ account_type: 'ADMIN' }))}.signature`)
+  const previous = backend
+  backend = async (url) =>
+    url === '/v1/admin/2fa-recovery-requests' ? new Response('[]') : previous(url)
+  renderRoute('/admin/clientes-pme')
+  const nav = await screen.findByRole('navigation')
+
+  await userEvent.click(within(nav).getByRole('button', { name: 'Configurações' }))
+  const security = await screen.findByRole('region', { name: 'Segurança' })
+  expect(within(security).getByRole('heading', { name: 'Solicitações de Segurança' })).toBeVisible()
+  expect(mock.mock.calls.some(([url]) => String(url).includes('/2fa-recovery-requests'))).toBe(
+    false,
+  )
+  await userEvent.click(within(security).getByRole('link', { name: 'Ver solicitações' }))
+
+  expect(
+    await screen.findByRole('heading', { name: 'Solicitações de Segurança (Reset de 2FA)' }),
+  ).toBeVisible()
+  expect(
+    await screen.findByText('Nenhuma solicitação encontrada para o filtro selecionado.'),
+  ).toBeVisible()
+  expect(screen.getByTestId('location')).toHaveTextContent(
+    '/app/configuracoes/solicitacoes-seguranca',
+  )
+  expect(within(nav).getByRole('button', { name: 'Configurações' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  expect(screen.getByRole('button', { name: 'Abrir suporte IA' })).toBeEnabled()
+
+  await userEvent.click(screen.getByRole('link', { name: 'Voltar para Configurações' }))
+  expect(await screen.findByRole('heading', { name: 'Configurações da Conta' })).toBeVisible()
+  expect(within(nav).getByRole('button', { name: 'Configurações' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+})
+
+it('redirects the old admin security URL to Settings while preserving its query', async () => {
+  role = 'ADMIN'
+  saveLoginToken(`header.${btoa(JSON.stringify({ account_type: 'ADMIN' }))}.signature`)
+  const previous = backend
+  backend = async (url) =>
+    url === '/v1/admin/2fa-recovery-requests' ? new Response('[]') : previous(url)
+  renderRoute('/admin/solicitacoes-seguranca?filter=pending')
+
+  expect(
+    await screen.findByRole('heading', { name: 'Solicitações de Segurança (Reset de 2FA)' }),
+  ).toBeVisible()
+  expect(screen.getByTestId('location')).toHaveTextContent(
+    '/app/configuracoes/solicitacoes-seguranca?filter=pending',
+  )
+  expect(screen.getByRole('button', { name: 'Configurações' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+})
+
+it.each(['/admin/solicitacoes-seguranca', '/app/configuracoes/solicitacoes-seguranca'])(
+  'denies company accounts access to the security requests through %s',
+  async (path) => {
+    saveLoginToken('login')
+    renderRoute(path)
+    await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/dashboard')
+    expect(
+      screen.queryByRole('heading', { name: /Solicitações de Segurança/ }),
+    ).not.toBeInTheDocument()
+    expect(mock.mock.calls.some(([url]) => String(url).includes('/2fa-recovery-requests'))).toBe(
+      false,
+    )
+  },
+)
 it('paints every menu icon with the item text color, so only the selected one turns green', async () => {
   // Given a empresa logada no Dashboard
   saveLoginToken('login')
@@ -492,6 +654,10 @@ it('opens settings from the company menu', async () => {
   const nav = await screen.findByRole('navigation')
   await userEvent.click(within(nav).getByRole('button', { name: 'Configurações' }))
   expect(await screen.findByRole('heading', { name: 'Configurações da Conta' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Ver solicitações' })).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('heading', { name: 'Solicitações de Segurança' }),
+  ).not.toBeInTheDocument()
   expect(within(nav).getByRole('button', { name: 'Configurações' })).toHaveAttribute(
     'aria-current',
     'page',

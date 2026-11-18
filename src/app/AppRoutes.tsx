@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense } from 'react'
 import {
   Link,
   Navigate,
@@ -59,7 +59,7 @@ import beneficiariesIcon from '@/shared/assets/navigation/beneficiaries.svg'
 import clientsIcon from '@/shared/assets/navigation/clients.svg'
 import transfersIcon from '@/shared/assets/navigation/transfers.svg'
 import settingsIcon from '@/shared/assets/navigation/settings.svg'
-import supportIcon from '@/shared/assets/navigation/support.svg'
+import activityIcon from '@/shared/assets/navigation/activity.svg'
 import logoutIcon from '@/shared/assets/navigation/logout.svg'
 
 // Ações das telas de bloqueio da conta: o usuário sempre pode tentar de novo ou sair.
@@ -204,7 +204,6 @@ function RoutedApplication() {
   const { user, company } = useSession()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const [supportChatOpen, setSupportChatOpen] = useState(false)
   const admin = isStoredAdmin()
   // O SVG vira máscara e a cor vem do texto do item: cinza no inativo, verde no selecionado.
   const icon = (src: string) => (
@@ -230,9 +229,7 @@ function RoutedApplication() {
   const items: NavigationItem[] = admin
     ? [
         item('dashboard', 'Dashboard', PATHS.ADMIN_DASHBOARD, homeIcon),
-        item('observability', 'Observability', PATHS.ADMIN_OBSERVABILITY, transfersIcon),
         item('clients', 'Clientes PME', PATHS.ADMIN_CLIENTS, clientsIcon),
-        item('security-requests', 'Solicitações de Segurança', PATHS.ADMIN_SECURITY, supportIcon),
         {
           id: 'audit',
           label: 'Auditoria',
@@ -247,6 +244,7 @@ function RoutedApplication() {
             ),
           ],
         },
+        item('observability', 'Observability', PATHS.ADMIN_OBSERVABILITY, activityIcon),
       ]
     : user?.companyAccess?.status === 'REMOVED' && !user.companyId
       ? // Sem empresa após a remoção: resta apenas a consulta do próprio acesso.
@@ -263,33 +261,26 @@ function RoutedApplication() {
             : []),
           item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
         ]
-  items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
   const footerItems: NavigationItem[] = [
-    {
-      id: 'support',
-      label: 'Suporte',
-      icon: icon(supportIcon),
-      onClick: () => setSupportChatOpen((open) => !open),
-    },
+    item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon),
     { id: 'logout', label: 'Sair', icon: icon(logoutIcon), onClick: clearLoginToken },
   ]
-  const activeId = pathname.startsWith(PATHS.SETTINGS)
-    ? 'settings'
-    : pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
-      ? 'dashboard'
-      : admin
-        ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
-          ? 'admin-transfers'
-          : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
-            ? 'admin-beneficiaries'
-            : pathname.startsWith(PATHS.ADMIN_SECURITY)
-              ? 'security-requests'
+  const activeId =
+    pathname.startsWith(PATHS.SETTINGS) || pathname.startsWith(PATHS.ADMIN_SECURITY)
+      ? 'settings'
+      : pathname === PATHS.DASHBOARD || pathname === PATHS.ADMIN_DASHBOARD
+        ? 'dashboard'
+        : admin
+          ? pathname.startsWith(PATHS.ADMIN_TRANSFERS)
+            ? 'admin-transfers'
+            : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
+              ? 'admin-beneficiaries'
               : 'clients'
-        : pathname.startsWith('/app/transferencias')
-          ? 'transfers'
-          : pathname.startsWith(PATHS.MEMBERS)
-            ? 'members'
-            : 'beneficiaries'
+          : pathname.startsWith('/app/transferencias')
+            ? 'transfers'
+            : pathname.startsWith(PATHS.MEMBERS)
+              ? 'members'
+              : 'beneficiaries'
   const selectedId = pathname.startsWith(PATHS.ADMIN_OBSERVABILITY)
     ? 'observability'
     : pathname === PATHS.MOCK_TOP_UP
@@ -331,7 +322,7 @@ function RoutedApplication() {
       }
     >
       <Outlet />
-      <SupportChatWidget open={supportChatOpen} onOpenChange={setSupportChatOpen} />
+      <SupportChatWidget />
     </ApplicationShell>
   )
 }
@@ -367,6 +358,50 @@ function BlindPayComplementRoute({ previewOnly = false }: { previewOnly?: boolea
   )
 }
 
+function SettingsRoute() {
+  const admin = isStoredAdmin()
+  return (
+    <Settings
+      blindPayAccess={admin ? undefined : <BlindPayKycAccess variant="settings" />}
+      securityRequestsAccess={
+        admin ? (
+          <div className="flex flex-col justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-center">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800">Solicitações de Segurança</h3>
+              <p className="mt-1 max-w-md text-sm text-slate-500">
+                Analise pedidos de recuperação de acesso de usuários que perderam o autenticador e
+                os códigos de emergência.
+              </p>
+            </div>
+            <Link
+              to={PATHS.SETTINGS_SECURITY_REQUESTS}
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-primary px-6 py-3 text-center text-base text-primary transition-colors hover:bg-primary-hover hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              Ver solicitações
+            </Link>
+          </div>
+        ) : undefined
+      }
+    />
+  )
+}
+
+function SecurityRequestsRoute() {
+  return (
+    <>
+      <div className="mx-auto w-full max-w-6xl px-6 pt-6">
+        <Link
+          to={PATHS.SETTINGS}
+          className="inline-flex min-h-11 items-center rounded-lg text-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          Voltar para Configurações
+        </Link>
+      </div>
+      <AdminSecurityRequests />
+    </>
+  )
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -388,7 +423,11 @@ export default function AppRoutes() {
           <Route path={PATHS.ADMIN_CLIENTS} element={<AdminClients />} />
           <Route path={PATHS.ADMIN_TRANSFERS} element={<AdminTransfers />} />
           <Route path={PATHS.ADMIN_BENEFICIARIES} element={<BeneficiaryView />} />
-          <Route path={PATHS.ADMIN_SECURITY} element={<AdminSecurityRequests />} />
+          <Route path={PATHS.SETTINGS_SECURITY_REQUESTS} element={<SecurityRequestsRoute />} />
+          <Route
+            path={PATHS.ADMIN_SECURITY}
+            element={<LegacyRedirect to={PATHS.SETTINGS_SECURITY_REQUESTS} />}
+          />
         </Route>
       </Route>
       <Route element={<RoleGuard role="USER" />}>
@@ -422,16 +461,7 @@ export default function AppRoutes() {
       </Route>
       <Route element={<RoleGuard />}>
         <Route element={<RoutedApplication />}>
-          <Route
-            path={PATHS.SETTINGS}
-            element={
-              <Settings
-                blindPayAccess={
-                  isStoredAdmin() ? undefined : <BlindPayKycAccess variant="settings" />
-                }
-              />
-            }
-          />
+          <Route path={PATHS.SETTINGS} element={<SettingsRoute />} />
         </Route>
         <Route path={PATHS.COMPANY_SETUP} element={<CompanySetupRoute />} />
         <Route path={PATHS.BLINDPAY_KYC} element={<BlindPayComplementRoute />} />
