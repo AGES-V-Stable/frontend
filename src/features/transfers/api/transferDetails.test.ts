@@ -71,6 +71,7 @@ describe('transferDetails service', () => {
       expect(options.headers).toEqual({
         Accept: 'application/json',
         Authorization: 'Bearer token-value',
+        'X-Request-ID': expect.any(String),
       })
     })
 
@@ -201,6 +202,7 @@ describe('transferDetails service', () => {
       expect(options.headers).toEqual({
         Accept: 'application/pdf',
         Authorization: 'Bearer token-value',
+        'X-Request-ID': expect.any(String),
       })
       expect(file.fileName).toBe('comprovante-transferencia.pdf')
       expect(file.blob.size).toBeGreaterThan(0)

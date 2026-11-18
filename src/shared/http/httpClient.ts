@@ -1,10 +1,17 @@
 import { env } from '@/shared/schemas/env'
 import { getAccessToken, getLoginToken, invalidateToken, notifyAccessDenied } from './authToken'
+import {
+  correlationId,
+  markObserved,
+  moduleForPath,
+  reportBrowserEvent,
+} from '@/shared/observability/browserTelemetry'
 
 export class ApiError extends Error {
   readonly status: number
   readonly code?: string
   readonly body?: unknown
+  correlationId?: string
   constructor(status: number, message: string, code?: string, body?: unknown) {
     super(message)
     this.name = 'ApiError'
@@ -73,6 +80,12 @@ export async function httpResponse(
       : (getLoginToken() ?? getAccessToken())
     : null
   const headers = new Headers(options.headers)
+  const suppliedId = headers.get('X-Request-ID')
+  const requestId =
+    suppliedId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(suppliedId)
+      ? suppliedId
+      : correlationId()
+  headers.set('X-Request-ID', requestId)
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type'))
     headers.set('Content-Type', 'application/json')
   if (token) headers.set('Authorization', `Bearer ${token}`)
@@ -87,6 +100,7 @@ export async function httpResponse(
               authorization: 'Authorization',
               'content-type': 'Content-Type',
               accept: 'Accept',
+              'x-request-id': 'X-Request-ID',
             } as Record<string, string>
           )[key] ?? key,
           value,
@@ -99,7 +113,16 @@ export async function httpResponse(
       ((error instanceof Error || error instanceof DOMException) && error.name === 'AbortError')
     )
       throw error
-    throw new HttpError('Não foi possível conectar ao servidor.', 0, undefined, 'NETWORK_ERROR')
+    reportBrowserEvent('NETWORK_FAILURE', moduleForPath(path), requestId, error)
+    const failure = new HttpError(
+      'Não foi possível conectar ao servidor.',
+      0,
+      undefined,
+      'NETWORK_ERROR',
+    )
+    failure.correlationId = requestId
+    markObserved(failure)
+    throw failure
   }
   if (!response.ok) {
     const text = await response.text().catch(() => '')
@@ -114,7 +137,7 @@ export async function httpResponse(
     if (response.status === 401 && token && isRejectedToken(record.code)) invalidateToken(token)
     if (response.status === 403 && token && ACCESS_CHANGE_CODES.has(String(record.code)))
       notifyAccessDenied()
-    throw new HttpError(
+    const failure = new HttpError(
       typeof record.message === 'string'
         ? record.message
         : 'Não foi possível concluir a solicitação. Tente novamente.',
@@ -123,6 +146,10 @@ export async function httpResponse(
       typeof record.code === 'string' ? record.code : undefined,
       parseRetryAfter(response.headers?.get('Retry-After') ?? null),
     )
+    failure.correlationId = response.headers?.get('X-Request-ID') ?? requestId
+    // HTTP failures are already recorded by the backend, including their real outcome.
+    markObserved(failure)
+    throw failure
   }
   return response
 }
@@ -139,11 +166,16 @@ export async function httpRequest<T>(
   try {
     return JSON.parse(text) as T
   } catch {
-    throw new HttpError(
+    const id = response.headers?.get('X-Request-ID') ?? correlationId()
+    reportBrowserEvent('INVALID_RESPONSE', moduleForPath(path), id)
+    const failure = new HttpError(
       'Formato inválido retornado pela API',
       response.status,
       undefined,
       'INVALID_RESPONSE',
     )
+    failure.correlationId = id
+    markObserved(failure)
+    throw failure
   }
 }

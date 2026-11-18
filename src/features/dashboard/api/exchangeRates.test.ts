@@ -31,7 +31,9 @@ describe('getExchangeRates', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/v1/exchange-rates',
-      expect.objectContaining({ headers: { Authorization: 'Bearer login' } }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer login' }),
+      }),
     )
   })
 

@@ -65,11 +65,21 @@ export function NavBar({ logo, items, activeId, account, footerItems }: NavBarPr
       aria-label="Menu da conta"
     >
       <div className="flex h-[108px] shrink-0 items-center justify-center p-6">{logo}</div>
-      <nav aria-label="Navegação principal" className="min-h-0 flex-1 overflow-y-auto pr-3">
-        <ul className="flex flex-col gap-3">{items.map((item) => button(item))}</ul>
+      <nav aria-label="Navegação principal" className="flex min-h-0 flex-1 flex-col">
+        <ul
+          aria-label="Seções da conta"
+          className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-3"
+        >
+          {items.map((item) => button(item))}
+        </ul>
+        <ul
+          aria-label="Ações da conta"
+          className="flex shrink-0 flex-col gap-3 pb-4 pt-[15px] pr-3"
+        >
+          {footerItems.map((item) => button(item))}
+        </ul>
       </nav>
-      <div className="pb-[15px] pt-[15px]">
-        <ul className="mb-4 flex flex-col gap-3 pr-3">{footerItems.map((item) => button(item))}</ul>
+      <div className="pb-[15px]">
         <div className="flex items-center gap-3 border-t border-sage-300 px-4 pb-2.5 pt-[11px]">
           <span
             aria-hidden="true"
