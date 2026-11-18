@@ -14,6 +14,7 @@ import {
   YAxis,
 } from 'recharts'
 import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
+import { MockTopUpModal } from '@/features/dashboard/components/MockTopUpModal'
 import { useSession } from '@/features/auth'
 import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
 import topUpIcon from '@/shared/assets/navigation/top-up.svg'
@@ -26,7 +27,7 @@ import { useBalance } from '@/features/dashboard/hooks/useBalance'
 import { useExchangeRates } from '@/features/dashboard/hooks/useExchangeRates'
 import { useTransactionVolume } from '@/features/dashboard/hooks/useTransactionVolume'
 import { StatusBadge, Table, type StatusVariant } from '@/shared/components/Table'
-import { PATHS, adminTransferDetailsPath, transferDetailsPath } from '@/shared/navigation/paths'
+import { adminTransferDetailsPath, transferDetailsPath } from '@/shared/navigation/paths'
 import { formatMoneyString, formatDateTime } from '@/shared/utils/formatters'
 import {
   getDashboard,
@@ -115,13 +116,14 @@ const card = 'rounded-xl border border-sage-300 bg-white p-5'
 function ClientBalanceCard() {
   const { state, retry } = useBalance()
   const { user } = useSession()
-  const navigate = useNavigate()
-  // Atalho para a mesma página do item "Adicionar saldo" do menu; só o proprietário pode creditar.
+  const [toppingUp, setToppingUp] = useState(false)
+  // Só o proprietário pode creditar; o modal usa o mesmo saldo do card, que atualiza junto.
   const action = canAddSimulatedBalance(user) ? (
     <button
       type="button"
       aria-label="Adicionar saldo"
-      onClick={() => void navigate(PATHS.MOCK_TOP_UP)}
+      aria-haspopup="dialog"
+      onClick={() => setToppingUp(true)}
       className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-primary px-2.5 text-[13px] font-medium text-primary transition-colors hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       <span
@@ -138,7 +140,18 @@ function ClientBalanceCard() {
       Adicionar
     </button>
   ) : undefined
-  return <BalanceCard state={state} onRetry={retry} action={action} />
+  return (
+    <>
+      <BalanceCard state={state} onRetry={retry} action={action} />
+      {toppingUp && (
+        <MockTopUpModal
+          balance={state}
+          refreshBalance={retry}
+          onClose={() => setToppingUp(false)}
+        />
+      )}
+    </>
+  )
 }
 
 // Cotações globais: iguais para cliente e administrador e independentes dos filtros.

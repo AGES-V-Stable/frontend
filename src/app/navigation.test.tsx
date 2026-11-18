@@ -157,10 +157,11 @@ it('paints every menu icon with the item text color, so only the selected one tu
   saveLoginToken('login')
   renderRoute()
   const nav = await screen.findByRole('navigation')
+  // O menu aparece antes de a sessão terminar de carregar; espera o item atual ser marcado
+  const dashboard = await within(nav).findByRole('button', { name: 'Dashboard', current: 'page' })
+  const members = await within(nav).findByRole('button', { name: 'Membros' })
 
   // Then cada ícone usa o SVG como máscara e herda a cor do texto do próprio item
-  const dashboard = within(nav).getByRole('button', { name: 'Dashboard' })
-  const members = within(nav).getByRole('button', { name: 'Membros' })
   for (const button of [dashboard, members]) {
     const icon = within(button).getByTestId('navigation-icon')
     expect(icon).toHaveClass('bg-current')
@@ -174,8 +175,8 @@ it('gives Adicionar saldo its own coins icon instead of repeating the Dashboard 
   saveLoginToken('login')
   renderRoute()
   const nav = await screen.findByRole('navigation')
-  const topUp = within(nav).queryByRole('button', { name: 'Adicionar saldo' })
-  if (!topUp) throw new Error('o usuário do teste deveria ver Adicionar saldo')
+  // O item depende das permissões da sessão, que chegam depois do menu
+  const topUp = await within(nav).findByRole('button', { name: 'Adicionar saldo' })
 
   // Then o ícone é o de moedas, diferente do ícone do Dashboard
   const icon = (button: HTMLElement) =>

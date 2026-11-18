@@ -371,27 +371,71 @@ it('shows balance and transacted volume beside the accumulated savings for the c
   ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado', 'Câmbio Atual'])
 })
 
-it('gives the owner an Adicionar shortcut with the coins icon in the balance card', async () => {
-  // Given a proprietária no Dashboard
+it('opens the Adicionar saldo modal from the balance card and updates the card after the credit', async () => {
+  // Given a proprietária no Dashboard, com saldo de R$ 25.000,00
   givenSession(sessionUser('OWNER'))
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string) => reply(url)),
-  )
+  let balance = '25000.00'
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === '/v1/balance/mock-top-ups') {
+      balance = '25020.50'
+      return new Response(
+        JSON.stringify({ creditedAmountBrl: '20.50', availableBalanceBrl: balance }),
+      )
+    }
+    if (url.startsWith('/v1/balance')) {
+      return new Response(JSON.stringify({ availableBalanceBrl: balance }))
+    }
+    return reply(url)
+  })
+  vi.stubGlobal('fetch', fetcher)
   renderDashboard()
   expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
 
-  // Then o card de saldo tem o atalho, com o ícone de moedas e o nome completo para o leitor de tela
-  const balance = screen.getByRole('region', { name: 'Saldo Disponível' })
-  const shortcut = within(balance).getByRole('button', { name: 'Adicionar saldo' })
-  expect(shortcut).toHaveTextContent('Adicionar')
+  // When ela usa o atalho do card, que tem o ícone de moedas
+  const balanceCard = screen.getByRole('region', { name: 'Saldo Disponível' })
+  const shortcut = within(balanceCard).getByRole('button', { name: 'Adicionar saldo' })
   expect(within(shortcut).getByTestId('top-up-icon')).toHaveAttribute('aria-hidden', 'true')
-
-  // When ela usa o atalho
+  shortcut.focus()
   fireEvent.click(shortcut)
 
-  // Then vai para a mesma página do item Adicionar saldo do menu
-  expect(screen.getByLabelText('Rota atual')).toHaveTextContent('/app/saldo/adicionar')
+  // Then o modal abre na própria tela, sem trocar de página
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo' })
+  expect(screen.getByLabelText('Rota atual')).toHaveTextContent(/^\/dashboard$/)
+
+  // When ela confirma um crédito de R$ 20,50
+  fireEvent.change(within(modal).getByLabelText('Valor a adicionar (R$)'), {
+    target: { value: '20,50' },
+  })
+  fireEvent.click(within(modal).getByRole('button', { name: 'Confirmar crédito simulado' }))
+
+  // Then o modal confirma, e o card do Dashboard mostra o saldo novo
+  expect(await within(modal).findByRole('status')).toHaveTextContent('Crédito simulado de R$ 20,50')
+  expect(await within(balanceCard).findByText('R$ 25.020,50')).toBeInTheDocument()
+
+  // When ela fecha o modal
+  fireEvent.click(within(modal).getByRole('button', { name: 'Fechar' }))
+
+  // Then o modal some e o foco volta para o atalho
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(shortcut).toHaveFocus()
+})
+
+it('closes the Adicionar saldo modal with Cancelar without crediting anything', async () => {
+  // Given o modal aberto pela proprietária
+  givenSession(sessionUser('OWNER'))
+  const fetcher = vi.fn(async (url: string) => reply(url))
+  vi.stubGlobal('fetch', fetcher)
+  renderDashboard()
+  expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo' })
+
+  // When ela cancela
+  fireEvent.click(within(modal).getByRole('button', { name: 'Cancelar' }))
+
+  // Then o modal fecha e nenhum crédito é enviado
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(fetcher).not.toHaveBeenCalledWith('/v1/balance/mock-top-ups', expect.anything())
 })
 
 it.each(['OPERATOR', 'VIEWER'] as const)(
