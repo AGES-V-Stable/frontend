@@ -1,6 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HttpError, httpRequest } from '@/shared/http/httpClient'
-import { SupportChatRateLimitError, sendSupportChatMessage } from './supportChat'
+import {
+  SupportChatRateLimitError,
+  isSupportChatEnabled,
+  sendSupportChatMessage,
+} from './supportChat'
 
 vi.mock('@/shared/http/httpClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/shared/http/httpClient')>()
@@ -147,5 +151,30 @@ describe('sendSupportChatMessage', () => {
     const request = sendSupportChatMessage({ message: 'Oi' }, controller.signal)
     controller.abort()
     await expect(request).rejects.toMatchObject({ name: 'AbortError' })
+  })
+})
+
+describe('isSupportChatEnabled', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('returns true when flag is undefined or set to true', () => {
+    expect(isSupportChatEnabled(undefined)).toBe(true)
+    expect(isSupportChatEnabled('true')).toBe(true)
+    expect(isSupportChatEnabled('')).toBe(true)
+  })
+
+  it('returns false when flag is false', () => {
+    expect(isSupportChatEnabled('false')).toBe(false)
+    expect(isSupportChatEnabled('FALSE')).toBe(false)
+  })
+
+  it('reads VITE_SUPPORT_CHAT_ENABLED from import.meta.env by default', () => {
+    vi.stubEnv('VITE_SUPPORT_CHAT_ENABLED', 'false')
+    expect(isSupportChatEnabled()).toBe(false)
+
+    vi.stubEnv('VITE_SUPPORT_CHAT_ENABLED', 'true')
+    expect(isSupportChatEnabled()).toBe(true)
   })
 })

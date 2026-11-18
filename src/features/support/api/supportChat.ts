@@ -20,6 +20,12 @@ export interface SupportChatResponse {
 export const SUPPORT_CHAT_MAX_REQUESTS_PER_MINUTE = 15
 export const SUPPORT_CHAT_RATE_LIMIT_WINDOW_MS = 60_000
 
+export function isSupportChatEnabled(
+  value: string | undefined = import.meta.env.VITE_SUPPORT_CHAT_ENABLED,
+): boolean {
+  return value?.trim().toLowerCase() !== 'false'
+}
+
 const SUPPORT_CHAT_TIMEOUT_MS = 20_000
 const SUPPORT_CHAT_RATE_LIMIT_FALLBACK_SECONDS = 60
 
