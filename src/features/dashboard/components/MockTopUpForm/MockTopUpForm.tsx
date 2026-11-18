@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { formatBrl } from '@/features/dashboard/hooks/useMockTopUp'
 import type { MockTopUpController } from '@/features/dashboard/hooks/useMockTopUp'
 import { Button } from '@/shared/components/Button'
@@ -7,30 +6,20 @@ import { Input } from '@/shared/components/Input'
 export interface MockTopUpFormProps {
   topUp: MockTopUpController
   balanceReady: boolean
-  /** Título do formulário; o modal não usa, porque o título dele já nomeia a ação. */
-  heading?: ReactNode
   secondaryLabel: string
   onSecondary: () => void
-  className?: string
 }
 
-/** Campos, prévia e ações do crédito simulado, iguais na página e no modal. */
+/** Campos, prévia e ações do crédito simulado dentro do modal de Adicionar saldo. */
 export function MockTopUpForm({
   topUp,
   balanceReady,
-  heading,
   secondaryLabel,
   onSecondary,
-  className = '',
 }: MockTopUpFormProps) {
   const { credit, projected, error, success, submitting, requiresReconciliation } = topUp
   return (
-    <form
-      noValidate
-      onSubmit={(event) => void topUp.submit(event)}
-      className={`flex flex-col gap-5 ${className}`}
-    >
-      {heading}
+    <form noValidate onSubmit={(event) => void topUp.submit(event)} className="flex flex-col gap-5">
       <Input
         label="Valor a adicionar (R$)"
         value={topUp.amount}

@@ -11,7 +11,7 @@ export interface MockTopUpModalProps {
   onClose: () => void
 }
 
-/** A tela de Adicionar saldo como diálogo, aberto pelo atalho do card de saldo. */
+/** Adicionar saldo: diálogo aberto pelo atalho do card de saldo do Dashboard. */
 export function MockTopUpModal({ balance, refreshBalance, onClose }: MockTopUpModalProps) {
   const titleId = useId()
   const descriptionId = useId()
@@ -41,8 +41,15 @@ export function MockTopUpModal({ balance, refreshBalance, onClose }: MockTopUpMo
           </span>
         )}
         {balance.status === 'error' && (
-          <span role="alert" className="text-sm text-slate-700">
+          <span role="alert" className="flex flex-col items-end gap-1 text-sm text-slate-700">
             {balance.message}
+            <button
+              type="button"
+              onClick={refreshBalance}
+              className="cursor-pointer font-medium text-emerald-700 underline focus-visible:outline-2 focus-visible:outline-emerald-700"
+            >
+              Tentar carregar novamente
+            </button>
           </span>
         )}
         {balance.status === 'ready' && (

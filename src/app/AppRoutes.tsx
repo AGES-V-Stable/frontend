@@ -29,8 +29,6 @@ import { BeneficiaryCreate } from '@/features/beneficiaries/pages/client/benefic
 import { TransferCreate } from '@/features/transfers/pages/client/transferCreate'
 import { TransferDetails } from '@/features/transfers/pages/client/transferDetails'
 import { Members } from '@/features/members/pages/Members'
-import { MockTopUp } from '@/features/dashboard/pages/MockTopUp/MockTopUp'
-import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
 import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
@@ -53,7 +51,6 @@ import { NavBar } from './components/NavBar'
 import type { NavigationItem } from './components/NavBar'
 import logo from '@/shared/assets/navigation/logo.png'
 import homeIcon from '@/shared/assets/navigation/home.svg'
-import topUpIcon from '@/shared/assets/navigation/top-up.svg'
 import beneficiariesIcon from '@/shared/assets/navigation/beneficiaries.svg'
 import clientsIcon from '@/shared/assets/navigation/clients.svg'
 import membersIcon from '@/shared/assets/navigation/members.svg'
@@ -252,9 +249,6 @@ function RoutedApplication() {
         [item('members', 'Membros', PATHS.MEMBERS, membersIcon)]
       : [
           item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
-          ...(canAddSimulatedBalance(user)
-            ? [item('mock-top-up', 'Adicionar saldo', PATHS.MOCK_TOP_UP, topUpIcon)]
-            : []),
           item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
           // O item abre a criação de transferência: só aparece para quem pode criar.
           ...(hasCompanyPermission(user, 'TRANSFER_CREATE')
@@ -289,7 +283,6 @@ function RoutedApplication() {
           : pathname.startsWith(PATHS.MEMBERS)
             ? 'members'
             : 'beneficiaries'
-  const selectedId = pathname === PATHS.MOCK_TOP_UP ? 'mock-top-up' : activeId
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -319,7 +312,7 @@ function RoutedApplication() {
         <NavBar
           logo={<img src={logo} alt="V-Stable" className="h-[60px] w-[149px] object-contain" />}
           items={items}
-          activeId={selectedId}
+          activeId={activeId}
           account={account}
           footerItems={footerItems}
         />
@@ -388,7 +381,6 @@ export default function AppRoutes() {
       <Route element={<RoleGuard role="USER" />}>
         <Route element={<RoutedApplication />}>
           <Route path={PATHS.DASHBOARD} element={<DashboardRoute />} />
-          <Route path={PATHS.MOCK_TOP_UP} element={<MockTopUp />} />
           <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
           <Route
             element={

@@ -15,7 +15,7 @@ export const formatBrl = (value: string | null) =>
   (value === null ? null : formatMoneyString(value, 'BRL')) ?? 'Indisponível'
 
 /**
- * Regras do crédito simulado, usadas pela página e pelo modal de Adicionar saldo.
+ * Regras do crédito simulado do modal de Adicionar saldo.
  * Só o servidor autoriza a mudança de saldo; a tela só atualiza depois da confirmação dele.
  */
 export function useMockTopUp(balance: BalanceState, refreshBalance: () => void) {
