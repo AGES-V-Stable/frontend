@@ -185,6 +185,23 @@ it('gives Adicionar saldo its own coins icon instead of repeating the Dashboard 
   expect(icon(topUp)).toContain('ellipse')
   expect(icon(topUp)).not.toBe(icon(within(nav).getByRole('button', { name: 'Dashboard' })))
 })
+it('gives Beneficiários and Membros different icons: a person receiving and two people', async () => {
+  // Given a empresa logada
+  saveLoginToken('login')
+  renderRoute()
+  const nav = await screen.findByRole('navigation')
+  const beneficiaries = await within(nav).findByRole('button', { name: 'Beneficiários' })
+  const members = await within(nav).findByRole('button', { name: 'Membros' })
+
+  // Then os dois ícones são desenhos diferentes
+  const icon = (button: HTMLElement) =>
+    within(button).getByTestId('navigation-icon').style.maskImage
+  expect(icon(beneficiaries)).not.toBe(icon(members))
+  // And o de Membros tem duas pessoas (dois círculos de cabeça); o de Beneficiários, uma
+  const heads = (button: HTMLElement) => (icon(button).match(/circle/g) ?? []).length
+  expect(heads(members)).toBe(2)
+  expect(heads(beneficiaries)).toBe(1)
+})
 it('opens the company dashboard from the Dashboard item, with balance and transacted volume', async () => {
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')

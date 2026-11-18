@@ -56,6 +56,7 @@ import homeIcon from '@/shared/assets/navigation/home.svg'
 import topUpIcon from '@/shared/assets/navigation/top-up.svg'
 import beneficiariesIcon from '@/shared/assets/navigation/beneficiaries.svg'
 import clientsIcon from '@/shared/assets/navigation/clients.svg'
+import membersIcon from '@/shared/assets/navigation/members.svg'
 import transfersIcon from '@/shared/assets/navigation/transfers.svg'
 import settingsIcon from '@/shared/assets/navigation/settings.svg'
 import supportIcon from '@/shared/assets/navigation/support.svg'
@@ -248,7 +249,7 @@ function RoutedApplication() {
       ]
     : user?.companyAccess?.status === 'REMOVED' && !user.companyId
       ? // Sem empresa após a remoção: resta apenas a consulta do próprio acesso.
-        [item('members', 'Membros', PATHS.MEMBERS, clientsIcon)]
+        [item('members', 'Membros', PATHS.MEMBERS, membersIcon)]
       : [
           item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
           ...(canAddSimulatedBalance(user)
@@ -259,7 +260,7 @@ function RoutedApplication() {
           ...(hasCompanyPermission(user, 'TRANSFER_CREATE')
             ? [item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon)]
             : []),
-          item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
+          item('members', 'Membros', PATHS.MEMBERS, membersIcon),
         ]
   items.push(item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon))
   const footerItems: NavigationItem[] = [
