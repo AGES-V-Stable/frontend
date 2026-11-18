@@ -1,7 +1,6 @@
 export const PATHS = {
   HOME: '/',
   DASHBOARD: '/app/dashboard',
-  MOCK_TOP_UP: '/app/saldo/adicionar',
   ADMIN_DASHBOARD: '/admin/dashboard',
   LOGIN: '/login',
   REGISTER: '/register',

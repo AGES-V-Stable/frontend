@@ -14,6 +14,10 @@ import {
   YAxis,
 } from 'recharts'
 import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
+import { MockTopUpModal } from '@/features/dashboard/components/MockTopUpModal'
+import { useSession } from '@/features/auth'
+import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
+import topUpIcon from '@/shared/assets/navigation/top-up.svg'
 import { MetricCard } from '@/features/dashboard/components/MetricCard'
 import { SettlementDrawer } from '@/features/dashboard/components/SettlementDrawer'
 import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
@@ -111,8 +115,43 @@ const card = 'rounded-xl border border-sage-300 bg-white p-5'
 
 function ClientBalanceCard() {
   const { state, retry } = useBalance()
-  // O crédito de saldo fica na página própria, aberta pelo item "Adicionar saldo" do menu.
-  return <BalanceCard state={state} onRetry={retry} />
+  const { user } = useSession()
+  const [toppingUp, setToppingUp] = useState(false)
+  // Só o proprietário pode creditar; o modal usa o mesmo saldo do card, que atualiza junto.
+  const action = canAddSimulatedBalance(user) ? (
+    <button
+      type="button"
+      aria-label="Adicionar saldo"
+      aria-haspopup="dialog"
+      onClick={() => setToppingUp(true)}
+      className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-primary px-2.5 text-[13px] font-medium text-primary transition-colors hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
+      <span
+        aria-hidden="true"
+        data-testid="top-up-icon"
+        className="block size-4 bg-current"
+        style={{
+          maskImage: `url("${topUpIcon}")`,
+          maskSize: 'contain',
+          maskRepeat: 'no-repeat',
+          maskPosition: 'center',
+        }}
+      />
+      Adicionar
+    </button>
+  ) : undefined
+  return (
+    <>
+      <BalanceCard state={state} onRetry={retry} action={action} />
+      {toppingUp && (
+        <MockTopUpModal
+          balance={state}
+          refreshBalance={retry}
+          onClose={() => setToppingUp(false)}
+        />
+      )}
+    </>
+  )
 }
 
 // Cotações globais: iguais para cliente e administrador e independentes dos filtros.

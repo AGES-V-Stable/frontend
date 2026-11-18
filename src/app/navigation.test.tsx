@@ -157,10 +157,11 @@ it('paints every menu icon with the item text color, so only the selected one tu
   saveLoginToken('login')
   renderRoute()
   const nav = await screen.findByRole('navigation')
+  // O menu aparece antes de a sessão terminar de carregar; espera o item atual ser marcado
+  const dashboard = await within(nav).findByRole('button', { name: 'Dashboard', current: 'page' })
+  const members = await within(nav).findByRole('button', { name: 'Membros' })
 
   // Then cada ícone usa o SVG como máscara e herda a cor do texto do próprio item
-  const dashboard = within(nav).getByRole('button', { name: 'Dashboard' })
-  const members = within(nav).getByRole('button', { name: 'Membros' })
   for (const button of [dashboard, members]) {
     const icon = within(button).getByTestId('navigation-icon')
     expect(icon).toHaveClass('bg-current')
@@ -169,20 +170,22 @@ it('paints every menu icon with the item text color, so only the selected one tu
   expect(dashboard).toHaveClass('text-emerald-800')
   expect(members).toHaveClass('text-slate-500')
 })
-it('gives Adicionar saldo its own coins icon instead of repeating the Dashboard one', async () => {
-  // Given a proprietária da empresa logada, que vê o item Adicionar saldo
+it('gives Beneficiários and Membros different icons: a person receiving and two people', async () => {
+  // Given a empresa logada
   saveLoginToken('login')
   renderRoute()
   const nav = await screen.findByRole('navigation')
-  const topUp = within(nav).queryByRole('button', { name: 'Adicionar saldo' })
-  if (!topUp) throw new Error('o usuário do teste deveria ver Adicionar saldo')
+  const beneficiaries = await within(nav).findByRole('button', { name: 'Beneficiários' })
+  const members = await within(nav).findByRole('button', { name: 'Membros' })
 
-  // Then o ícone é o de moedas, diferente do ícone do Dashboard
+  // Then os dois ícones são desenhos diferentes
   const icon = (button: HTMLElement) =>
     within(button).getByTestId('navigation-icon').style.maskImage
-  // O SVG chega embutido no código; as moedas são as elipses do desenho
-  expect(icon(topUp)).toContain('ellipse')
-  expect(icon(topUp)).not.toBe(icon(within(nav).getByRole('button', { name: 'Dashboard' })))
+  expect(icon(beneficiaries)).not.toBe(icon(members))
+  // And o de Membros tem duas pessoas (dois círculos de cabeça); o de Beneficiários, uma
+  const heads = (button: HTMLElement) => (icon(button).match(/circle/g) ?? []).length
+  expect(heads(members)).toBe(2)
+  expect(heads(beneficiaries)).toBe(1)
 })
 it('opens the company dashboard from the Dashboard item, with balance and transacted volume', async () => {
   saveLoginToken('login')

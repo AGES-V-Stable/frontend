@@ -1,22 +1,22 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MockTopUp } from './MockTopUp'
+import { MockTopUpModal } from '@/features/dashboard/components/MockTopUpModal'
+import type { BalanceState } from '@/features/dashboard/hooks/useBalance'
 import { addMockTopUp } from '@/features/dashboard/api/balance'
-import { useBalance } from '@/features/dashboard/hooks/useBalance'
 import { useSession } from '@/features/auth'
 import { HttpError } from '@/shared/http/httpClient'
 
-const navigate = vi.fn()
-vi.mock('react-router', () => ({ useNavigate: () => navigate }))
 vi.mock('@/features/dashboard/api/balance', () => ({ addMockTopUp: vi.fn() }))
-vi.mock('@/features/dashboard/hooks/useBalance', () => ({ useBalance: vi.fn() }))
 vi.mock('@/features/auth', () => ({ useSession: vi.fn() }))
 
 const addCredit = vi.mocked(addMockTopUp)
 const session = vi.mocked(useSession)
-const balance = vi.mocked(useBalance)
 const retry = vi.fn()
+const onClose = vi.fn()
+let balanceState: BalanceState = { status: 'ready', balance: '2.50' }
+const renderModal = () =>
+  render(<MockTopUpModal balance={balanceState} refreshBalance={retry} onClose={onClose} />)
 
 function owner(role: 'OWNER' | 'OPERATOR' | 'VIEWER' = 'OWNER') {
   return {
@@ -40,9 +40,9 @@ function owner(role: 'OWNER' | 'OPERATOR' | 'VIEWER' = 'OWNER') {
 const amount = () => screen.getByRole('textbox', { name: 'Valor a adicionar (R$)' })
 const submit = () => screen.getByRole('button', { name: 'Confirmar crédito simulado' })
 
-describe('MockTopUp', () => {
+describe('MockTopUpModal', () => {
   beforeEach(() => {
-    navigate.mockReset()
+    onClose.mockReset()
     retry.mockReset()
     addCredit.mockReset()
     session.mockReturnValue({
@@ -52,11 +52,11 @@ describe('MockTopUp', () => {
       error: null,
       retry: vi.fn(),
     })
-    balance.mockReturnValue({ state: { status: 'ready', balance: '2.50' }, retry })
+    balanceState = { status: 'ready', balance: '2.50' }
   })
 
   it('shows server balance and simulated-credit warning', () => {
-    render(<MockTopUp />)
+    renderModal()
     expect(screen.getByRole('heading', { name: 'Adicionar saldo' })).toBeVisible()
     expect(screen.getByText(/nenhum pagamento ou transferência real/)).toBeVisible()
     expect(screen.getByText(/R\$\s*2,50/)).toBeVisible()
@@ -64,7 +64,7 @@ describe('MockTopUp', () => {
 
   it('shows precise projected amount and posts the pt-BR amount once', async () => {
     addCredit.mockResolvedValue({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' })
-    render(<MockTopUp />)
+    renderModal()
     await userEvent.type(amount(), '10,25')
     expect(screen.getByText(/R\$\s*12,75/)).toBeVisible()
     await userEvent.click(submit())
@@ -77,7 +77,7 @@ describe('MockTopUp', () => {
   it.each(['', '0', '-10', '1,234', '1.2', '10.000.00'])(
     'rejects invalid amount %s without making a request',
     async (invalid) => {
-      render(<MockTopUp />)
+      renderModal()
       if (invalid) await userEvent.type(amount(), invalid)
       await userEvent.click(submit())
       expect(screen.getByRole('alert')).toHaveTextContent('valor positivo')
@@ -87,7 +87,7 @@ describe('MockTopUp', () => {
 
   it('keeps the typed amount and balance unchanged on API failure', async () => {
     addCredit.mockRejectedValue(new HttpError('denied', 404, {}, 'SIMULATED_DEPOSITS_DISABLED'))
-    render(<MockTopUp />)
+    renderModal()
     await userEvent.type(amount(), '10,25')
     await userEvent.click(submit())
     expect(await screen.findByRole('alert')).toHaveTextContent('não está disponível')
@@ -98,7 +98,7 @@ describe('MockTopUp', () => {
 
   it('locks out another credit after an uncertain network result and refreshes the balance', async () => {
     addCredit.mockRejectedValue(new HttpError('network unavailable', 0, {}, 'NETWORK_ERROR'))
-    render(<MockTopUp />)
+    renderModal()
     await userEvent.type(amount(), '10,25')
     await userEvent.click(submit())
 
@@ -115,7 +115,7 @@ describe('MockTopUp', () => {
   it('does not permit repeat credit after server 5xx or malformed accepted response', async () => {
     for (const failure of [new HttpError('upstream error', 502), new Error('invalid response')]) {
       addCredit.mockRejectedValue(failure)
-      const view = render(<MockTopUp />)
+      const view = renderModal()
       await userEvent.type(amount(), '10,25')
       await userEvent.click(submit())
       expect(
@@ -132,7 +132,7 @@ describe('MockTopUp', () => {
     addCredit
       .mockRejectedValueOnce(new HttpError('invalid amount', 400, {}, 'VALIDATION_ERROR'))
       .mockResolvedValueOnce({ creditedAmountBrl: '10.25', availableBalanceBrl: '12.75' })
-    render(<MockTopUp />)
+    renderModal()
     await userEvent.type(amount(), '10,25')
     await userEvent.click(submit())
     expect(await screen.findByText(/informe um valor positivo/i)).toBeVisible()
@@ -144,11 +144,11 @@ describe('MockTopUp', () => {
 
   it('blocks duplicate submission while the request is pending', async () => {
     addCredit.mockReturnValue(new Promise(() => undefined))
-    render(<MockTopUp />)
+    renderModal()
     await userEvent.type(amount(), '10,25')
     await userEvent.click(submit())
     expect(screen.getByRole('button', { name: 'Adicionando...' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Voltar' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled()
     expect(addCredit).toHaveBeenCalledTimes(1)
   })
 
@@ -160,34 +160,28 @@ describe('MockTopUp', () => {
       error: null,
       retry: vi.fn(),
     })
-    render(<MockTopUp />)
+    renderModal()
     expect(screen.queryByRole('button', { name: 'Confirmar crédito simulado' })).toBeNull()
     expect(screen.getByRole('alert')).toHaveTextContent('Apenas o proprietário')
   })
 
   it('shows retry for failure to load existing balance', async () => {
-    balance.mockReturnValue({
-      state: { status: 'error', message: 'Falha ao consultar saldo.' },
-      retry,
-    })
-    render(<MockTopUp />)
+    balanceState = { status: 'error', message: 'Falha ao consultar saldo.' }
+    renderModal()
     expect(submit()).toBeDisabled()
     await userEvent.click(screen.getByRole('button', { name: 'Tentar carregar novamente' }))
     expect(retry).toHaveBeenCalledTimes(1)
   })
 
-  it('returns to the company dashboard', async () => {
-    render(<MockTopUp />)
-    await userEvent.click(screen.getByRole('button', { name: 'Voltar' }))
-    expect(navigate).toHaveBeenCalledWith('/app/dashboard')
+  it('closes with Cancelar', async () => {
+    renderModal()
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('prevents overflow before calling the API', async () => {
-    balance.mockReturnValue({
-      state: { status: 'ready', balance: '9999999999999.99' },
-      retry,
-    })
-    render(<MockTopUp />)
+    balanceState = { status: 'ready', balance: '9999999999999.99' }
+    renderModal()
     await userEvent.type(amount(), '0,01')
     await userEvent.click(submit())
     expect(screen.getByRole('alert')).toHaveTextContent('capacidade técnica')
