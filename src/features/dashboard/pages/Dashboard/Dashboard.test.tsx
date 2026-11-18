@@ -371,10 +371,33 @@ it('shows balance and transacted volume beside the accumulated savings for the c
   ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado', 'Câmbio Atual'])
 })
 
-it.each(['OWNER', 'OPERATOR', 'VIEWER'] as const)(
-  'shows the balance to the %s without an Adicionar saldo button, which lives in the menu',
+it('gives the owner an Adicionar shortcut with the coins icon in the balance card', async () => {
+  // Given a proprietária no Dashboard
+  givenSession(sessionUser('OWNER'))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => reply(url)),
+  )
+  renderDashboard()
+  expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
+
+  // Then o card de saldo tem o atalho, com o ícone de moedas e o nome completo para o leitor de tela
+  const balance = screen.getByRole('region', { name: 'Saldo Disponível' })
+  const shortcut = within(balance).getByRole('button', { name: 'Adicionar saldo' })
+  expect(shortcut).toHaveTextContent('Adicionar')
+  expect(within(shortcut).getByTestId('top-up-icon')).toHaveAttribute('aria-hidden', 'true')
+
+  // When ela usa o atalho
+  fireEvent.click(shortcut)
+
+  // Then vai para a mesma página do item Adicionar saldo do menu
+  expect(screen.getByLabelText('Rota atual')).toHaveTextContent('/app/saldo/adicionar')
+})
+
+it.each(['OPERATOR', 'VIEWER'] as const)(
+  'shows the balance to the %s without the Adicionar shortcut, since only the owner can add funds',
   async (role) => {
-    // Given a empresa no Dashboard, com qualquer perfil
+    // Given um membro sem permissão de creditar
     givenSession(sessionUser(role))
     vi.stubGlobal(
       'fetch',
@@ -382,7 +405,7 @@ it.each(['OWNER', 'OPERATOR', 'VIEWER'] as const)(
     )
     renderDashboard()
 
-    // Then o saldo aparece, sem o botão de crédito no card
+    // Then o saldo aparece sem o atalho
     expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Adicionar saldo' })).not.toBeInTheDocument()
   },
