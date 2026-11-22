@@ -102,6 +102,82 @@ export async function getTransfersById(id: string, signal?: AbortSignal): Promis
   )
 }
 
+const decimalOrNumber = z
+  .union([decimal, z.number()])
+  .transform((value) => String(value))
+  .nullable()
+
+const ClientTransferSchema = z.object({
+  id: z.string(),
+  companyId: z.string().nullable().optional(),
+  date: z.string(),
+  type: z.string().nullable(),
+  amountBrl: decimalOrNumber.optional(),
+  amountForeign: decimalOrNumber.optional(),
+  foreignCurrency: z.string().nullable().optional(),
+  status: z.string(),
+  counterparty: z.string().nullable().optional(),
+})
+
+function toClientTransfer(item: z.infer<typeof ClientTransferSchema>): Transfer {
+  return {
+    id: item.id,
+    empresa: '',
+    beneficiario: item.counterparty ?? 'Não disponível',
+    data: item.date,
+    tipo: item.type === 'EXPORT' ? 'Recebimento' : 'Pagamento',
+    valor: item.amountForeign ?? item.amountBrl ?? null,
+    moeda: item.foreignCurrency ?? 'BRL',
+    status: transferStatusLabels[item.status] ?? item.status,
+    cotacao: null,
+    custos: null,
+  }
+}
+
+/** Lista o histórico de transferências da empresa autenticada via `/api/transferencias`. */
+export async function getClientTransfers(
+  page = 1,
+  limit = 12,
+  filters?: TransferFilterParams,
+  signal?: AbortSignal,
+): Promise<GetTransfersResponse> {
+  const params = new URLSearchParams({
+    page: String(Math.max(0, page - 1)),
+    size: String(limit),
+    sort: 'createdAt,desc',
+  })
+  if (filters?.startDate) params.set('startDate', `${filters.startDate}T00:00:00Z`)
+  if (filters?.endDate) params.set('endDate', `${filters.endDate}T23:59:59Z`)
+  if (filters?.minAmount) params.set('minAmount', filters.minAmount)
+  if (filters?.maxAmount) params.set('maxAmount', filters.maxAmount)
+  if (filters?.status) {
+    params.set(
+      'status',
+      Object.entries(transferStatusLabels).find(([, label]) => label === filters.status)?.[0] ??
+        filters.status,
+    )
+  }
+  if (filters?.type) {
+    params.set('type', filters.type === 'Pagamento' ? 'IMPORT' : 'EXPORT')
+  }
+
+  const parsed = z
+    .object({
+      content: z.array(ClientTransferSchema),
+      totalElements: z.number().int().nonnegative(),
+      totalPages: z.number().int().nonnegative(),
+      number: z.number().int().nonnegative(),
+    })
+    .parse(await httpRequest<unknown>(`/api/transferencias?${params}`, { signal }))
+
+  return {
+    data: parsed.content.map(toClientTransfer),
+    totalItems: parsed.totalElements,
+    totalPages: Math.max(1, parsed.totalPages),
+    currentPage: parsed.number + 1,
+  }
+}
+
 const INVALID_RESPONSE_MESSAGE = 'Formato inválido retornado pela API'
 
 const toQuoteBody = ({

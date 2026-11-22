@@ -267,8 +267,8 @@ describe('AdminTransfers page', () => {
       currentPage: 1,
     })
 
-    await user.type(screen.getByPlaceholderText('Buscar por empresa ou CNPJ'), 'Tech Corp')
-    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.type(screen.getByPlaceholderText('Buscar transferência'), 'Tech Corp')
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
 
     await waitFor(() => {
       expect(getTransfers).toHaveBeenLastCalledWith(
@@ -299,8 +299,9 @@ describe('AdminTransfers page', () => {
       expect(screen.getByText('Atlas Imports LLC')).toBeInTheDocument()
     })
 
-    await user.type(screen.getByPlaceholderText('Buscar por empresa ou CNPJ'), 'Tech Corp')
-    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.type(screen.getByPlaceholderText('Buscar transferência'), 'Tech Corp')
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
+    await user.click(screen.getByRole('button', { name: 'Filtrar transferências' }))
     await user.click(screen.getByRole('button', { name: 'Limpar' }))
 
     await waitFor(() => {
@@ -331,11 +332,8 @@ describe('AdminTransfers page', () => {
       currentPage: 1,
     })
 
-    await user.type(
-      screen.getByPlaceholderText('Buscar por empresa ou CNPJ'),
-      'Empresa Inexistente',
-    )
-    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.type(screen.getByPlaceholderText('Buscar transferência'), 'Empresa Inexistente')
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
 
     await waitFor(() => {
       expect(screen.getByText('Nenhuma transferência encontrada.')).toBeInTheDocument()

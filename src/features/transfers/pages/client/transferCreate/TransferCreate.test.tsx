@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getCompanyBeneficiaries } from '@/features/beneficiaries/api/beneficiary'
@@ -7,6 +8,7 @@ import { createTransfer, getTransferQuote } from '@/features/transfers/api/trans
 import { useSession } from '@/features/auth'
 import type { Beneficiary } from '@/features/beneficiaries/types/beneficiary'
 import type { TransferQuoteResponse } from '@/features/transfers/types/transfer'
+import { PATHS } from '@/shared/navigation/paths'
 
 import { TransferCreate } from '@/features/transfers/pages/client/transferCreate/TransferCreate'
 
@@ -65,7 +67,14 @@ const confirmTransferButton = () => screen.getByRole('button', { name: /Confirma
 const totpInput = () => screen.getByLabelText('Código de autenticação')
 
 const renderPage = async (selectBeneficiary = true) => {
-  render(<TransferCreate />)
+  render(
+    <MemoryRouter initialEntries={[PATHS.TRANSFERS_NEW]}>
+      <Routes>
+        <Route path={PATHS.TRANSFERS_NEW} element={<TransferCreate />} />
+        <Route path={PATHS.TRANSFERS} element={<p>Histórico de Transferências</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
   await advance()
   if (selectBeneficiary && screen.queryByRole('option', { name: 'Atlas Imports LLC' }))
     fireEvent.change(beneficiarySelect(), { target: { value: atlas.id } })
@@ -140,7 +149,11 @@ describe('TransferCreate', () => {
     vi.resetModules()
     const { TransferCreate: TransferPage } = await import('./TransferCreate')
 
-    render(<TransferPage />)
+    render(
+      <MemoryRouter>
+        <TransferPage />
+      </MemoryRouter>,
+    )
     await advance()
 
     expect(sourceInput()).toBeInTheDocument()
@@ -671,7 +684,7 @@ describe('TransferCreate', () => {
     )
   })
 
-  it('clears the form and returns to step 0 when Cancelar is clicked in Passo 0', async () => {
+  it('navigates back to the transfers history when Cancelar is clicked', async () => {
     await renderPage()
     chooseBeneficiary()
     await typeSourceAmount('125000')
@@ -679,10 +692,7 @@ describe('TransferCreate', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     await advance(DEBOUNCE_MS)
 
-    expect(sourceInput()).toHaveValue('')
-    expect(destinationInput()).toHaveValue('')
-    expect(beneficiarySelect()).toHaveValue('')
-    expect(screen.getByText('Informe um valor para consultar a cotação.')).toBeInTheDocument()
+    expect(screen.getByText('Histórico de Transferências')).toBeInTheDocument()
     expect(getTransferQuote).toHaveBeenCalledTimes(1)
   })
 

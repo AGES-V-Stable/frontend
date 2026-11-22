@@ -70,6 +70,7 @@ describe('BeneficiaryView', () => {
     expect(screen.getByText('45.123.456/0001-90')).toBeInTheDocument()
 
     vi.mocked(getBeneficiaries).mockResolvedValueOnce(paginatedResponse([]))
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar beneficiários' }))
     fireEvent.change(screen.getByPlaceholderText('Buscar por empresa ou CNPJ'), {
       target: { value: 'empresa inexistente' },
     })
@@ -84,6 +85,7 @@ describe('BeneficiaryView', () => {
     expect(await screen.findByText('Nenhum beneficiário encontrado.')).toBeInTheDocument()
 
     vi.mocked(getBeneficiaries).mockResolvedValueOnce(paginatedResponse([beneficiary]))
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar beneficiários' }))
     fireEvent.click(screen.getByRole('button', { name: 'Limpar' }))
 
     await waitFor(() =>
@@ -104,6 +106,7 @@ describe('BeneficiaryView', () => {
     renderPage()
     await screen.findByText('Maria Oliveira')
 
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar beneficiários' }))
     fireEvent.change(screen.getByPlaceholderText('Buscar por empresa ou CNPJ'), {
       target: { value: '45.123.456/0001-90' },
     })

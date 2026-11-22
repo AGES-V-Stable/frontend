@@ -1,9 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSession } from '@/features/auth'
 import { createBeneficiary } from '@/features/beneficiaries/api/beneficiary'
 import { BeneficiaryCreate } from '@/features/beneficiaries/pages/client/beneficiaryCreate/BeneficiaryCreate'
+import { PATHS } from '@/shared/navigation/paths'
 
 vi.mock('@/features/auth', () => ({
   useSession: vi.fn(),
@@ -47,6 +49,17 @@ async function waitForCompanyLoaded() {
   await waitFor(() => expect(useSession).toHaveBeenCalled())
 }
 
+function renderCreate() {
+  return render(
+    <MemoryRouter initialEntries={[PATHS.BENEFICIARIES_NEW]}>
+      <Routes>
+        <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
+        <Route path={PATHS.BENEFICIARIES} element={<p>Lista de beneficiários</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
 describe('BeneficiaryCreate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -63,7 +76,7 @@ describe('BeneficiaryCreate', () => {
   it('stacks Identificação above Dados de recebimento, with the long fields taking a whole row', async () => {
     // Given o formulário de cadastro
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
     await waitForCompanyLoaded()
 
     // Then as duas seções aparecem em ordem, e os campos longos ocupam a linha inteira da grade
@@ -85,7 +98,7 @@ describe('BeneficiaryCreate', () => {
 
   it('shows the bank account fields by default and switches to wallet fields on toggle', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
 
     expect(screen.getByRole('tab', { name: 'Conta bancária' })).toHaveAttribute(
       'aria-selected',
@@ -106,7 +119,7 @@ describe('BeneficiaryCreate', () => {
 
   it('preserves values typed in the inactive group when toggling', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
 
     await user.type(screen.getByLabelText('Banco *'), 'Banco XYZ')
     await user.click(screen.getByRole('tab', { name: 'Wallet cripto' }))
@@ -118,7 +131,7 @@ describe('BeneficiaryCreate', () => {
 
   it('blocks submit and shows required-field errors when the form is empty', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
 
     await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
 
@@ -128,7 +141,7 @@ describe('BeneficiaryCreate', () => {
 
   it('flags the blockchain network field when the wallet form is submitted empty', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
 
     await user.click(screen.getByRole('tab', { name: 'Wallet cripto' }))
     await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
@@ -140,7 +153,7 @@ describe('BeneficiaryCreate', () => {
 
   it('blocks submit when the confirmation checkbox is not checked', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
 
     await fillIdentification(user)
     await fillBankFields(user)
@@ -153,7 +166,7 @@ describe('BeneficiaryCreate', () => {
 
   it('submits a bank account beneficiary and shows the success banner', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
     await waitForCompanyLoaded()
 
     await fillIdentification(user)
@@ -191,7 +204,7 @@ describe('BeneficiaryCreate', () => {
 
   it('submits SEPA with the IBAN and structured address instead of the SWIFT defaults', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
     await fillIdentification(user)
     await user.selectOptions(screen.getByLabelText('Tipo de transferência *'), 'sepa')
     await user.type(screen.getByLabelText('País do beneficiário (código de 3 letras) *'), 'deu')
@@ -229,7 +242,7 @@ describe('BeneficiaryCreate', () => {
 
   it('blocks incomplete SWIFT addresses before sending a request', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
     await fillIdentification(user)
     await fillBankFields(user)
     await user.clear(screen.getByLabelText('Cidade do beneficiário *'))
@@ -250,7 +263,7 @@ describe('BeneficiaryCreate', () => {
 
   it('blocks SEPA with a non-EUR currency or a two-letter country code', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
     await fillIdentification(user)
     await user.selectOptions(screen.getByLabelText('Tipo de transferência *'), 'sepa')
     await user.type(screen.getByLabelText('País do beneficiário (código de 3 letras) *'), 'DE')
@@ -264,7 +277,7 @@ describe('BeneficiaryCreate', () => {
 
   it('submits a wallet beneficiary with the right shape', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
     await waitForCompanyLoaded()
 
     await fillIdentification(user)
@@ -304,7 +317,7 @@ describe('BeneficiaryCreate', () => {
 
   it('requires an institution name and forwards false custody for an exchange wallet', async () => {
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
     await waitForCompanyLoaded()
     await fillIdentification(user)
     await user.selectOptions(screen.getByLabelText('Tipo de beneficiário *'), 'Pessoa física')
@@ -341,7 +354,7 @@ describe('BeneficiaryCreate', () => {
   it('shows a server error message when the request fails', async () => {
     vi.mocked(createBeneficiary).mockRejectedValue(new Error('network down'))
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
     await waitForCompanyLoaded()
 
     await fillIdentification(user)
@@ -364,7 +377,7 @@ describe('BeneficiaryCreate', () => {
         }),
     )
     const user = userEvent.setup()
-    render(<BeneficiaryCreate />)
+    renderCreate()
     await waitForCompanyLoaded()
 
     await fillIdentification(user)
@@ -375,5 +388,15 @@ describe('BeneficiaryCreate', () => {
     expect(screen.getByRole('button', { name: 'Salvando...' })).toBeDisabled()
     resolveCreate({ id: 'beneficiary-1' })
     expect(await screen.findByRole('button', { name: 'Salvar beneficiário' })).toBeEnabled()
+  })
+
+  it('navigates back to the beneficiaries list when clicking Cancelar', async () => {
+    const user = userEvent.setup()
+    renderCreate()
+    await waitForCompanyLoaded()
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+
+    expect(await screen.findByText('Lista de beneficiários')).toBeInTheDocument()
   })
 })

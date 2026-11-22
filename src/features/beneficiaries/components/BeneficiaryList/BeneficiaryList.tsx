@@ -16,8 +16,8 @@ const emptyFilters: BeneficiaryFilterValues = {
 }
 
 export interface BeneficiaryListProps {
-  title: string
-  subtitle: string
+  title?: string
+  subtitle?: string
   forceCompanyId?: string
 }
 
@@ -127,65 +127,75 @@ export function BeneficiaryList({ title, subtitle, forceCompanyId }: Beneficiary
 
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
-      <header>
-        <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
-        {subtitle && <p className="mt-1 text-xs text-slate-600">{subtitle}</p>}
-      </header>
+      {(title || subtitle) && (
+        <header>
+          {title && <h2 className="text-2xl font-bold text-slate-900">{title}</h2>}
+          {subtitle && <p className="mt-1 text-xs text-slate-600">{subtitle}</p>}
+        </header>
+      )}
 
-      <BeneficiaryFilters
-        hideCompanyFilter={!!forceCompanyId}
-        countries={countries}
-        onApply={(filters) => {
-          setAppliedFilters(filters)
-          setCurrentPage(1)
-        }}
-        onClear={() => {
-          setAppliedFilters(emptyFilters)
-          setCurrentPage(1)
-        }}
-      />
-
-      {isLoading && (
-        <p role="status" className="rounded-lg bg-white px-6 py-5 text-sm text-slate-600">
-          Carregando beneficiários...
-        </p>
-      )}
-      {loadError && (
-        <p
-          role="alert"
-          className="rounded-lg border border-red-200 bg-white px-6 py-5 text-sm text-red-700"
-        >
-          {loadError}
-        </p>
-      )}
-      {!isLoading && !loadError && beneficiaries.length === 0 && (
-        <p role="status" className="rounded-lg bg-white px-6 py-5 text-sm text-slate-600">
-          Nenhum beneficiário encontrado.
-        </p>
-      )}
-      {!isLoading && !loadError && beneficiaries.length > 0 && (
-        <Table
-          title="Todos os beneficiários"
-          entityLabel="beneficiários"
-          totalRecords={totalRecords}
-          columns={
-            forceCompanyId
-              ? beneficiaryTableColumns.filter((column) => column.key !== 'companyId')
-              : beneficiaryTableColumns
-          }
-          data={beneficiaries}
-          actions={[{ label: 'Ver detalhes', onClick: (item) => openDetails(item as Beneficiary) }]}
-          pagination={{
-            currentPage,
-            totalPages,
-            displayedRecords: beneficiaries.length,
-            itemsPerPage: PAGE_SIZE,
-            totalRecords: totalRecords,
-            onPageChange: setCurrentPage,
-            entityLabel: 'beneficiários',
+      <section className="rounded-lg bg-white">
+        <BeneficiaryFilters
+          embedded
+          collapsible
+          hideCompanyFilter={!!forceCompanyId}
+          countries={countries}
+          onApply={(filters) => {
+            setAppliedFilters(filters)
+            setCurrentPage(1)
+          }}
+          onClear={() => {
+            setAppliedFilters(emptyFilters)
+            setCurrentPage(1)
           }}
         />
-      )}
+
+        {!isLoading && !loadError && beneficiaries.length > 0 && (
+          <p className="px-6 pt-3 text-xs font-medium text-slate-500 tabular-nums">
+            {totalRecords} {totalRecords === 1 ? 'beneficiário' : 'beneficiários'}
+          </p>
+        )}
+
+        {isLoading && (
+          <p role="status" className="px-6 py-5 text-sm text-slate-600">
+            Carregando beneficiários...
+          </p>
+        )}
+        {loadError && (
+          <p role="alert" className="px-6 py-5 text-sm text-red-700">
+            {loadError}
+          </p>
+        )}
+        {!isLoading && !loadError && beneficiaries.length === 0 && (
+          <p role="status" className="px-6 py-5 text-sm text-slate-600">
+            Nenhum beneficiário encontrado.
+          </p>
+        )}
+        {!isLoading && !loadError && beneficiaries.length > 0 && (
+          <Table
+            sortable
+            entityLabel="beneficiários"
+            columns={
+              forceCompanyId
+                ? beneficiaryTableColumns.filter((column) => column.key !== 'companyId')
+                : beneficiaryTableColumns
+            }
+            data={beneficiaries}
+            actions={[
+              { label: 'Ver detalhes', onClick: (item) => openDetails(item as Beneficiary) },
+            ]}
+            pagination={{
+              currentPage,
+              totalPages,
+              displayedRecords: beneficiaries.length,
+              itemsPerPage: PAGE_SIZE,
+              totalRecords: totalRecords,
+              onPageChange: setCurrentPage,
+              entityLabel: 'beneficiários',
+            }}
+          />
+        )}
+      </section>
 
       <Drawer
         open={Boolean(selectedBeneficiary)}

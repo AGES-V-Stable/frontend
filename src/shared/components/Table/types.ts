@@ -14,6 +14,10 @@ export interface ColumnDefinition<T> {
   render?: (item: T) => ReactNode
   // Cor do badge em colunas 'status'; sem ela, a cor é inferida do texto e o padrão é neutro
   statusVariant?: (item: T) => StatusVariant
+  /** Permite ou desabilita ordenação nessa coluna quando `Table` tem `sortable`. */
+  sortable?: boolean
+  /** Valor bruto usado na ordenação quando diferente da propriedade `key`. */
+  sortValue?: (item: T) => string | number | null | undefined
 }
 
 export interface TableAction<T> {
@@ -56,4 +60,6 @@ export interface TableProps<T> {
 
   // Identifica a linha no nome acessível das ações (ex.: "Ver detalhes: Tech Corp")
   rowLabel?: (item: T) => string
+  /** Habilita ordenação ascendente/descendente clicando no cabeçalho das colunas. */
+  sortable?: boolean
 }

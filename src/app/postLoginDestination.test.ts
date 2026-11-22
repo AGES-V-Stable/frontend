@@ -79,57 +79,20 @@ describe('postLoginDestination', () => {
     expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.TRANSFERS)
   })
 
-  it('sends a company owner with pending BlindPay data to the complement screen', async () => {
+  it('does not redirect a company owner with pending BlindPay data away from dashboard/origin', async () => {
     saveLoginToken(userToken)
     const owner = {
       ...userWithMembership,
       companyAccess: { ...userWithMembership.companyAccess, role: 'OWNER' },
     }
-    stubApi({
+    const fetcher = stubApi({
       onboarding: () => new Response(JSON.stringify({ ...onboarding, status: 'APPROVED' })),
       me: () => new Response(JSON.stringify(owner)),
-      blindPay: () =>
-        new Response(
-          JSON.stringify({
-            termsAccepted: false,
-            submitted: false,
-            kycStatus: null,
-            amlStatus: null,
-          }),
-        ),
     })
 
-    expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.BLINDPAY_KYC)
-  })
-
-  it('finishes the Avenia onboarding before opening the BlindPay complement', async () => {
-    saveLoginToken(userToken)
-    const fetcher = stubApi({
-      onboarding: () => new Response(JSON.stringify({ ...onboarding, livenessSubmitted: false })),
-      me: () => new Response(JSON.stringify(userWithoutCompany)),
-      blindPay: () =>
-        new Response(
-          JSON.stringify({
-            termsAccepted: false,
-            submitted: false,
-            kycStatus: null,
-            amlStatus: null,
-          }),
-        ),
-    })
-
-    expect(await postLoginDestination(null)).toBe('/register/kyc-1/compliance/liveness')
-    expect(fetcher).not.toHaveBeenCalledWith('/v1/blindpay/kyc', expect.anything())
-  })
-
-  it('does not block login when BlindPay is disabled in the current environment', async () => {
-    saveLoginToken(userToken)
-    stubApi({
-      onboarding: () => new Response(JSON.stringify({ ...onboarding, status: 'APPROVED' })),
-      blindPay: () => new Response('{}', { status: 503 }),
-    })
-
+    expect(await postLoginDestination(null)).toBe(PATHS.HOME)
     expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.TRANSFERS)
+    expect(fetcher).not.toHaveBeenCalledWith('/v1/blindpay/kyc', expect.anything())
   })
 
   it('ignores an administrative origin for a company user', async () => {

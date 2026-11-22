@@ -23,7 +23,7 @@ describe('AdminClients page', () => {
   it('labels the table and pagination with "clientes"', async () => {
     await renderAdminClients()
 
-    expect(screen.getByText(/^· \d+ clientes$/)).toBeInTheDocument()
+    expect(screen.getByText(/^\d+ clientes$/)).toBeInTheDocument()
     expect(
       screen.getByText(/^Mostrando \d+-\d+ de \d+ clientes$/, { selector: 'div' }),
     ).toBeInTheDocument()
@@ -35,7 +35,7 @@ describe('AdminClients page', () => {
     await renderAdminClients()
 
     await user.type(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), 'BioNorte')
-    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
 
     expect(screen.getByText('BioNorte Alimentos S.A.')).toBeInTheDocument()
     expect(screen.queryByText('Cooperativa AgroSul')).not.toBeInTheDocument()
@@ -45,6 +45,7 @@ describe('AdminClients page', () => {
     const user = userEvent.setup()
     await renderAdminClients()
 
+    await user.click(screen.getByRole('button', { name: 'Filtrar clientes' }))
     await user.selectOptions(screen.getByLabelText('Status'), 'Cadastro recebido')
     await user.selectOptions(screen.getByLabelText('Cidade / UF'), 'Belém / PA')
     await user.selectOptions(screen.getByLabelText('Período de cadastro'), '08/2023')
@@ -59,7 +60,8 @@ describe('AdminClients page', () => {
     await renderAdminClients()
 
     await user.type(screen.getByPlaceholderText('Buscar por razão social ou CNPJ'), 'BioNorte')
-    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
+    await user.click(screen.getByRole('button', { name: 'Filtrar clientes' }))
     await user.click(screen.getByRole('button', { name: 'Limpar' }))
 
     expect(screen.getByText('Cooperativa AgroSul')).toBeInTheDocument()
@@ -74,7 +76,7 @@ describe('AdminClients page', () => {
       screen.getByPlaceholderText('Buscar por razão social ou CNPJ'),
       'cliente inexistente',
     )
-    await user.click(screen.getByRole('button', { name: 'Filtrar' }))
+    await user.click(screen.getByRole('button', { name: 'Buscar' }))
 
     expect(screen.getByText(/Nenhum cliente encontrado/).closest('[role="status"]')).not.toBeNull()
   })

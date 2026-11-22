@@ -149,13 +149,6 @@ function AdminTransfers() {
             </div>
           </header>
 
-          <TransferFilters
-            statuses={transferStatuses}
-            types={transferTypes}
-            onApply={applyFilters}
-            onClear={clearFilters}
-          />
-
           {error && (
             <div
               role="alert"
@@ -172,12 +165,27 @@ function AdminTransfers() {
           )}
 
           {!error && (
-            <div className={isLoading ? 'opacity-50 pointer-events-none' : ''}>
+            <div
+              className={`rounded-lg bg-white ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+            >
+              <div className="px-6 pt-5">
+                <TransferFilters
+                  collapsible
+                  statuses={transferStatuses}
+                  types={transferTypes}
+                  onApply={applyFilters}
+                  onClear={clearFilters}
+                />
+                {!isLoading && totalItems > 0 && (
+                  <p className="pt-3 text-xs font-medium text-slate-500 tabular-nums">
+                    {totalItems} {totalItems === 1 ? 'transferência' : 'transferências'}
+                  </p>
+                )}
+              </div>
               <Table
-                title="Todas as transferências"
+                sortable
                 entityLabel="transferências"
                 rowLabel={(transfer) => `${transfer.empresa} para ${transfer.beneficiario}`}
-                totalRecords={totalItems > 0 ? totalItems : undefined}
                 columns={columns}
                 data={transfers}
                 emptyMessage={

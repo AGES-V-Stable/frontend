@@ -74,7 +74,7 @@ function AdminClients() {
         <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
           <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Clientes PME</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Clientes</h1>
               <p className="mt-1 text-xs text-slate-600">
                 Visualize e audite todas as contas cadastradas na plataforma.
               </p>
@@ -88,14 +88,6 @@ function AdminClients() {
             </button>
           </header>
 
-          <ClientFilters
-            statuses={statuses}
-            cities={cities}
-            periods={periods}
-            onApply={applyFilters}
-            onClear={clearFilters}
-          />
-
           {loading && <p role="status">Carregando clientes...</p>}
           {error && (
             <div>
@@ -105,42 +97,52 @@ function AdminClients() {
               </button>
             </div>
           )}
-          {!loading && !error && filteredClients.length === 0 && (
-            <p
-              role="status"
-              className="rounded-lg border border-sage-300 bg-white px-6 py-5 text-sm text-slate-600"
-            >
-              Nenhum cliente encontrado para os filtros informados.
-            </p>
-          )}
-
           {!loading && !error && (
-            <Table
-              title="Todos os clientes"
-              entityLabel="clientes"
-              rowLabel={(client) => client.empresa}
-              totalRecords={filteredClients.length}
-              columns={columns}
-              data={filteredClients.slice((currentPage - 1) * 4, currentPage * 4)}
-              actions={[
-                {
-                  label: 'Ver detalhes',
-                  onClick: (client) => setSelectedClient(client as Cliente),
-                },
-              ]}
-              pagination={{
-                currentPage,
-                totalPages: Math.max(1, Math.ceil(filteredClients.length / 4)),
-                displayedRecords: Math.min(
-                  4,
-                  Math.max(0, filteredClients.length - (currentPage - 1) * 4),
-                ),
-                itemsPerPage: 4,
-                totalRecords: filteredClients.length,
-                onPageChange: setCurrentPage,
-                entityLabel: 'clientes',
-              }}
-            />
+            <div className="rounded-lg bg-white">
+              <ClientFilters
+                collapsible
+                statuses={statuses}
+                cities={cities}
+                periods={periods}
+                onApply={applyFilters}
+                onClear={clearFilters}
+              />
+              {filteredClients.length > 0 && (
+                <p className="px-6 pt-2 text-xs font-medium text-slate-500 tabular-nums">
+                  {filteredClients.length} {filteredClients.length === 1 ? 'cliente' : 'clientes'}
+                </p>
+              )}
+              {filteredClients.length === 0 ? (
+                <p role="status" className="px-6 py-5 text-sm text-slate-600">
+                  Nenhum cliente encontrado para os filtros informados.
+                </p>
+              ) : (
+                <Table
+                  entityLabel="clientes"
+                  rowLabel={(client) => client.empresa}
+                  columns={columns}
+                  data={filteredClients.slice((currentPage - 1) * 4, currentPage * 4)}
+                  actions={[
+                    {
+                      label: 'Ver detalhes',
+                      onClick: (client) => setSelectedClient(client as Cliente),
+                    },
+                  ]}
+                  pagination={{
+                    currentPage,
+                    totalPages: Math.max(1, Math.ceil(filteredClients.length / 4)),
+                    displayedRecords: Math.min(
+                      4,
+                      Math.max(0, filteredClients.length - (currentPage - 1) * 4),
+                    ),
+                    itemsPerPage: 4,
+                    totalRecords: filteredClients.length,
+                    onPageChange: setCurrentPage,
+                    entityLabel: 'clientes',
+                  }}
+                />
+              )}
+            </div>
           )}
         </div>
 

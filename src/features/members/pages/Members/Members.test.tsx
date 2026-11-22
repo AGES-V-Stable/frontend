@@ -1343,4 +1343,20 @@ describe('Members — revogar convite', () => {
     await waitFor(() => expect(screen.queryByText('Bruno Alves')).not.toBeInTheDocument())
     expect(calls('DELETE', INVITATION_URL)).toHaveLength(1)
   })
+
+  it('dismisses the account info banner when clicking close and keeps it hidden on reload', async () => {
+    const user = userEvent.setup()
+    const view = renderMembers()
+
+    expect(await screen.findByText('Uma empresa, uma conta')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Fechar aviso' }))
+
+    expect(screen.queryByText('Uma empresa, uma conta')).not.toBeInTheDocument()
+
+    view.unmount()
+    renderMembers()
+
+    await screen.findByRole('heading', { name: 'Membros da empresa' })
+    expect(screen.queryByText('Uma empresa, uma conta')).not.toBeInTheDocument()
+  })
 })

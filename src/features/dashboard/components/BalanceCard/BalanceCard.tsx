@@ -16,6 +16,7 @@ export function BalanceCard({ state, onRetry, action }: BalanceCardProps) {
       title="Saldo Disponível"
       action={action}
       accent="neutral"
+      barAccent="emerald"
       state={
         state.status === 'loading'
           ? { status: 'loading', label: 'Carregando saldo...' }

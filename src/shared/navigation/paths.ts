@@ -22,6 +22,7 @@ export const PATHS = {
   BENEFICIARIES: '/app/beneficiarios',
   BENEFICIARIES_NEW: '/app/beneficiarios/novo',
   TRANSFERS: '/app/transferencias',
+  TRANSFERS_NEW: '/app/transferencias/nova',
   TRANSFER_DETAILS: '/app/transferencias/:id',
   SETTINGS: '/app/configuracoes',
   MEMBERS: '/app/membros',

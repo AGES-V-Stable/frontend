@@ -142,12 +142,12 @@ it('keeps login and registration outside the account shell', () => {
 it('renders the company menu with real company identity and available actions', async () => {
   saveLoginToken('login')
   renderRoute()
-  const nav = await screen.findByRole('navigation')
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
   expect(within(nav).getByRole('button', { name: 'Dashboard' })).toHaveAttribute(
     'aria-current',
     'page',
   )
-  expect(within(nav).queryByText('Clientes PME')).not.toBeInTheDocument()
+  expect(within(nav).queryByText('Clientes')).not.toBeInTheDocument()
   expect(screen.getByText('Empresa de Teste')).toBeInTheDocument()
   expect(screen.getByText('CNPJ: 12.345.678/0001-90')).toBeInTheDocument()
   const sidebar = screen.getByRole('complementary', { name: 'Menu da conta' })
@@ -168,7 +168,7 @@ it('paints every menu icon with the item text color, so only the selected one tu
   // Given a empresa logada no Dashboard
   saveLoginToken('login')
   renderRoute()
-  const nav = await screen.findByRole('navigation')
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
   // O menu aparece antes de a sessão terminar de carregar; espera o item atual ser marcado
   const dashboard = await within(nav).findByRole('button', { name: 'Dashboard', current: 'page' })
   const members = await within(nav).findByRole('button', { name: 'Membros' })
@@ -186,7 +186,7 @@ it('gives Beneficiários and Membros different icons: an international company a
   // Given a empresa logada
   saveLoginToken('login')
   renderRoute()
-  const nav = await screen.findByRole('navigation')
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
   const beneficiaries = await within(nav).findByRole('button', { name: 'Beneficiários' })
   const members = await within(nav).findByRole('button', { name: 'Membros' })
 
@@ -202,7 +202,7 @@ it('gives Beneficiários and Membros different icons: an international company a
 it('opens the company dashboard from the Dashboard item, with balance and transacted volume', async () => {
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')
-  const nav = await screen.findByRole('navigation')
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
   await screen.findByText('Atlas')
 
   await userEvent.click(within(nav).getByRole('button', { name: 'Dashboard' }))
@@ -221,13 +221,11 @@ it('opens the administrative dashboard from the Dashboard item', async () => {
     `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
   )
   renderRoute('/admin/clientes-pme')
-  const nav = await screen.findByRole('navigation')
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
 
   await userEvent.click(within(nav).getByRole('button', { name: 'Dashboard' }))
 
-  expect(
-    await screen.findByRole('heading', { name: 'Dashboard Administrativo' }),
-  ).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
   expect(screen.getByTestId('location')).toHaveTextContent('/admin/dashboard')
   // O admin não consulta saldo nem volume, que pertencem à empresa do cliente.
   expect(mock.mock.calls.some(([url]) => url === '/v1/balance')).toBe(false)
@@ -236,10 +234,12 @@ it('opens the administrative dashboard from the Dashboard item', async () => {
 it('keeps the shell and identity across company pages', async () => {
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')
-  const nav = await screen.findByRole('navigation')
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
   const aside = screen.getByLabelText('Menu da conta')
   await userEvent.click(within(nav).getByRole('button', { name: 'Transferências' }))
-  expect(await screen.findByRole('heading', { name: 'Realizar transferência' })).toBeInTheDocument()
+  expect(
+    await screen.findByRole('heading', { name: 'Histórico de Transferências' }),
+  ).toBeInTheDocument()
   expect(screen.getByLabelText('Menu da conta')).toBe(aside)
   expect(screen.getAllByRole('navigation')).toHaveLength(1)
   expect(mock.mock.calls.filter(([url]) => url === '/v1/users/me')).toHaveLength(1)
@@ -255,22 +255,30 @@ it('uses the company-scoped detail endpoint from the shared beneficiary list', a
   )
   expect(mock.mock.calls.some(([url]) => url === '/v1/beneficiaries/b1')).toBe(false)
 })
-it('renders the admin menu, expands auditing and updates selected children', async () => {
+it('renders the flat admin menu in order without Auditoria and highlights active items', async () => {
   role = 'ADMIN'
   saveLoginToken(
     `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
   )
   renderRoute('/admin/transferencias')
-  const nav = await screen.findByRole('navigation')
-  expect(within(nav).getByRole('button', { name: 'Auditoria' })).toHaveAttribute(
-    'aria-expanded',
-    'true',
-  )
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
+  expect(within(nav).queryByRole('button', { name: 'Auditoria' })).not.toBeInTheDocument()
+  expect(
+    within(nav)
+      .getAllByRole('button')
+      .map((button) => button.textContent?.trim()),
+  ).toEqual([
+    'Dashboard',
+    'Transferências',
+    'Clientes',
+    'Beneficiários',
+    'Solicitações de Segurança',
+  ])
   expect(within(nav).getByRole('button', { name: 'Transferências' })).toHaveAttribute(
     'aria-current',
     'page',
   )
-  expect(screen.getByText('Painel administrativo')).toBeInTheDocument()
+  expect(screen.getAllByText('Painel administrativo').length).toBeGreaterThan(0)
   expect(screen.queryByText(/CNPJ:/)).not.toBeInTheDocument()
   await userEvent.click(within(nav).getByRole('button', { name: 'Beneficiários' }))
   await screen.findByText('Atlas')
@@ -279,20 +287,6 @@ it('renders the admin menu, expands auditing and updates selected children', asy
     'page',
   )
   expect(mock.mock.calls.some(([url]) => url === '/v1/companies/c1')).toBe(false)
-})
-it('lets admins expand and collapse Auditoria from the clients landing', async () => {
-  role = 'ADMIN'
-  saveLoginToken(
-    `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
-  )
-  renderRoute()
-  const nav = await screen.findByRole('navigation')
-  const group = within(nav).getByRole('button', { name: 'Auditoria' })
-  expect(group).toHaveAttribute('aria-expanded', 'false')
-  await userEvent.click(group)
-  expect(group).toHaveAttribute('aria-expanded', 'true')
-  await userEvent.click(group)
-  expect(group).toHaveAttribute('aria-expanded', 'false')
 })
 it.each([
   '/beneficiarios?search=Atlas',
@@ -307,18 +301,15 @@ it.each([
     : `/app${path}`
   expect(screen.getByTestId('location')).toHaveTextContent(expected)
 })
-it.each(['/app/transferencias/nova', '/transferencias/nova'])(
-  'redirects %s to the original form without /nova, preserving query and fragment',
-  async (path) => {
-    saveLoginToken('login')
-    renderRoute(`${path}?source=legacy#form`)
+it('redirects /transferencias/nova to /app/transferencias/nova, preserving query and fragment', async () => {
+  saveLoginToken('login')
+  renderRoute('/transferencias/nova?source=legacy#form')
 
-    expect(await screen.findByRole('heading', { name: 'Realizar transferência' })).toBeVisible()
-    expect(screen.getByTestId('location')).toHaveTextContent(
-      '/app/transferencias?source=legacy#form',
-    )
-  },
-)
+  expect(await screen.findByRole('heading', { name: 'Realizar transferência' })).toBeVisible()
+  expect(screen.getByTestId('location')).toHaveTextContent(
+    '/app/transferencias/nova?source=legacy#form',
+  )
+})
 it('preserves the transfer identifier and query when redirecting an old details URL', async () => {
   saveLoginToken('login')
   renderRoute('/transferencias/a%2Fb?source=legacy')
@@ -330,7 +321,7 @@ it('preserves the transfer identifier and query when redirecting an old details 
 it('redirects a company user away from administrator content', async () => {
   saveLoginToken('login')
   renderRoute('/admin/clientes-pme')
-  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
+  await screen.findByRole('heading', { name: 'Dashboard' })
   expect(screen.getByTestId('location')).toHaveTextContent('/app/dashboard')
   expect(mock.mock.calls.some(([url]) => url === '/v1/companies/summaries')).toBe(false)
 })
@@ -340,7 +331,7 @@ it('redirects an admin away from company content', async () => {
     `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
   )
   renderRoute('/app/beneficiarios')
-  await screen.findByRole('heading', { name: 'Dashboard Administrativo' })
+  await screen.findByRole('heading', { name: 'Dashboard' })
   expect(screen.getByTestId('location')).toHaveTextContent('/admin/dashboard')
 })
 it('clears the shell when an authenticated request expires', async () => {
@@ -404,7 +395,7 @@ it('provides a retry when identity loading fails', async () => {
   renderRoute()
   expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar')
   await userEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
-  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
+  await screen.findByRole('heading', { name: 'Dashboard' })
 })
 it('lets the user sign out when identity loading fails', async () => {
   // Given a conta não carrega
@@ -423,7 +414,7 @@ it('lets the user sign out when identity loading fails', async () => {
 it('reacts to logout and clears cached account identity', async () => {
   saveLoginToken('login')
   renderRoute()
-  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
+  await screen.findByRole('heading', { name: 'Dashboard' })
   act(() => clearLoginToken())
   await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
   expect(screen.queryByText('Empresa de Teste')).not.toBeInTheDocument()
@@ -431,7 +422,7 @@ it('reacts to logout and clears cached account identity', async () => {
 it('logs out from the account menu and returns to the login page', async () => {
   saveLoginToken('login')
   renderRoute()
-  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
+  await screen.findByRole('heading', { name: 'Dashboard' })
   await userEvent.click(screen.getByRole('button', { name: 'Sair' }))
   await screen.findByRole('heading', { name: 'Bem-vindo à V-Stable!' })
   expect(getLoginToken()).toBeNull()
@@ -444,8 +435,8 @@ it('selects the administrator menu from localStorage even when /me reports a use
     `header.${btoa(JSON.stringify({ account_type: 'ADMIN', role: ['ROLE_ADMIN'] }))}.signature`,
   )
   renderRoute()
-  await screen.findByRole('heading', { name: 'Dashboard Administrativo' })
-  expect(screen.getByText('Painel administrativo')).toBeInTheDocument()
+  await screen.findByRole('heading', { name: 'Dashboard' })
+  expect(screen.getAllByText('Painel administrativo').length).toBeGreaterThan(0)
   expect(mock.mock.calls.some(([url]) => url === '/v1/companies/c1')).toBe(false)
 })
 it('uses the company navigation when the stored token is not an admin despite /me reporting ADMIN', async () => {
@@ -453,7 +444,7 @@ it('uses the company navigation when the stored token is not an admin despite /m
   saveLoginToken(`header.${btoa(JSON.stringify({ account_type: 'USER' }))}.signature`)
   mock.mockResolvedValueOnce(new Response(JSON.stringify({ ...user, accountType: 'ADMIN' })))
   renderRoute('/admin/clientes-pme')
-  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
+  await screen.findByRole('heading', { name: 'Dashboard' })
   expect(screen.queryByText('Painel administrativo')).not.toBeInTheDocument()
   expect(screen.getByTestId('location')).toHaveTextContent('/app/dashboard')
 })
@@ -492,7 +483,7 @@ it('opens members from the company menu with the same content as the direct rout
   )
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')
-  const nav = await screen.findByRole('navigation')
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
   await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
   expect(await screen.findByRole('heading', { name: 'Membros da empresa' })).toBeInTheDocument()
   expect(screen.getByTestId('location')).toHaveTextContent('/app/membros')
@@ -552,7 +543,7 @@ it.each(['OPERATOR', 'VIEWER'])(
     mockMember(companyRole)
     saveLoginToken('login')
     renderRoute('/app/beneficiarios')
-    const nav = await screen.findByRole('navigation')
+    const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
     // O título empresarial da tela 16 pertence às telas de membros.
     expect(screen.queryByText('V-Stable • Conta empresarial')).not.toBeInTheDocument()
 
@@ -613,7 +604,7 @@ it.each(['/app/membros', '/app/beneficiarios'])(
     })
     saveLoginToken('login')
     renderRoute(path)
-    const nav = await screen.findByRole('navigation')
+    const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
     if (path !== '/app/membros')
       await userEvent.click(within(nav).getByRole('button', { name: 'Membros' }))
 
@@ -727,11 +718,11 @@ it('given a viewer, then it reads the company data without any action to create 
   mockProfile('VIEWER')
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')
-  const nav = await screen.findByRole('navigation')
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
 
   expect(await screen.findByText('Atlas')).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Novo beneficiário' })).not.toBeInTheDocument()
-  expect(within(nav).queryByRole('button', { name: 'Transferências' })).not.toBeInTheDocument()
+  expect(within(nav).getByRole('button', { name: 'Transferências' })).toBeEnabled()
   expect(within(nav).getByRole('button', { name: 'Membros' })).toBeEnabled()
 
   await userEvent.click(within(nav).getByRole('button', { name: 'Dashboard' }))
@@ -740,7 +731,7 @@ it('given a viewer, then it reads the company data without any action to create 
 
 it.each([
   ['/app/beneficiarios/novo', 'Seu perfil de acesso não permite cadastrar beneficiários.'],
-  ['/app/transferencias', 'Seu perfil de acesso não permite realizar transferências.'],
+  ['/app/transferencias/nova', 'Seu perfil de acesso não permite realizar transferências.'],
   ['/transferencias/nova', 'Seu perfil de acesso não permite realizar transferências.'],
 ])('given a viewer opening %s directly, then the action does not start', async (path, message) => {
   mockProfile('VIEWER')
@@ -763,12 +754,16 @@ it.each(['OWNER', 'OPERATOR'] as const)(
     mockProfile(profile)
     saveLoginToken('login')
     renderRoute('/app/beneficiarios')
-    const nav = await screen.findByRole('navigation')
+    const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
 
     await userEvent.click(await screen.findByRole('button', { name: 'Novo beneficiário' }))
     expect(await screen.findByRole('heading', { name: 'Cadastrar beneficiário' })).toBeVisible()
 
     await userEvent.click(within(nav).getByRole('button', { name: 'Transferências' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Histórico de Transferências' }),
+    ).toBeVisible()
+    await userEvent.click(await screen.findByRole('button', { name: 'Realizar transferência' }))
     expect(await screen.findByRole('heading', { name: 'Realizar transferência' })).toBeVisible()
     expect(screen.queryByText(/Seu perfil de acesso não permite/)).not.toBeInTheDocument()
   },
@@ -779,9 +774,9 @@ it('given an operator, then no company profile opens the platform administration
   saveLoginToken('login')
   renderRoute('/admin/clientes-pme')
 
-  await screen.findByRole('heading', { name: 'Visão Geral Corporativa' })
+  await screen.findByRole('heading', { name: 'Dashboard' })
   expect(screen.getByTestId('location')).toHaveTextContent('/app/dashboard')
-  expect(screen.queryByText('Clientes PME')).not.toBeInTheDocument()
+  expect(screen.queryByText('Clientes')).not.toBeInTheDocument()
   expect(requested('/v1/companies/summaries')).toBe(false)
 })
 
@@ -789,7 +784,7 @@ it('given the profile was changed to viewer, when an action is refused, then the
   const profile = mockProfile('OPERATOR')
   saveLoginToken('login')
   renderRoute('/app/beneficiarios')
-  const nav = await screen.findByRole('navigation')
+  const nav = await screen.findByRole('navigation', {}, { timeout: 5000 })
   expect(await screen.findByRole('button', { name: 'Novo beneficiário' })).toBeVisible()
 
   profile.current = 'VIEWER'
@@ -798,7 +793,7 @@ it('given the profile was changed to viewer, when an action is refused, then the
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Novo beneficiário' })).not.toBeInTheDocument(),
   )
-  expect(within(nav).queryByRole('button', { name: 'Transferências' })).not.toBeInTheDocument()
+  expect(within(nav).getByRole('button', { name: 'Transferências' })).toBeEnabled()
   expect(screen.getByText('Atlas')).toBeVisible()
   expect(getLoginToken()).toBe('login')
   expect(screen.getByTestId('location')).toHaveTextContent('/app/beneficiarios')

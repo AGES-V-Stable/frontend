@@ -116,4 +116,51 @@ describe('TransferFilters', () => {
       'O valor mínimo não pode ser maior que o valor máximo.',
     )
   })
+
+  it('keeps the search bar fixed outside and opens secondary filters in a popover when collapsible', () => {
+    const onApply = vi.fn()
+
+    render(<TransferFilters {...options} collapsible onApply={onApply} onClear={vi.fn()} />)
+
+    const trigger = screen.getByRole('button', { name: 'Filtrar transferências' })
+    expect(screen.getByTestId('transfer-search-icon')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Buscar transferência')).toBeInTheDocument()
+    expect(screen.getByTestId('transfer-filter-funnel-icon')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Filtrar' })).not.toBeInTheDocument()
+
+    fireEvent.click(trigger)
+    fireEvent.change(screen.getByLabelText('Valor mínimo'), { target: { value: '150000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
+
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ minAmount: '150000' }))
+    expect(screen.queryByRole('button', { name: 'Filtrar' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Filtros ativos')).toBeInTheDocument()
+  })
+
+  it('filters and selects a beneficiary from the searchable dropdown', () => {
+    const onApply = vi.fn()
+
+    render(
+      <TransferFilters
+        {...options}
+        beneficiaries={['Atlas Imports LLC', 'Global Tech Corp']}
+        onApply={onApply}
+        onClear={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByLabelText('Beneficiário')
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'Atlas' } })
+
+    expect(screen.getByRole('option', { name: 'Atlas Imports LLC' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Global Tech Corp' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('option', { name: 'Atlas Imports LLC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
+
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ beneficiary: 'Atlas Imports LLC' }),
+    )
+  })
 })

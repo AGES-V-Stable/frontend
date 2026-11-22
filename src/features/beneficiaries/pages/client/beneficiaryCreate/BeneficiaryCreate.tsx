@@ -1,5 +1,7 @@
+import { useNavigate } from 'react-router'
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
+import { PATHS } from '@/shared/navigation/paths'
 
 interface FormData {
   tipoBeneficiario: string
@@ -87,6 +89,7 @@ const SELECT_CLASS =
 import { useBeneficiaryCreate } from '@/features/beneficiaries/hooks/useBeneficiaryCreate'
 
 export function BeneficiaryCreate() {
+  const navigate = useNavigate()
   const {
     data,
     method,
@@ -422,7 +425,10 @@ export function BeneficiaryCreate() {
               type="button"
               variant="neutral"
               label="Cancelar"
-              onClick={handleCancel}
+              onClick={() => {
+                handleCancel()
+                void navigate(PATHS.BENEFICIARIES)
+              }}
               disabled={saving}
               className="h-12 font-medium"
             />

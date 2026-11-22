@@ -184,6 +184,7 @@ it('updates every widget together when a filter is applied, and restores the def
   renderDashboard()
   await screen.findByText('Nenhuma liquidação registrada.')
 
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'THIS_MONTH' } })
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
 
@@ -202,6 +203,7 @@ it('updates every widget together when a filter is applied, and restores the def
   expect((await screen.findAllByText('01/11/2026 a 03/11/2026')).length).toBeGreaterThan(0)
 
   fetcher.mockClear()
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }))
 
   await waitFor(() =>
@@ -217,6 +219,7 @@ it('blocks an invalid period without requesting new data', async () => {
   await screen.findByText('Nenhuma liquidação registrada.')
   fetcher.mockClear()
 
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'CUSTOM' } })
   fireEvent.change(screen.getByLabelText('Data inicial'), { target: { value: '2026-03-01' } })
   fireEvent.change(screen.getByLabelText('Data final'), { target: { value: '2026-01-01' } })
@@ -243,6 +246,7 @@ it('returns to the first settlements page when the filters change', async () => 
     ),
   )
 
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'ALL' } })
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
 
@@ -258,8 +262,8 @@ it('uses administrative endpoints and filters every widget by company', async ()
   vi.stubGlobal('fetch', fetcher)
   renderDashboard(true)
   expect(await screen.findByText('Nenhuma liquidação registrada.')).toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: 'Dashboard Administrativo' })).toBeInTheDocument()
-  expect(screen.getByText('PAINEL ADMIN')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+  expect(screen.getByText('Painel administrativo')).toBeInTheDocument()
   // As cotações são globais (cicd#55): a mesma rota para cliente e administrador.
   expect(
     calledUrls(fetcher).every(
@@ -270,6 +274,7 @@ it('uses administrative endpoints and filters every widget by company', async ()
     ),
   ).toBe(true)
 
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   const company = screen.getByLabelText('Empresa')
   await waitFor(() => expect(company).toBeEnabled())
   fireEvent.change(company, { target: { value: 'c1' } })
@@ -342,6 +347,7 @@ it('ignores a stale chart response after a rapid filter change', async () => {
     }),
   )
   renderDashboard()
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'THIS_MONTH' } })
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
   await screen.findAllByText('Nenhuma operação no período.')
@@ -631,7 +637,7 @@ it('names the chart series, flags incomplete data and formats the value axis in 
   expect(chartProps.Bar.at(-1)).toMatchObject({ name: 'Volume', dataKey: 'value' })
   // Só o mês mais recente fica em destaque, como no Figma.
   expect(chartProps.Cell.slice(-2).map((cell) => cell.fill)).toEqual([
-    'var(--color-sky-600)',
+    'var(--color-emerald-200)',
     'var(--color-primary)',
   ])
   expect(chartProps.Area.at(-1)).toMatchObject({ name: 'Economia', dataKey: 'value' })

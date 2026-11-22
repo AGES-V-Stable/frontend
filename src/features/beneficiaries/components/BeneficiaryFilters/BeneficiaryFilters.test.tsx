@@ -75,4 +75,46 @@ describe('BeneficiaryFilters', () => {
     expect(screen.getByPlaceholderText('Buscar beneficiário')).toHaveValue('')
     expect(screen.getByLabelText('País')).toHaveValue('')
   })
+
+  it('renders a magnifying glass icon in the search field and supports embedded mode without a separate card', () => {
+    render(<BeneficiaryFilters {...options} embedded onApply={vi.fn()} onClear={vi.fn()} />)
+
+    expect(screen.getByTestId('beneficiary-search-icon')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Buscar beneficiário')).toHaveClass('pl-9')
+    expect(screen.queryByRole('heading', { name: 'Filtros' })).not.toBeInTheDocument()
+    expect(screen.getByRole('form', { name: 'Filtros de beneficiários' })).not.toHaveClass(
+      'bg-white',
+    )
+  })
+
+  it('keeps the search bar fixed outside and opens extra filters in a funnel popover when collapsible', () => {
+    const onApply = vi.fn()
+    render(
+      <BeneficiaryFilters
+        {...options}
+        embedded
+        collapsible
+        hideCompanyFilter
+        onApply={onApply}
+        onClear={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByPlaceholderText('Buscar beneficiário')).toBeInTheDocument()
+    expect(screen.getByTestId('beneficiary-search-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('beneficiary-filter-funnel-icon')).toBeInTheDocument()
+    expect(screen.queryByLabelText('País')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar beneficiários' }))
+    fireEvent.change(screen.getByLabelText('País'), { target: { value: 'Brasil' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Filtrar' }))
+
+    expect(onApply).toHaveBeenCalledWith({
+      companyOrCnpj: '',
+      search: '',
+      country: 'Brasil',
+    })
+    expect(screen.queryByLabelText('País')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Filtros ativos')).toBeInTheDocument()
+  })
 })

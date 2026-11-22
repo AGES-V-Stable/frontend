@@ -1,5 +1,7 @@
+import { useNavigate } from 'react-router'
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
+import { PATHS } from '@/shared/navigation/paths'
 import { ActionIcon } from '@/shared/components/Icons/ActionIcon'
 import { Stepper } from '@/shared/components/Stepper'
 import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
@@ -52,6 +54,7 @@ const STATUS_LABELS: Record<TransactionStatus, string> = {
 const beneficiaryName = (beneficiary: Beneficiary) => beneficiary.legalName || beneficiary.nickname
 
 export function TransferCreate() {
+  const navigate = useNavigate()
   const {
     activeStep,
     totpCode,
@@ -343,7 +346,10 @@ export function TransferCreate() {
                   type="button"
                   variant="secondary"
                   label="Cancelar"
-                  onClick={handleCancel}
+                  onClick={() => {
+                    handleCancel()
+                    void navigate(PATHS.TRANSFERS)
+                  }}
                   disabled={submitting}
                   className="h-12 font-medium"
                 />

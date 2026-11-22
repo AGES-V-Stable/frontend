@@ -22,6 +22,7 @@ export function TransactionVolumeCard({
     <MetricCard
       title="Volume Transacionado"
       accent={accent}
+      barAccent="emerald"
       state={
         state.status === 'loading'
           ? { status: 'loading', label: 'Carregando volume...' }

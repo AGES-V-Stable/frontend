@@ -5,6 +5,14 @@ import { maskCNPJ } from '@/shared/utils/masks'
 export const beneficiaryTableColumns: ColumnDefinition<Beneficiary>[] = [
   { key: 'nickname', label: 'Beneficiário', type: 'text', width: 190 },
   {
+    key: 'accountHolderName',
+    label: 'Titular',
+    type: 'text',
+    width: 210,
+    sortValue: (item) => item.accountHolderName || item.legalName || '',
+    render: (item) => item.accountHolderName || item.legalName || '-',
+  },
+  {
     key: 'identificationDocument',
     label: 'Documento',
     type: 'text',

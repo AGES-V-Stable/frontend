@@ -28,6 +28,7 @@ import { BeneficiariesLanding } from '@/features/beneficiaries/pages/client/bene
 import { BeneficiaryCreate } from '@/features/beneficiaries/pages/client/beneficiaryCreate'
 import { TransferCreate } from '@/features/transfers/pages/client/transferCreate'
 import { TransferDetails } from '@/features/transfers/pages/client/transferDetails'
+import { TransfersLanding } from '@/features/transfers/pages/client/transfers/TransfersLanding'
 import { Members } from '@/features/members/pages/Members'
 import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
@@ -177,7 +178,7 @@ function TransferDetailsRoute() {
   const { user } = useSession()
   return (
     <TransferDetails
-      closeTo={hasCompanyPermission(user, 'TRANSFER_CREATE') ? PATHS.TRANSFERS : PATHS.DASHBOARD}
+      closeTo={hasCompanyPermission(user, 'TRANSFER_READ') ? PATHS.TRANSFERS : PATHS.DASHBOARD}
     />
   )
 }
@@ -227,30 +228,18 @@ function RoutedApplication() {
   const items: NavigationItem[] = admin
     ? [
         item('dashboard', 'Dashboard', PATHS.ADMIN_DASHBOARD, homeIcon),
-        item('clients', 'Clientes PME', PATHS.ADMIN_CLIENTS, clientsIcon),
+        item('admin-transfers', 'Transferências', PATHS.ADMIN_TRANSFERS, transfersIcon),
+        item('clients', 'Clientes', PATHS.ADMIN_CLIENTS, clientsIcon),
+        item('admin-beneficiaries', 'Beneficiários', PATHS.ADMIN_BENEFICIARIES, beneficiariesIcon),
         item('security-requests', 'Solicitações de Segurança', PATHS.ADMIN_SECURITY, supportIcon),
-        {
-          id: 'audit',
-          label: 'Auditoria',
-          icon: icon(transfersIcon),
-          children: [
-            item('admin-transfers', 'Transferências', PATHS.ADMIN_TRANSFERS, transfersIcon),
-            item(
-              'admin-beneficiaries',
-              'Beneficiários',
-              PATHS.ADMIN_BENEFICIARIES,
-              beneficiariesIcon,
-            ),
-          ],
-        },
       ]
     : user?.companyAccess?.status === 'REMOVED' && !user.companyId
       ? // Sem empresa após a remoção: resta apenas a consulta do próprio acesso.
         [item('members', 'Membros', PATHS.MEMBERS, membersIcon)]
       : [
           item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
-          // O item abre a criação de transferência: só aparece para quem pode criar.
-          ...(hasCompanyPermission(user, 'TRANSFER_CREATE')
+          ...(hasCompanyPermission(user, 'TRANSFER_READ') ||
+          hasCompanyPermission(user, 'TRANSFER_CREATE')
             ? [item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon)]
             : []),
           item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
@@ -391,12 +380,22 @@ export default function AppRoutes() {
           <Route
             element={
               <PermissionGuard
+                permission="TRANSFER_READ"
+                message="Seu perfil de acesso não permite consultar transferências."
+              />
+            }
+          >
+            <Route path={PATHS.TRANSFERS} element={<TransfersLanding />} />
+          </Route>
+          <Route
+            element={
+              <PermissionGuard
                 permission="TRANSFER_CREATE"
                 message="Seu perfil de acesso não permite realizar transferências."
               />
             }
           >
-            <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />
+            <Route path={PATHS.TRANSFERS_NEW} element={<TransferCreate />} />
           </Route>
           <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetailsRoute />} />
           <Route path={PATHS.MEMBERS} element={<Members />} />
@@ -424,9 +423,8 @@ export default function AppRoutes() {
       </Route>
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
       <Route path="/beneficiarios/novo" element={<LegacyRedirect to={PATHS.BENEFICIARIES_NEW} />} />
-      <Route path="/app/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
       <Route path="/transferencias" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
-      <Route path="/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
+      <Route path="/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS_NEW} />} />
       <Route path="/transferencias/:id" element={<LegacyRedirect details />} />
       <Route path="/configuracoes" element={<LegacyRedirect to={PATHS.SETTINGS} />} />
       <Route path={PATHS.LOGIN} element={<Login resolveDestination={postLoginDestination} />} />

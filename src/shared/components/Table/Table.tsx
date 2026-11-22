@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { TableProps, ColumnDefinition } from '@/shared/components/Table/types'
 import { StatusBadge } from '@/shared/components/Table/StatusBadge'
@@ -8,6 +9,64 @@ import { getRecordRange } from '@/shared/components/Table/recordRange'
 function getCellValue<T>(item: T, key: string): ReactNode {
   const value = (item as unknown as Record<string, unknown>)[key]
   return value !== undefined && value !== null ? String(value) : ''
+}
+
+function getRawSortValue<T>(item: T, column: ColumnDefinition<T>): string | number | null {
+  const raw = column.sortValue
+    ? column.sortValue(item)
+    : (item as unknown as Record<string, unknown>)[column.key]
+  if (raw === undefined || raw === null || raw === '') return null
+  if (typeof raw === 'number' || typeof raw === 'string') return raw
+  return String(raw)
+}
+
+function compareSortValues(a: string | number | null, b: string | number | null): number {
+  if (a === null && b === null) return 0
+  if (a === null) return 1
+  if (b === null) return -1
+
+  const numA = typeof a === 'number' ? a : Number(a)
+  const numB = typeof b === 'number' ? b : Number(b)
+  if (
+    String(a).trim() !== '' &&
+    String(b).trim() !== '' &&
+    Number.isFinite(numA) &&
+    Number.isFinite(numB)
+  ) {
+    return numA - numB
+  }
+
+  const isoPattern = /^\d{4}-\d{2}-\d{2}/
+  if (typeof a === 'string' && typeof b === 'string' && isoPattern.test(a) && isoPattern.test(b)) {
+    const timeA = Date.parse(a)
+    const timeB = Date.parse(b)
+    if (Number.isFinite(timeA) && Number.isFinite(timeB)) return timeA - timeB
+  }
+
+  return String(a).localeCompare(String(b), 'pt-BR', { sensitivity: 'base', numeric: true })
+}
+
+function SortIcon({ direction }: { direction: 'asc' | 'desc' | null }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className="size-3.5 shrink-0">
+      <path
+        d="M5 6.5 8 3.5l3 3"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={direction === 'asc' ? 'text-primary' : 'text-slate-400'}
+      />
+      <path
+        d="M5 9.5 8 12.5l3-3"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={direction === 'desc' ? 'text-primary' : 'text-slate-400'}
+      />
+    </svg>
+  )
 }
 
 export function Table<T>({
@@ -23,7 +82,30 @@ export function Table<T>({
   emptyMessage,
   entityLabel = 'registros',
   rowLabel,
+  sortable = false,
 }: TableProps<T>) {
+  const [sortState, setSortState] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(
+    null,
+  )
+
+  const sortedData = useMemo(() => {
+    if (!sortable || !sortState) return data
+    const column = columns.find((col) => col.key === sortState.key)
+    if (!column) return data
+    const factor = sortState.direction === 'asc' ? 1 : -1
+    return [...data].sort(
+      (left, right) =>
+        compareSortValues(getRawSortValue(left, column), getRawSortValue(right, column)) * factor,
+    )
+  }, [columns, data, sortState, sortable])
+
+  const toggleSort = (key: string) => {
+    setSortState((current) => {
+      if (!current || current.key !== key) return { key, direction: 'asc' }
+      if (current.direction === 'asc') return { key, direction: 'desc' }
+      return null
+    })
+  }
   // Resumo anunciado ao leitor de tela quando a página ou o filtro mudam a lista.
   const range = pagination && data.length > 0 ? getRecordRange(pagination) : undefined
   const summary = range
@@ -100,26 +182,58 @@ export function Table<T>({
         <table className={`w-full text-left border-collapse ${compact ? 'min-w-max' : ''}`}>
           <thead>
             <tr className="h-[40px]">
-              {columns.map((col, index) => (
-                <th
-                  key={col.key as string}
-                  scope="col"
-                  style={{ width: col.width }}
-                  className={`
-                    font-['IBM_Plex_Sans'] font-medium text-[14px] leading-none text-slate-500 align-middle
-                    ${index === 0 ? '' : 'pl-2'}
-                    ${index === columns.length - 1 ? '' : 'pr-4'}
-                    ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
-                  `}
-                >
-                  {col.label}
-                </th>
-              ))}
+              {columns.map((col, index) => {
+                const isColSortable = sortable && col.type !== 'action' && col.sortable !== false
+                const activeDirection =
+                  isColSortable && sortState?.key === col.key ? sortState.direction : null
+                const justifyClass =
+                  col.align === 'center'
+                    ? 'justify-center'
+                    : col.align === 'right'
+                      ? 'justify-end'
+                      : 'justify-start'
+
+                return (
+                  <th
+                    key={col.key as string}
+                    scope="col"
+                    aria-sort={
+                      isColSortable
+                        ? activeDirection === 'asc'
+                          ? 'ascending'
+                          : activeDirection === 'desc'
+                            ? 'descending'
+                            : 'none'
+                        : undefined
+                    }
+                    style={{ width: col.width }}
+                    className={`
+                      font-['IBM_Plex_Sans'] font-medium text-[14px] leading-none text-slate-500 align-middle
+                      ${index === 0 ? '' : 'pl-2'}
+                      ${index === columns.length - 1 ? '' : 'pr-4'}
+                      ${col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'}
+                    `}
+                  >
+                    {isColSortable ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(col.key)}
+                        className={`inline-flex w-full cursor-pointer items-center gap-1.5 py-1 transition-colors hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${justifyClass}`}
+                      >
+                        <span>{col.label}</span>
+                        <SortIcon direction={activeDirection} />
+                      </button>
+                    ) : (
+                      col.label
+                    )}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
-            {data.length > 0 ? (
-              data.map((item, rowIndex) => (
+            {sortedData.length > 0 ? (
+              sortedData.map((item, rowIndex) => (
                 <tr key={rowIndex} className="h-[64px] border-b border-sage-300">
                   {columns.map((col, colIndex) => (
                     <td
