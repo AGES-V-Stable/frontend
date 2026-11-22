@@ -79,21 +79,25 @@ describe('postLoginDestination', () => {
     expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.TRANSFERS)
   })
 
-  it('does not redirect a company owner with pending BlindPay data away from dashboard/origin', async () => {
-    saveLoginToken(userToken)
-    const owner = {
-      ...userWithMembership,
-      companyAccess: { ...userWithMembership.companyAccess, role: 'OWNER' },
-    }
-    const fetcher = stubApi({
-      onboarding: () => new Response(JSON.stringify({ ...onboarding, status: 'APPROVED' })),
-      me: () => new Response(JSON.stringify(owner)),
-    })
+  it.each(['APPROVED', 'UNDER_REVIEW'])(
+    'keeps ordinary login with %s onboarding on the normal origin without opening BlindPay',
+    async (status) => {
+      saveLoginToken(userToken)
+      const owner = {
+        ...userWithMembership,
+        companyAccess: { ...userWithMembership.companyAccess, role: 'OWNER' },
+      }
+      const fetcher = stubApi({
+        onboarding: () => new Response(JSON.stringify({ ...onboarding, status })),
+        me: () => new Response(JSON.stringify(owner)),
+      })
 
-    expect(await postLoginDestination(null)).toBe(PATHS.HOME)
-    expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.TRANSFERS)
-    expect(fetcher).not.toHaveBeenCalledWith('/v1/blindpay/kyc', expect.anything())
-  })
+      expect(await postLoginDestination(null)).toBe(PATHS.HOME)
+      expect(await postLoginDestination(PATHS.TRANSFERS)).toBe(PATHS.TRANSFERS)
+      expect(await postLoginDestination(PATHS.REGISTER_STATUS)).toBe(PATHS.REGISTER_STATUS)
+      expect(fetcher).not.toHaveBeenCalledWith('/v1/blindpay/kyc', expect.anything())
+    },
+  )
 
   it('ignores an administrative origin for a company user', async () => {
     saveLoginToken(userToken)

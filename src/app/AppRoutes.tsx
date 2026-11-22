@@ -35,7 +35,6 @@ import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/Regis
 import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
 import { BlindPayTermsReturn } from '@/app/components/BlindPayTermsReturn'
 import { KycFullPreview } from '@/features/onboarding/pages/KycFullPreview/KycFullPreview'
-import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
 import {
   CompanyRoute,
   CompanySetupRoute,
@@ -435,7 +434,10 @@ export default function AppRoutes() {
       <Route path={PATHS.REGISTER_2FA} element={<TwoFactorRoute />} />
       <Route path={PATHS.REGISTER_COMPLIANCE} element={<ComplianceRoute />} />
       <Route path={PATHS.COMPLIANCE_LIVENESS} element={<LivenessRoute />} />
-      <Route path={PATHS.REGISTER_COMPLETE} element={<RegistrationComplete />} />
+      <Route
+        path={PATHS.REGISTER_COMPLETE}
+        element={<Navigate to={PATHS.REGISTER_STATUS} replace />}
+      />
       <Route path={PATHS.REGISTER_STATUS} element={<RegisterStatus />} />
       <Route
         path={PATHS.FORGOT_PASSWORD}

@@ -15,7 +15,7 @@ import ComplianceStep from '@/features/onboarding/pages/Register/ComplianceStep'
 import { RepresentativeStep } from '@/features/onboarding/pages/Register/RepresentativeStep'
 import { TwoFactorStep } from '@/features/onboarding/pages/Register/TwoFactorStep'
 
-import { PATHS, compliancePath, registrationCompletePath } from '@/shared/navigation/paths'
+import { PATHS, compliancePath } from '@/shared/navigation/paths'
 
 const AccessState = z.object({
   nomeCompleto: z.string(),
@@ -130,7 +130,7 @@ export function LivenessRoute() {
   return (
     <LivenessStep
       progressoCadastroId={kycVerificationId}
-      onContinue={() => navigate(registrationCompletePath(kycVerificationId!), { replace: true })}
+      onContinue={() => navigate(PATHS.REGISTER_STATUS, { replace: true })}
     />
   )
 }

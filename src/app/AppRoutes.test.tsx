@@ -1,7 +1,7 @@
 import { SessionProvider } from '@/features/auth'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AppRoutes from '@/app/AppRoutes'
@@ -11,12 +11,30 @@ import {
   PATHS,
   registrationCompletePath,
 } from '@/shared/navigation/paths'
-import { ApiError } from '@/features/onboarding/api/onboarding'
+import {
+  ApiError,
+  getRepresentativePersonalData,
+  saveRepresentativePersonalData,
+} from '@/features/onboarding/api/onboarding'
+import {
+  getAccessToken,
+  getLoginToken,
+  saveAccessToken,
+  saveLoginToken,
+} from '@/shared/http/authToken'
+import {
+  getLivenessId,
+  getLivenessStatus,
+  saveLivenessSession,
+} from '@/features/onboarding/api/liveness'
+import { pendingOnboardingPath } from '@/features/onboarding/model/registrationStatus'
 import {
   INVITATION_LINK_HASH,
   json,
   resolvedInvitation,
   stubApi,
+  requestsTo,
+  userWithoutCompany,
 } from '@/test/fixtures/companyInvitation'
 
 const { submitOnboardingMock, registerCompanyMock } = vi.hoisted(() => ({
@@ -91,8 +109,13 @@ async function fillRepresentativeForm(user: ReturnType<typeof userEvent.setup>) 
   await user.type(screen.getByLabelText(/país/i), 'Brasil')
 }
 
+function CurrentPath() {
+  return <output aria-label="Rota atual">{useLocation().pathname}</output>
+}
+
 describe('AppRoutes Navigation & Routing', () => {
   beforeEach(() => {
+    sessionStorage.clear()
     submitOnboardingMock.mockReset()
     startDocumentUploadMock.mockReset()
     uploadFileToS3Mock.mockReset()
@@ -182,20 +205,131 @@ describe('AppRoutes Navigation & Routing', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('Verificação facial')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Verificação facial' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Cadastro Institucional' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Passo 5 de 5')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Iniciar verificação facial' })).toBeEnabled()
   })
 
-  it('given the user navigates to the registration-complete path, when AppRoutes is rendered, then it should render the RegistrationComplete page', () => {
+  it('resumes pending facial verification with the same final-step header and locked continuation', () => {
+    saveLivenessSession('resumed-liveness', 'pending', id)
+    const resumedPath = pendingOnboardingPath({
+      kycVerificationId: id,
+      companyId: 'company-1',
+      status: 'PENDING',
+      documentSubmitted: true,
+      livenessSubmitted: false,
+    })
+    expect(resumedPath).toBe(livenessPath(id))
+    render(
+      <MemoryRouter initialEntries={[resumedPath!]}>
+        <SessionProvider>
+          <AppRoutes />
+        </SessionProvider>
+      </MemoryRouter>,
+    )
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Cadastro Institucional' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Verificação facial' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Passo 5 de 5')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verificar conclusão' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
+    expect(getLivenessStatus(id)).toBe('pending')
+  })
+
+  it.each(['rejected KYC', 'failed KYC', 'failed liveness submission'])(
+    'keeps the final step and retry state after %s without showing confirmation',
+    async (failure) => {
+      const user = userEvent.setup({ delay: null })
+      const base = `/v1/onboarding/${id}/compliance`
+      const fetchMock = stubApi({
+        [`PUT ${base}/liveness`]:
+          failure === 'failed liveness submission'
+            ? json({ message: 'Falha simulada' }, { status: 503 })
+            : new Response(null, { status: 204 }),
+        [`POST ${base}/kyc`]:
+          failure === 'rejected KYC'
+            ? json({
+                aveniaProcessId: 'process-1',
+                status: 'REJECTED',
+                resultMessage: 'Documento ilegível',
+              })
+            : json({ message: 'Falha simulada' }, { status: 503 }),
+      })
+      saveLivenessSession('liveness-1', 'success', id)
+      saveAccessToken('synthetic-onboarding-token')
+      saveRepresentativePersonalData({
+        fullName: 'Maria Teste',
+        email: 'maria@example.test',
+        phone: '11987654321',
+        dateOfBirth: '1990-01-01',
+        taxIdNumber: '52998224725',
+        country: 'Brasil',
+        state: 'SP',
+        city: 'São Paulo',
+        zipCode: '90000000',
+        streetAddress: 'Rua Teste, 100',
+      })
+      render(
+        <MemoryRouter initialEntries={[livenessPath(id)]}>
+          <SessionProvider>
+            <AppRoutes />
+          </SessionProvider>
+        </MemoryRouter>,
+      )
+      await user.click(screen.getByRole('button', { name: 'Continuar' }))
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        failure === 'rejected KYC'
+          ? 'Documento ilegível'
+          : 'Não foi possível confirmar a verificação',
+      )
+      expect(screen.queryByRole('heading', { name: 'Cadastro enviado' })).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Passo 5 de 5')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
+      expect(getRepresentativePersonalData()).not.toBeNull()
+      expect(getAccessToken()).toBe('synthetic-onboarding-token')
+      expect(getLoginToken()).toBeNull()
+      expect(getLivenessId(id)).toBe('liveness-1')
+      expect(requestsTo(fetchMock, `POST ${base}/kyc`)).toHaveLength(
+        failure === 'failed liveness submission' ? 0 : 1,
+      )
+    },
+  )
+
+  it('redirects the legacy registration-complete URL to the authenticated status screen', async () => {
+    saveLoginToken('synthetic-login-token')
+    stubApi({
+      'GET /v1/users/me': json({ ...userWithoutCompany, twoFactorEnabled: true }),
+      'GET /v1/onboarding/me': json({
+        kycVerificationId: id,
+        companyId: 'company-1',
+        status: 'UNDER_REVIEW',
+        documentSubmitted: true,
+        livenessSubmitted: true,
+      }),
+    })
     render(
       <MemoryRouter initialEntries={[registrationCompletePath(id)]}>
+        <CurrentPath />
         <SessionProvider>
           <AppRoutes />
         </SessionProvider>
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('heading', { name: 'Cadastro enviado' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Seu cadastro está em análise' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Rota atual')).toHaveTextContent(PATHS.REGISTER_STATUS)
+    expect(screen.queryByRole('heading', { name: 'Cadastro enviado' })).not.toBeInTheDocument()
+    expect(getLoginToken()).toBe('synthetic-login-token')
   })
 
   it('renders the placeholder screen for the forgot password path', () => {
@@ -226,8 +360,35 @@ describe('AppRoutes Navigation & Routing', () => {
     expect(screen.getByRole('heading', { name: 'Bem-vindo à V-Stable!' })).toBeInTheDocument()
   })
 
-  it('walks the full wizard from access to the liveness step on a happy path', async () => {
+  it('walks the full wizard through hosted verification and final KYC to authenticated status', async () => {
     const user = userEvent.setup({ delay: null })
+    const base = `/v1/onboarding/${id}/compliance`
+    const fetchMock = stubApi({
+      [`POST ${base}/liveness`]: json({
+        id: 'liveness-1',
+        sessionId: null,
+        livenessUrl: 'https://verification.example.test/facial',
+        validateLivenessToken: null,
+      }),
+      [`GET ${base}/liveness/status?livenessId=liveness-1`]: [
+        json({ ready: false, status: 'WAITING-UPLOAD' }),
+        json({ ready: true, status: 'UPLOADED' }),
+      ],
+      [`PUT ${base}/liveness`]: new Response(null, { status: 204 }),
+      [`POST ${base}/kyc`]: json({ aveniaProcessId: 'process-1', status: 'UNDER_REVIEW' }),
+      'GET /v1/users/me': json({ ...userWithoutCompany, twoFactorEnabled: true }),
+      'GET /v1/onboarding/me': json({
+        kycVerificationId: id,
+        companyId: 'company-1',
+        status: 'UNDER_REVIEW',
+        documentSubmitted: true,
+        livenessSubmitted: true,
+      }),
+    })
+    const hostedTab = { opener: {}, location: { href: '' }, close: vi.fn() }
+    vi.stubGlobal('open', vi.fn().mockReturnValue(hostedTab))
+    // The registration API is mocked above; reproduce its token persistence side effect.
+    saveAccessToken('synthetic-onboarding-token')
     submitOnboardingMock.mockResolvedValueOnce({
       userId: 'user-1',
       companyId: 'company-1',
@@ -296,10 +457,52 @@ describe('AppRoutes Navigation & Routing', () => {
     await screen.findByText('Termos da Avenia aceitos.')
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
-    expect(await screen.findByText('Verificação facial')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Verificação facial' }),
+    ).toBeInTheDocument()
     expect(startDocumentUploadMock).toHaveBeenCalledWith(id, 'PASSPORT', false)
     expect(uploadFileToS3Mock).toHaveBeenCalledTimes(1)
     expect(submitDocumentResultMock).toHaveBeenCalledWith(id, 'doc-1')
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Cadastro Institucional' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Passo 5 de 5')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
+    const personalData = getRepresentativePersonalData()
+    expect(personalData).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Iniciar verificação facial' }))
+    expect(hostedTab.opener).toBeNull()
+    expect(hostedTab.location.href).toBe('https://verification.example.test/facial')
+    expect(getLivenessId(id)).toBe('liveness-1')
+    await user.click(screen.getByRole('button', { name: 'Verificar conclusão' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('ainda não concluída')
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
+    expect(requestsTo(fetchMock, `POST ${base}/kyc`)).toHaveLength(0)
+    expect(screen.queryByRole('heading', { name: 'Cadastro enviado' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Verificar conclusão' }))
+    expect(await screen.findByText('Verificação concluída com sucesso.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Seu cadastro está em análise' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Cadastro enviado' })).not.toBeInTheDocument()
+    expect(requestsTo(fetchMock, 'GET /v1/onboarding/me')).toEqual([
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer synthetic-onboarding-token' }),
+      }),
+    ])
+    expect(requestsTo(fetchMock, `PUT ${base}/liveness`)).toEqual([
+      expect.objectContaining({ body: { livenessId: 'liveness-1' } }),
+    ])
+    expect(requestsTo(fetchMock, `POST ${base}/kyc`)).toEqual([
+      expect.objectContaining({ body: personalData }),
+    ])
+    expect(getRepresentativePersonalData()).toBeNull()
+    expect(getAccessToken()).toBe('synthetic-onboarding-token')
+    expect(getLoginToken()).toBe('synthetic-onboarding-token')
+    expect(getLivenessId(id)).toBeNull()
   }, 15000)
 
   it('shows the API message and preserves the form when representative submission fails with a client error', async () => {
@@ -375,7 +578,9 @@ describe('AppRoutes Navigation & Routing', () => {
     await screen.findByText('Termos da Avenia aceitos.')
     await user.click(screen.getByRole('button', { name: /continuar/i }))
 
-    expect(await screen.findByText('Verificação facial')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Verificação facial' }),
+    ).toBeInTheDocument()
     expect(uploadFileToS3Mock).toHaveBeenCalledTimes(2)
   })
 

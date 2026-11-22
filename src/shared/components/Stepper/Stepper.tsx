@@ -4,9 +4,11 @@ interface StepperProps {
   activeStep: number
   /** Classes extras do contêiner, por exemplo a largura máxima. */
   className?: string
+  /** Mantém rótulos longos dentro da coluna em layouts estreitos. */
+  wrapLabels?: boolean
 }
 
-export function Stepper({ steps, activeStep, className = '' }: StepperProps) {
+export function Stepper({ steps, activeStep, className = '', wrapLabels = false }: StepperProps) {
   return (
     <ol
       aria-label={`Passo ${activeStep + 1} de ${steps.length}`}
@@ -41,7 +43,7 @@ export function Stepper({ steps, activeStep, className = '' }: StepperProps) {
               {completed ? '✓' : index + 1}
             </span>
             <span
-              className={`flex min-h-6 items-center text-xs ${
+              className={`${wrapLabels ? 'min-h-6 w-full px-0.5 text-center [overflow-wrap:anywhere] text-xs' : 'flex min-h-6 items-center text-xs'} ${
                 index <= activeStep ? 'text-primary' : 'text-slate-600'
               }`}
             >
