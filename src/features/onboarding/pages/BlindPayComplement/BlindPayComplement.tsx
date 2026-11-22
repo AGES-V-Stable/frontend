@@ -5,6 +5,8 @@ import { Stepper } from '@/shared/components/Stepper'
 import { maskCEP, maskCPF, maskPhone } from '@/shared/utils/masks'
 import {
   loadIndividualKycStatus,
+  captureIndividualTermsReturn,
+  checkIndividualTermsReturn,
   restartIndividualKyc,
   startIndividualKycTerms,
   submitIndividualKyc,
@@ -163,7 +165,7 @@ interface Props {
 /**
  * KYC Standard individual na BlindPay (residentes no Brasil).
  * Arquivos ficam apenas em memória até o envio; o aceite dos termos acontece na
- * página hospedada da BlindPay e só vale após o backend receber o webhook assinado.
+ * página hospedada da BlindPay; o retorno é conferido pelo usuário no botão de consulta.
  */
 export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
   const [step, setStep] = useState<Step>(0)
@@ -207,21 +209,9 @@ export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
     }
   }, [previewOnly])
 
-  // Consulta periódica enquanto se espera o webhook de aceite ou o resultado da análise.
   useEffect(() => {
-    if (previewOnly || !status) return
-    const waitingTerms = step === 3 && termsUrl !== null && !status.termsAccepted
-    if (!waitingTerms && !isKycPending(status)) return
-    const timer = window.setInterval(
-      () => {
-        loadIndividualKycStatus()
-          .then(setStatus)
-          .catch(() => undefined)
-      },
-      waitingTerms ? 5000 : 15000,
-    )
-    return () => window.clearInterval(timer)
-  }, [previewOnly, status, step, termsUrl])
+    if (!previewOnly) captureIndividualTermsReturn(window.location.search)
+  }, [previewOnly])
 
   const termsAccepted = previewOnly || Boolean(status?.termsAccepted)
   const proofOption = PROOF_TYPES.find((item) => item.value === proofType)
@@ -266,6 +256,7 @@ export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
     setBusy(true)
     setNotice('')
     try {
+      await checkIndividualTermsReturn()
       setStatus(await loadIndividualKycStatus())
     } catch (error) {
       setNotice(kycErrorMessage(error, 'Não foi possível atualizar a situação. Tente novamente.'))
@@ -544,8 +535,8 @@ export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
         <h3 className="text-base font-semibold text-slate-900">Aceite em ambiente hospedado</h3>
         <p className="text-sm leading-6 text-slate-600">
           O aceite dos termos da BlindPay é separado dos termos da V-Stable e acontece na página
-          oficial do provedor, em uma nova aba. Depois de aceitar, volte para esta aba: a
-          confirmação aparece aqui automaticamente.
+          oficial do provedor, em uma nova aba. Depois de aceitar, volte para esta aba: a clique em
+          "Já aceitei, verificar" para confirmar o retorno.
         </p>
         {previewOnly ? (
           <>
@@ -677,7 +668,9 @@ export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
           <p className="mt-1 text-sm">{view.description}</p>
         </div>
         {pending && (
-          <p className="text-xs text-slate-600">Esta página se atualiza automaticamente.</p>
+          <p className="text-xs text-slate-600">
+            Clique em "Verificar conclusão" para consultar a BlindPay.
+          </p>
         )}
         {rfiOpen && !previewOnly && <BlindPayRfiForm onSubmitted={setStatus} />}
         {current.kycStatus === 'rejected' && (
@@ -688,7 +681,7 @@ export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
           />
         )}
         <Button
-          label={busy ? 'Atualizando...' : 'Atualizar situação'}
+          label={busy ? 'Verificando...' : 'Verificar conclusão'}
           variant="secondary"
           disabled={busy}
           onClick={() => void refreshStatus()}
@@ -810,7 +803,14 @@ export function BlindPayComplement({ previewOnly = false, onPostpone }: Props) {
             role="status"
             className="rounded-lg border border-primary bg-emerald-50 p-3 text-sm text-primary"
           >
-            Termos aceitos na BlindPay. Você pode fechar esta aba e continuar na aba anterior.
+            Retorno dos termos recebido. Clique em "Verificar aceite" ou volte à aba anterior e
+            clique em "Já aceitei, verificar".
+            <Button
+              type="button"
+              label={busy ? 'Verificando...' : 'Verificar aceite'}
+              disabled={busy}
+              onClick={() => void refreshStatus()}
+            />
           </p>
         )}
         {notice && (

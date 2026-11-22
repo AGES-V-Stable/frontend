@@ -30,6 +30,9 @@ async function fillIdentification(user: ReturnType<typeof userEvent.setup>) {
 }
 
 async function fillBankFields(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('País do beneficiário (código de 2 letras) *'), 'br')
+  await user.type(screen.getByLabelText('País do banco (código de 2 letras) *'), 'us')
+  await user.type(screen.getByLabelText('Cidade do beneficiário *'), 'São Paulo')
   await user.type(screen.getByLabelText('Banco *'), 'Banco XYZ')
   await user.type(screen.getByLabelText('SWIFT / BIC *'), 'BOFAUS3N')
   await user.type(
@@ -168,6 +171,11 @@ describe('BeneficiaryCreate', () => {
         address: 'Av. Paulista, 1000',
         confirmed: true,
         receivingMethod: 'BANK_ACCOUNT',
+        paymentRail: 'international_swift',
+        addressLine1: 'Av. Paulista, 1000',
+        city: 'São Paulo',
+        countryCode: 'BR',
+        bankCountryCode: 'US',
         bankName: 'Banco XYZ',
         swiftBic: 'BOFAUS3N',
         accountNumber: 'BR1800000000141455970000123456',
@@ -179,6 +187,79 @@ describe('BeneficiaryCreate', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Beneficiário cadastrado com sucesso',
     )
+  })
+
+  it('submits SEPA with the IBAN and structured address instead of the SWIFT defaults', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+    await fillIdentification(user)
+    await user.selectOptions(screen.getByLabelText('Tipo de transferência *'), 'sepa')
+    await user.type(screen.getByLabelText('País do beneficiário (código de 3 letras) *'), 'deu')
+    await user.type(screen.getByLabelText('Cidade do beneficiário *'), 'Berlin')
+    await user.type(screen.getByLabelText('Código postal do beneficiário *'), '10115')
+    await user.type(screen.getByLabelText('IBAN *'), 'de89 3704 0044 0532 0130 00')
+    await user.type(screen.getByLabelText('Moeda de recebimento *'), 'eur')
+    await user.type(screen.getByLabelText('Apelido do beneficiário *'), 'SEPA supplier')
+    await user.click(screen.getByLabelText(/confirmo que os dados/i))
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    await waitFor(() =>
+      expect(createBeneficiary).toHaveBeenCalledWith('company-1', {
+        beneficiaryType: 'LEGAL_ENTITY',
+        legalName: 'Fornecedor Global Ltda.',
+        identificationDocument: '12345678900',
+        country: 'Brasil',
+        address: 'Av. Paulista, 1000',
+        confirmed: true,
+        receivingMethod: 'BANK_ACCOUNT',
+        paymentRail: 'sepa',
+        countryCode: 'DEU',
+        addressLine1: 'Av. Paulista, 1000',
+        city: 'Berlin',
+        postalCode: '10115',
+        iban: 'DE89370400440532013000',
+        currency: 'EUR',
+        nickname: 'SEPA supplier',
+      }),
+    )
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Beneficiário cadastrado com sucesso',
+    )
+  })
+
+  it('blocks incomplete SWIFT addresses before sending a request', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+    await fillIdentification(user)
+    await fillBankFields(user)
+    await user.clear(screen.getByLabelText('Cidade do beneficiário *'))
+    await user.clear(screen.getByLabelText('País do banco (código de 2 letras) *'))
+    await user.click(screen.getByLabelText(/confirmo que os dados/i))
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    expect(screen.getByLabelText('Cidade do beneficiário *')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+    expect(screen.getByLabelText('País do banco (código de 2 letras) *')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+    expect(createBeneficiary).not.toHaveBeenCalled()
+  })
+
+  it('blocks SEPA with a non-EUR currency or a two-letter country code', async () => {
+    const user = userEvent.setup()
+    render(<BeneficiaryCreate />)
+    await fillIdentification(user)
+    await user.selectOptions(screen.getByLabelText('Tipo de transferência *'), 'sepa')
+    await user.type(screen.getByLabelText('País do beneficiário (código de 3 letras) *'), 'DE')
+    await user.type(screen.getByLabelText('Moeda de recebimento *'), 'USD')
+    await user.click(screen.getByRole('button', { name: 'Salvar beneficiário' }))
+
+    expect(screen.getByText('SEPA exige a moeda EUR.')).toBeInTheDocument()
+    expect(screen.getByText('Informe o código do país com 3 letras.')).toBeInTheDocument()
+    expect(createBeneficiary).not.toHaveBeenCalled()
   })
 
   it('submits a wallet beneficiary with the right shape', async () => {

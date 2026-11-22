@@ -46,7 +46,8 @@ let role: 'ADMIN' | 'USER'
 let mock: ReturnType<typeof vi.fn>
 let backend: (url: string) => Promise<Response>
 function Location() {
-  return <p data-testid="location">{useLocation().pathname + useLocation().search}</p>
+  const { pathname, search, hash } = useLocation()
+  return <p data-testid="location">{pathname + search + hash}</p>
 }
 function renderRoute(path = '/') {
   render(
@@ -302,10 +303,22 @@ it.each([
   renderRoute(path)
   await screen.findByRole('navigation')
   const expected = path.startsWith('/transferencias')
-    ? '/app/transferencias/nova?source=legacy'
+    ? '/app/transferencias?source=legacy'
     : `/app${path}`
   expect(screen.getByTestId('location')).toHaveTextContent(expected)
 })
+it.each(['/app/transferencias/nova', '/transferencias/nova'])(
+  'redirects %s to the original form without /nova, preserving query and fragment',
+  async (path) => {
+    saveLoginToken('login')
+    renderRoute(`${path}?source=legacy#form`)
+
+    expect(await screen.findByRole('heading', { name: 'Realizar transferência' })).toBeVisible()
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/app/transferencias?source=legacy#form',
+    )
+  },
+)
 it('preserves the transfer identifier and query when redirecting an old details URL', async () => {
   saveLoginToken('login')
   renderRoute('/transferencias/a%2Fb?source=legacy')
@@ -727,7 +740,7 @@ it('given a viewer, then it reads the company data without any action to create 
 
 it.each([
   ['/app/beneficiarios/novo', 'Seu perfil de acesso não permite cadastrar beneficiários.'],
-  ['/app/transferencias/nova', 'Seu perfil de acesso não permite realizar transferências.'],
+  ['/app/transferencias', 'Seu perfil de acesso não permite realizar transferências.'],
   ['/transferencias/nova', 'Seu perfil de acesso não permite realizar transferências.'],
 ])('given a viewer opening %s directly, then the action does not start', async (path, message) => {
   mockProfile('VIEWER')

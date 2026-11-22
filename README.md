@@ -40,12 +40,12 @@ O ESLint bloqueia dependências de shared para app/features, de features para ap
 
 ## Rotas
 
-| Tela empresarial          | Rota                       |
-| ------------------------- | -------------------------- |
-| Beneficiários             | `/app/beneficiarios`       |
-| Cadastro de beneficiário  | `/app/beneficiarios/novo`  |
-| Criação de transferência  | `/app/transferencias/nova` |
-| Detalhes de transferência | `/app/transferencias/:id`  |
+| Tela empresarial          | Rota                      |
+| ------------------------- | ------------------------- |
+| Beneficiários             | `/app/beneficiarios`      |
+| Cadastro de beneficiário  | `/app/beneficiarios/novo` |
+| Criação de transferência  | `/app/transferencias`     |
+| Detalhes de transferência | `/app/transferencias/:id` |
 
 As rotas anteriores `/beneficiarios`, `/beneficiarios/novo`, `/transferencias` e `/transferencias/:id` redirecionam preservando identificador, query string e fragmento. `/` e Início direcionam administradores para `/admin/clientes-pme` e usuários empresariais para `/app/beneficiarios`; visitantes vão para `/login`. Rotas administrativas, login e cadastro mantêm seus endereços.
 
