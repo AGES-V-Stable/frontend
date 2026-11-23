@@ -1,5 +1,7 @@
+import { useNavigate } from 'react-router'
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
+import { PATHS } from '@/shared/navigation/paths'
 import { ActionIcon } from '@/shared/components/Icons/ActionIcon'
 import { Stepper } from '@/shared/components/Stepper'
 import { TwoFactorAuthContainer } from '@/shared/components/TwoFactorAuth'
@@ -7,7 +9,6 @@ import type { Beneficiary } from '@/features/beneficiaries'
 import type { TransactionStatus, TransferPaymentMethod } from '@/features/transfers/types/transfer'
 import { currencySymbol, formatMoney, formatPercent } from '@/shared/utils/formatters'
 import { useTransferCreate } from '@/features/transfers/hooks/useTransferCreate'
-import { OrchestratedTransferCreate } from './OrchestratedTransferCreate'
 
 const TRANSFER_STEPS = ['Dados', 'Revisão', 'Autenticação'] as const
 
@@ -52,15 +53,8 @@ const STATUS_LABELS: Record<TransactionStatus, string> = {
 
 const beneficiaryName = (beneficiary: Beneficiary) => beneficiary.legalName || beneficiary.nickname
 
-/** Rollout is off unless an environment explicitly enables financial orchestration. */
-const ORCHESTRATION_ENABLED = import.meta.env.VITE_ENABLE_ORCHESTRATED_TRANSFERS === 'true'
-
 export function TransferCreate() {
-  if (ORCHESTRATION_ENABLED) return <OrchestratedTransferCreate />
-  return <LegacyTransferCreate />
-}
-
-function LegacyTransferCreate() {
+  const navigate = useNavigate()
   const {
     activeStep,
     totpCode,
@@ -352,7 +346,10 @@ function LegacyTransferCreate() {
                   type="button"
                   variant="secondary"
                   label="Cancelar"
-                  onClick={handleCancel}
+                  onClick={() => {
+                    handleCancel()
+                    void navigate(PATHS.TRANSFERS)
+                  }}
                   disabled={submitting}
                   className="h-12 font-medium"
                 />

@@ -60,6 +60,7 @@ function Login({ resolveDestination }: LoginProps) {
   const [totpError, setTotpError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<LoginErrors>({})
+  const [submitError, setSubmitError] = useState('')
   const [sessionExpired] = useState(wasSessionExpired)
 
   const navigate = useNavigate()
@@ -69,17 +70,20 @@ function Login({ resolveDestination }: LoginProps) {
   function handleEmailChange(value: string) {
     setEmail(value)
     if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
+    if (submitError) setSubmitError('')
   }
 
   function handlePasswordChange(value: string) {
     setPassword(value)
     if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
+    if (submitError) setSubmitError('')
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (submitting) return
 
+    setSubmitError('')
     const nextErrors = validate({ email, password })
     setErrors(nextErrors)
 
@@ -92,13 +96,11 @@ function Login({ resolveDestination }: LoginProps) {
     try {
       result = await authService.login({ email, password })
     } catch (error) {
-      setErrors({
-        email:
-          error instanceof Error && error.message === 'Usuário bloqueado.'
-            ? 'Usuário bloqueado.'
-            : 'E-mail ou senha inválidos.',
-        password: 'E-mail ou senha inválidos.',
-      })
+      setSubmitError(
+        error instanceof Error && error.message === 'Usuário bloqueado.'
+          ? 'Usuário bloqueado.'
+          : 'E-mail ou senha inválidos.',
+      )
       setSubmitting(false)
       return
     }
@@ -234,6 +236,7 @@ function Login({ resolveDestination }: LoginProps) {
                 placeholder="nome@empresa.com.br"
                 value={email}
                 error={errors.email}
+                invalid={!!submitError}
                 onChange={(e) => handleEmailChange(e.target.value)}
               />
               <Input
@@ -243,8 +246,14 @@ function Login({ resolveDestination }: LoginProps) {
                 placeholder="Digite sua senha"
                 value={password}
                 error={errors.password}
+                invalid={!!submitError}
                 onChange={(e) => handlePasswordChange(e.target.value)}
               />
+              {submitError && (
+                <p role="alert" className="text-sm text-red-700">
+                  {submitError}
+                </p>
+              )}
             </div>
             <div className="flex flex-col w-[560px] gap-y-[10px]">
               <Button
@@ -255,7 +264,7 @@ function Login({ resolveDestination }: LoginProps) {
               />
               <Button
                 type="button"
-                label="Cadastrar PME"
+                label="Cadastrar empresa"
                 variant="secondary"
                 onClick={() => navigate(PATHS.REGISTER)}
               />

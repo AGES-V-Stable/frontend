@@ -14,6 +14,10 @@ import {
   YAxis,
 } from 'recharts'
 import { BalanceCard } from '@/features/dashboard/components/BalanceCard'
+import { MockTopUpModal } from '@/features/dashboard/components/MockTopUpModal'
+import { useSession } from '@/features/auth'
+import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
+import topUpIcon from '@/shared/assets/navigation/top-up.svg'
 import { MetricCard } from '@/features/dashboard/components/MetricCard'
 import { SettlementDrawer } from '@/features/dashboard/components/SettlementDrawer'
 import { DashboardFilters } from '@/features/dashboard/components/DashboardFilters'
@@ -111,8 +115,43 @@ const card = 'rounded-xl border border-sage-300 bg-white p-5'
 
 function ClientBalanceCard() {
   const { state, retry } = useBalance()
-  // O crédito de saldo fica na página própria, aberta pelo item "Adicionar saldo" do menu.
-  return <BalanceCard state={state} onRetry={retry} />
+  const { user } = useSession()
+  const [toppingUp, setToppingUp] = useState(false)
+  // Só o proprietário pode creditar; o modal usa o mesmo saldo do card, que atualiza junto.
+  const action = canAddSimulatedBalance(user) ? (
+    <button
+      type="button"
+      aria-label="Adicionar saldo"
+      aria-haspopup="dialog"
+      onClick={() => setToppingUp(true)}
+      className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-primary px-2.5 text-[13px] font-medium text-primary transition-colors hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
+      <span
+        aria-hidden="true"
+        data-testid="top-up-icon"
+        className="block size-4 bg-current"
+        style={{
+          maskImage: `url("${topUpIcon}")`,
+          maskSize: 'contain',
+          maskRepeat: 'no-repeat',
+          maskPosition: 'center',
+        }}
+      />
+      Adicionar
+    </button>
+  ) : undefined
+  return (
+    <>
+      <BalanceCard state={state} onRetry={retry} action={action} />
+      {toppingUp && (
+        <MockTopUpModal
+          balance={state}
+          refreshBalance={retry}
+          onClose={() => setToppingUp(false)}
+        />
+      )}
+    </>
+  )
 }
 
 // Cotações globais: iguais para cliente e administrador e independentes dos filtros.
@@ -127,7 +166,7 @@ function VolumeCard({ filters, admin }: { filters: Filters; admin: boolean }) {
     <TransactionVolumeCard
       state={state}
       onRetry={retry}
-      accent={admin ? 'sky' : 'neutral'}
+      accent="neutral"
       footnote={describePeriod(filters)}
     />
   )
@@ -232,9 +271,7 @@ function ChartCard({
           <p className="text-xs text-slate-500">{subtitle}</p>
         </div>
         {result.data && points && points.length > 0 && (
-          <p
-            className={`rounded-lg px-4 py-3 font-mono font-medium ${savings ? 'bg-emerald-50 text-primary' : 'bg-blue-50 text-sky-700'}`}
-          >
+          <p className="rounded-lg bg-emerald-50 px-4 py-3 font-mono font-medium text-primary">
             {money(result.data.total)}
           </p>
         )}
@@ -272,7 +309,7 @@ function ChartCard({
                   <Bar
                     dataKey="value"
                     name="Volume"
-                    fill="var(--color-sky-600)"
+                    fill="var(--color-emerald-200)"
                     radius={[6, 6, 0, 0]}
                     isAnimationActive={false}
                   >
@@ -283,7 +320,7 @@ function ChartCard({
                         fill={
                           index === points.length - 1
                             ? 'var(--color-primary)'
-                            : 'var(--color-sky-600)'
+                            : 'var(--color-emerald-200)'
                         }
                       />
                     ))}
@@ -292,12 +329,31 @@ function ChartCard({
               )}
             </ResponsiveContainer>
           </div>
-          <details className="mt-2 text-sm">
-            <summary>Consultar valores mensais</summary>
-            <ul>
-              {points.map((p) => (
-                <li key={p.month}>
-                  {p.label}: {money(p.amount)}
+          <details className="group mt-3 border-t border-sage-200 pt-3">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-slate-600 transition-colors select-none hover:bg-surface hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                className="size-3.5 transition-transform duration-150 group-open:rotate-180"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 8l4 4 4-4" />
+              </svg>
+              <span>Detalhamento mensal</span>
+            </summary>
+            <ul className="mt-2.5 divide-y divide-sage-200 rounded-lg border border-sage-200 bg-surface">
+              {points.map((p, index) => (
+                <li key={p.month} className="flex items-center justify-between px-3.5 py-2 text-xs">
+                  <span className="font-medium capitalize text-slate-600">{p.label}</span>
+                  <span
+                    className={`font-mono tabular-nums font-medium ${
+                      index === points.length - 1 ? 'text-primary' : 'text-slate-900'
+                    }`}
+                  >
+                    {money(p.amount)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -394,22 +450,23 @@ export function Dashboard({
   ]
   return (
     <section className="mx-auto flex max-w-[1440px] flex-col gap-6 px-6 py-8 lg:px-8">
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-4">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {admin ? 'Dashboard Administrativo' : 'Visão Geral Corporativa'}
-          </h1>
-          {admin && (
-            <span className="rounded-2xl bg-blue-50 px-3 py-1 text-sm font-bold text-sky-700">
-              PAINEL ADMIN
-            </span>
-          )}
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-4">
+            <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+            {admin && (
+              <span className="rounded-2xl bg-blue-50 px-3 py-1 text-xs font-bold uppercase text-sky-700">
+                Painel administrativo
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-600">
+            {admin
+              ? 'Visão consolidada da operação, performance financeira e liquidações dos beneficiários.'
+              : 'Acompanhe seu saldo, cotações, economia e liquidações internacionais.'}
+          </p>
         </div>
-        <p className="text-lg font-semibold text-slate-600">
-          {admin
-            ? 'Visão consolidada da operação, performance financeira e liquidações dos beneficiários.'
-            : 'Liquidações registradas • Valores consolidados em BRL'}
-        </p>
+        <DashboardFilters admin={admin} onApply={applyFilters} collapsible />
       </header>
       {!admin && blindPayAccess}
       <div className={`grid gap-4 sm:grid-cols-2 ${admin ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
@@ -418,7 +475,6 @@ export function Dashboard({
         <VolumeCard filters={filters} admin={admin} />
         <CurrentExchangeRates />
       </div>
-      <DashboardFilters admin={admin} onApply={applyFilters} />
       <div className="grid gap-6 lg:grid-cols-2">{admin ? charts : [...charts].reverse()}</div>
       <section className={card} aria-label="Últimas liquidações">
         <h2 className="mb-2 text-xl font-bold text-slate-900">

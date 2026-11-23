@@ -107,4 +107,24 @@ describe('DashboardFilters', () => {
     await waitFor(() => expect(screen.getByLabelText('Empresa')).toBeEnabled())
     expect(getCompaniesMock).toHaveBeenCalledTimes(2)
   })
+
+  it('opens a floating popover from the funnel button when collapsible, closes on apply, and marks active filters', () => {
+    const onApply = vi.fn()
+    render(<DashboardFilters admin={false} onApply={onApply} collapsible />)
+
+    const trigger = screen.getByRole('button', { name: 'Filtrar dados' })
+    expect(screen.getByTestId('dashboard-filter-funnel-icon')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Aplicar filtros' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Filtros ativos')).not.toBeInTheDocument()
+
+    fireEvent.click(trigger)
+    expect(screen.getByRole('button', { name: 'Aplicar filtros' })).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'THIS_MONTH' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
+
+    expect(onApply).toHaveBeenCalledWith({ ...DEFAULT_FILTER_FORM, preset: 'THIS_MONTH' })
+    expect(screen.queryByRole('button', { name: 'Aplicar filtros' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Filtros ativos')).toBeInTheDocument()
+  })
 })

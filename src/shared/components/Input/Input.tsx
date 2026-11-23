@@ -5,6 +5,7 @@ function Input({
   label,
   labelPlacement = 'top',
   error,
+  invalid = false,
   id,
   prefix,
   className = '',
@@ -13,6 +14,7 @@ function Input({
 }: InputType) {
   const generatedId = useId()
   const inputId = id ?? generatedId
+  const isInvalid = Boolean(error) || invalid
   const errorId = error ? `${inputId}-error` : undefined
   // O prefixo (ex.: moeda) é visual; entra na descrição para o leitor de tela também ouvi-lo.
   const prefixId = prefix ? `${inputId}-prefix` : undefined
@@ -24,7 +26,7 @@ function Input({
       type="text"
       {...inputProps}
       id={inputId}
-      aria-invalid={!!error}
+      aria-invalid={isInvalid}
       aria-describedby={describedBy}
       style={
         prefix
@@ -33,7 +35,7 @@ function Input({
             ? { paddingLeft: `calc(1.25rem + ${label?.length ?? 0}ch)`, ...style }
             : style
       }
-      className={`w-full ${inside ? 'py-2.5 pr-3 text-[14px] font-medium text-slate-700' : 'py-3.5 px-3 text-[16px]'} placeholder:text-gray-500 border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${error ? 'border-red-700' : 'border-sage-500'} ${className}`}
+      className={`w-full ${inside ? 'py-2.5 pr-3 text-[14px] font-medium text-slate-700' : 'py-3.5 px-3 text-[16px]'} placeholder:text-gray-500 border rounded-lg bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${isInvalid ? 'border-red-700' : 'border-sage-500'} ${className}`}
     />
   )
 

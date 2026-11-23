@@ -92,6 +92,24 @@ export function Members() {
   )
 }
 
+const ACCOUNT_NOTICE_STORAGE_KEY_PREFIX = 'vstable:members:account-notice-dismissed:'
+
+function isAccountNoticeDismissed(userId: string): boolean {
+  try {
+    return localStorage.getItem(`${ACCOUNT_NOTICE_STORAGE_KEY_PREFIX}${userId}`) === '1'
+  } catch {
+    return false
+  }
+}
+
+function dismissAccountNotice(userId: string): void {
+  try {
+    localStorage.setItem(`${ACCOUNT_NOTICE_STORAGE_KEY_PREFIX}${userId}`, '1')
+  } catch {
+    // Ignora falhas de armazenamento; o estado local já oculta o aviso na sessão atual.
+  }
+}
+
 interface MemberManagementProps {
   companyId: string
   companyName: string | null
@@ -103,6 +121,14 @@ function MemberManagement({ companyId, companyName, viewer }: MemberManagementPr
   const { data, loading, failed, denied, page, setPage, reload } = useMemberList(companyId)
   const [selected, setSelected] = useState<Member | null>(null)
   const [outcome, setOutcome] = useState<MemberActionOutcome | null>(null)
+  const [noticeDismissed, setNoticeDismissed] = useState(() =>
+    isAccountNoticeDismissed(viewer.userId),
+  )
+
+  const handleDismissNotice = () => {
+    dismissAccountNotice(viewer.userId)
+    setNoticeDismissed(true)
+  }
 
   const handleSettled = useCallback(
     (result: MemberActionOutcome) => {
@@ -178,21 +204,27 @@ function MemberManagement({ companyId, companyName, viewer }: MemberManagementPr
         }
       />
 
-      <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm">
-        <span
-          aria-hidden="true"
-          className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-sky-700"
-        >
-          i
-        </span>
-        <div>
-          <p className="font-medium text-slate-900">Uma empresa, uma conta</p>
-          <p className="mt-1 text-slate-600">
-            Os membros utilizam a conta empresarial conforme suas permissões. A gestão dos acessos
-            continua com o proprietário.
-          </p>
+      {!noticeDismissed && (
+        <div className="flex items-start justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm">
+          <div>
+            <p className="font-medium text-slate-900">Uma empresa, uma conta</p>
+            <p className="mt-1 text-slate-600">
+              Os membros utilizam a conta empresarial conforme suas permissões. A gestão dos acessos
+              continua com o proprietário.
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Fechar aviso"
+            onClick={handleDismissNotice}
+            className="shrink-0 rounded p-1 text-slate-500 transition-colors hover:bg-blue-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary cursor-pointer"
+          >
+            <span aria-hidden="true" className="block text-base leading-none font-semibold">
+              ×
+            </span>
+          </button>
         </div>
-      </div>
+      )}
 
       {outcome && (
         <div

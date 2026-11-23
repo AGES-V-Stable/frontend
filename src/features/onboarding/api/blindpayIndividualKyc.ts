@@ -35,6 +35,31 @@ export interface IndividualKycFiles {
 }
 
 const path = '/v1/blindpay/kyc'
+const TERMS_SESSION_KEY = 'vstable:blindpay:terms:session'
+const TERMS_RETURN_PREFIX = 'vstable:blindpay:terms:return:'
+
+export function captureIndividualTermsReturn(search: string): void {
+  const params = new URLSearchParams(search)
+  const state = params.get('state')
+  const tosId = params.get('tos_id')
+  if (state && /^[0-9a-f-]{36}$/i.test(state) && tosId && /^to_[A-Za-z0-9]{12}$/.test(tosId)) {
+    localStorage.setItem(TERMS_RETURN_PREFIX + state, tosId)
+    localStorage.setItem(TERMS_SESSION_KEY, state)
+  }
+}
+
+export async function checkIndividualTermsReturn(): Promise<void> {
+  const state = localStorage.getItem(TERMS_SESSION_KEY)
+  if (!state) return
+  const tosId = localStorage.getItem(TERMS_RETURN_PREFIX + state)
+  if (!tosId) return
+  await httpRequest<unknown>(path + '/terms/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ state, tosId }),
+  })
+  localStorage.removeItem(TERMS_RETURN_PREFIX + state)
+  localStorage.removeItem(TERMS_SESSION_KEY)
+}
 
 export async function loadIndividualKycStatus(): Promise<IndividualKycStatus> {
   return individualKycStatusSchema.parse(await httpRequest<unknown>(path))
@@ -48,6 +73,12 @@ export async function startIndividualKycTerms(): Promise<string> {
   if (url.protocol !== 'https:' || url.hostname !== 'app.blindpay.com') {
     throw new Error('A BlindPay retornou um endereço de aceite inválido.')
   }
+  const state =
+    url.searchParams.get('idempotency_key') ??
+    new URL(url.searchParams.get('redirect_url') || window.location.origin).searchParams.get(
+      'state',
+    )
+  if (state) localStorage.setItem(TERMS_SESSION_KEY, state)
   return result.url
 }
 

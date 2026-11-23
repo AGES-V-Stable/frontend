@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { Table } from '@/shared/components/Table/Table'
@@ -115,5 +115,51 @@ describe('Table', () => {
     )
 
     expect(screen.getByRole('heading', { level: 2, name: /Todos os clientes/ })).toBeInTheDocument()
+  })
+
+  it('sorts columns ascending, descending, and back to original order when sortable', () => {
+    render(
+      <Table<{ id: number; name: string; amount: string }>
+        sortable
+        columns={[
+          { key: 'name', label: 'Nome' },
+          { key: 'amount', label: 'Valor' },
+        ]}
+        data={[
+          { id: 1, name: 'Carlos', amount: '200.00' },
+          { id: 2, name: 'Ana', amount: '1000.00' },
+          { id: 3, name: 'Bruno', amount: '50.00' },
+        ]}
+      />,
+    )
+
+    const getNames = () =>
+      screen
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelectorAll('td')[0]?.textContent)
+
+    expect(getNames()).toEqual(['Carlos', 'Ana', 'Bruno'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nome' }))
+    expect(screen.getByRole('columnheader', { name: 'Nome' })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    )
+    expect(getNames()).toEqual(['Ana', 'Bruno', 'Carlos'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nome' }))
+    expect(screen.getByRole('columnheader', { name: 'Nome' })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    )
+    expect(getNames()).toEqual(['Carlos', 'Bruno', 'Ana'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Nome' }))
+    expect(screen.getByRole('columnheader', { name: 'Nome' })).toHaveAttribute('aria-sort', 'none')
+    expect(getNames()).toEqual(['Carlos', 'Ana', 'Bruno'])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Valor' }))
+    expect(getNames()).toEqual(['Bruno', 'Carlos', 'Ana'])
   })
 })

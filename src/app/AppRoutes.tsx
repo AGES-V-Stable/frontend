@@ -9,7 +9,7 @@ import {
   useNavigate,
   useParams,
 } from 'react-router'
-import { SupportChatWidget } from '@/features/support'
+import { isSupportChatEnabled, SupportChatWidget } from '@/features/support'
 import {
   AdminSecurityRequests,
   clearLoginToken,
@@ -28,13 +28,13 @@ import { BeneficiariesLanding } from '@/features/beneficiaries/pages/client/bene
 import { BeneficiaryCreate } from '@/features/beneficiaries/pages/client/beneficiaryCreate'
 import { TransferCreate } from '@/features/transfers/pages/client/transferCreate'
 import { TransferDetails } from '@/features/transfers/pages/client/transferDetails'
+import { TransfersLanding } from '@/features/transfers/pages/client/transfers/TransfersLanding'
 import { Members } from '@/features/members/pages/Members'
 import { Observability } from '@/features/observability/pages/Observability'
-import { MockTopUp } from '@/features/dashboard/pages/MockTopUp/MockTopUp'
-import { canAddSimulatedBalance } from '@/features/dashboard/utils/simulatedDeposit'
 import { Register } from '@/features/onboarding/pages/Register'
 import { RegisterStatus } from '@/features/onboarding/pages/RegisterStatus/RegisterStatus'
 import { BlindPayComplement } from '@/features/onboarding/pages/BlindPayComplement/BlindPayComplement'
+import { BlindPayTermsReturn } from '@/app/components/BlindPayTermsReturn'
 import { KycFullPreview } from '@/features/onboarding/pages/KycFullPreview/KycFullPreview'
 import RegistrationComplete from '@/features/onboarding/pages/Register/RegistrationComplete'
 import {
@@ -54,9 +54,9 @@ import { NavBar } from './components/NavBar'
 import type { NavigationItem } from './components/NavBar'
 import logo from '@/shared/assets/navigation/logo.png'
 import homeIcon from '@/shared/assets/navigation/home.svg'
-import topUpIcon from '@/shared/assets/navigation/top-up.svg'
 import beneficiariesIcon from '@/shared/assets/navigation/beneficiaries.svg'
 import clientsIcon from '@/shared/assets/navigation/clients.svg'
+import membersIcon from '@/shared/assets/navigation/members.svg'
 import transfersIcon from '@/shared/assets/navigation/transfers.svg'
 import settingsIcon from '@/shared/assets/navigation/settings.svg'
 import activityIcon from '@/shared/assets/navigation/activity.svg'
@@ -179,7 +179,7 @@ function TransferDetailsRoute() {
   const { user } = useSession()
   return (
     <TransferDetails
-      closeTo={hasCompanyPermission(user, 'TRANSFER_CREATE') ? PATHS.TRANSFERS : PATHS.DASHBOARD}
+      closeTo={hasCompanyPermission(user, 'TRANSFER_READ') ? PATHS.TRANSFERS : PATHS.DASHBOARD}
     />
   )
 }
@@ -229,38 +229,24 @@ function RoutedApplication() {
   const items: NavigationItem[] = admin
     ? [
         item('dashboard', 'Dashboard', PATHS.ADMIN_DASHBOARD, homeIcon),
-        item('clients', 'Clientes PME', PATHS.ADMIN_CLIENTS, clientsIcon),
-        {
-          id: 'audit',
-          label: 'Auditoria',
-          icon: icon(transfersIcon),
-          children: [
-            item('admin-transfers', 'Transferências', PATHS.ADMIN_TRANSFERS, transfersIcon),
-            item(
-              'admin-beneficiaries',
-              'Beneficiários',
-              PATHS.ADMIN_BENEFICIARIES,
-              beneficiariesIcon,
-            ),
-          ],
-        },
+        item('admin-transfers', 'Transferências', PATHS.ADMIN_TRANSFERS, transfersIcon),
+        item('clients', 'Clientes', PATHS.ADMIN_CLIENTS, clientsIcon),
+        item('admin-beneficiaries', 'Beneficiários', PATHS.ADMIN_BENEFICIARIES, beneficiariesIcon),
         item('observability', 'Observability', PATHS.ADMIN_OBSERVABILITY, activityIcon),
       ]
     : user?.companyAccess?.status === 'REMOVED' && !user.companyId
       ? // Sem empresa após a remoção: resta apenas a consulta do próprio acesso.
-        [item('members', 'Membros', PATHS.MEMBERS, clientsIcon)]
+        [item('members', 'Membros', PATHS.MEMBERS, membersIcon)]
       : [
           item('dashboard', 'Dashboard', PATHS.DASHBOARD, homeIcon),
-          ...(canAddSimulatedBalance(user)
-            ? [item('mock-top-up', 'Adicionar saldo', PATHS.MOCK_TOP_UP, topUpIcon)]
-            : []),
-          item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
-          // O item abre a criação de transferência: só aparece para quem pode criar.
-          ...(hasCompanyPermission(user, 'TRANSFER_CREATE')
+          ...(hasCompanyPermission(user, 'TRANSFER_READ') ||
+          hasCompanyPermission(user, 'TRANSFER_CREATE')
             ? [item('transfers', 'Transferências', PATHS.TRANSFERS, transfersIcon)]
             : []),
-          item('members', 'Membros', PATHS.MEMBERS, clientsIcon),
+          item('beneficiaries', 'Beneficiários', PATHS.BENEFICIARIES, beneficiariesIcon),
+          item('members', 'Membros', PATHS.MEMBERS, membersIcon),
         ]
+  const supportChatEnabled = isSupportChatEnabled()
   const footerItems: NavigationItem[] = [
     item('settings', 'Configurações', PATHS.SETTINGS, settingsIcon),
     { id: 'logout', label: 'Sair', icon: icon(logoutIcon), onClick: clearLoginToken },
@@ -275,17 +261,14 @@ function RoutedApplication() {
             ? 'admin-transfers'
             : pathname.startsWith(PATHS.ADMIN_BENEFICIARIES)
               ? 'admin-beneficiaries'
-              : 'clients'
+              : pathname.startsWith(PATHS.ADMIN_OBSERVABILITY)
+                ? 'observability'
+                : 'clients'
           : pathname.startsWith('/app/transferencias')
             ? 'transfers'
             : pathname.startsWith(PATHS.MEMBERS)
               ? 'members'
               : 'beneficiaries'
-  const selectedId = pathname.startsWith(PATHS.ADMIN_OBSERVABILITY)
-    ? 'observability'
-    : pathname === PATHS.MOCK_TOP_UP
-      ? 'mock-top-up'
-      : activeId
   const name = admin
     ? (user?.name ?? '')
     : company?.tradeName || company?.legalName || user?.name || ''
@@ -315,14 +298,14 @@ function RoutedApplication() {
         <NavBar
           logo={<img src={logo} alt="V-Stable" className="h-[60px] w-[149px] object-contain" />}
           items={items}
-          activeId={selectedId}
+          activeId={activeId}
           account={account}
           footerItems={footerItems}
         />
       }
     >
       <Outlet />
-      <SupportChatWidget />
+      {supportChatEnabled && <SupportChatWidget />}
     </ApplicationShell>
   )
 }
@@ -406,6 +389,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path={PATHS.HOME} element={<RoleLanding />} />
+      <Route path={PATHS.BLINDPAY_TERMS_RETURN} element={<BlindPayTermsReturn />} />
       {import.meta.env.DEV && (
         <>
           <Route
@@ -433,7 +417,6 @@ export default function AppRoutes() {
       <Route element={<RoleGuard role="USER" />}>
         <Route element={<RoutedApplication />}>
           <Route path={PATHS.DASHBOARD} element={<DashboardRoute />} />
-          <Route path={PATHS.MOCK_TOP_UP} element={<MockTopUp />} />
           <Route path={PATHS.BENEFICIARIES} element={<BeneficiariesLanding />} />
           <Route
             element={
@@ -448,12 +431,22 @@ export default function AppRoutes() {
           <Route
             element={
               <PermissionGuard
+                permission="TRANSFER_READ"
+                message="Seu perfil de acesso não permite consultar transferências."
+              />
+            }
+          >
+            <Route path={PATHS.TRANSFERS} element={<TransfersLanding />} />
+          </Route>
+          <Route
+            element={
+              <PermissionGuard
                 permission="TRANSFER_CREATE"
                 message="Seu perfil de acesso não permite realizar transferências."
               />
             }
           >
-            <Route path={PATHS.TRANSFERS} element={<TransferCreate />} />
+            <Route path={PATHS.TRANSFERS_NEW} element={<TransferCreate />} />
           </Route>
           <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetailsRoute />} />
           <Route path={PATHS.MEMBERS} element={<Members />} />
@@ -473,7 +466,7 @@ export default function AppRoutes() {
       <Route path="/beneficiarios" element={<LegacyRedirect to={PATHS.BENEFICIARIES} />} />
       <Route path="/beneficiarios/novo" element={<LegacyRedirect to={PATHS.BENEFICIARIES_NEW} />} />
       <Route path="/transferencias" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
-      <Route path="/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS} />} />
+      <Route path="/transferencias/nova" element={<LegacyRedirect to={PATHS.TRANSFERS_NEW} />} />
       <Route path="/transferencias/:id" element={<LegacyRedirect details />} />
       <Route path="/configuracoes" element={<LegacyRedirect to={PATHS.SETTINGS} />} />
       <Route path={PATHS.LOGIN} element={<Login resolveDestination={postLoginDestination} />} />

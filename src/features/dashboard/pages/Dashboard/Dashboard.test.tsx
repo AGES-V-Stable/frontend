@@ -184,6 +184,7 @@ it('updates every widget together when a filter is applied, and restores the def
   renderDashboard()
   await screen.findByText('Nenhuma liquidação registrada.')
 
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'THIS_MONTH' } })
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
 
@@ -202,6 +203,7 @@ it('updates every widget together when a filter is applied, and restores the def
   expect((await screen.findAllByText('01/11/2026 a 03/11/2026')).length).toBeGreaterThan(0)
 
   fetcher.mockClear()
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }))
 
   await waitFor(() =>
@@ -217,6 +219,7 @@ it('blocks an invalid period without requesting new data', async () => {
   await screen.findByText('Nenhuma liquidação registrada.')
   fetcher.mockClear()
 
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'CUSTOM' } })
   fireEvent.change(screen.getByLabelText('Data inicial'), { target: { value: '2026-03-01' } })
   fireEvent.change(screen.getByLabelText('Data final'), { target: { value: '2026-01-01' } })
@@ -243,6 +246,7 @@ it('returns to the first settlements page when the filters change', async () => 
     ),
   )
 
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'ALL' } })
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
 
@@ -258,8 +262,8 @@ it('uses administrative endpoints and filters every widget by company', async ()
   vi.stubGlobal('fetch', fetcher)
   renderDashboard(true)
   expect(await screen.findByText('Nenhuma liquidação registrada.')).toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: 'Dashboard Administrativo' })).toBeInTheDocument()
-  expect(screen.getByText('PAINEL ADMIN')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+  expect(screen.getByText('Painel administrativo')).toBeInTheDocument()
   // As cotações são globais (cicd#55): a mesma rota para cliente e administrador.
   expect(
     calledUrls(fetcher).every(
@@ -270,6 +274,7 @@ it('uses administrative endpoints and filters every widget by company', async ()
     ),
   ).toBe(true)
 
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   const company = screen.getByLabelText('Empresa')
   await waitFor(() => expect(company).toBeEnabled())
   fireEvent.change(company, { target: { value: 'c1' } })
@@ -342,6 +347,7 @@ it('ignores a stale chart response after a rapid filter change', async () => {
     }),
   )
   renderDashboard()
+  fireEvent.click(screen.getByRole('button', { name: 'Filtrar dados' }))
   fireEvent.change(screen.getByLabelText('Período'), { target: { value: 'THIS_MONTH' } })
   fireEvent.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
   await screen.findAllByText('Nenhuma operação no período.')
@@ -371,10 +377,77 @@ it('shows balance and transacted volume beside the accumulated savings for the c
   ).toEqual(['Saldo Disponível', 'Economia Acumulada', 'Volume Transacionado', 'Câmbio Atual'])
 })
 
-it.each(['OWNER', 'OPERATOR', 'VIEWER'] as const)(
-  'shows the balance to the %s without an Adicionar saldo button, which lives in the menu',
+it('opens the Adicionar saldo modal from the balance card and updates the card after the credit', async () => {
+  // Given a proprietária no Dashboard, com saldo de R$ 25.000,00
+  givenSession(sessionUser('OWNER'))
+  let balance = '25000.00'
+  const fetcher = vi.fn(async (url: string) => {
+    if (url === '/v1/balance/mock-top-ups') {
+      balance = '25020.50'
+      return new Response(
+        JSON.stringify({ creditedAmountBrl: '20.50', availableBalanceBrl: balance }),
+      )
+    }
+    if (url.startsWith('/v1/balance')) {
+      return new Response(JSON.stringify({ availableBalanceBrl: balance }))
+    }
+    return reply(url)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  renderDashboard()
+  expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
+
+  // When ela usa o atalho do card, que tem o ícone de moedas
+  const balanceCard = screen.getByRole('region', { name: 'Saldo Disponível' })
+  const shortcut = within(balanceCard).getByRole('button', { name: 'Adicionar saldo' })
+  expect(within(shortcut).getByTestId('top-up-icon')).toHaveAttribute('aria-hidden', 'true')
+  shortcut.focus()
+  fireEvent.click(shortcut)
+
+  // Then o modal abre na própria tela, sem trocar de página
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo' })
+  expect(screen.getByLabelText('Rota atual')).toHaveTextContent(/^\/dashboard$/)
+
+  // When ela confirma um crédito de R$ 20,50
+  fireEvent.change(within(modal).getByLabelText('Valor a adicionar (R$)'), {
+    target: { value: '20,50' },
+  })
+  fireEvent.click(within(modal).getByRole('button', { name: 'Confirmar crédito simulado' }))
+
+  // Then o modal confirma, e o card do Dashboard mostra o saldo novo
+  expect(await within(modal).findByRole('status')).toHaveTextContent('Crédito simulado de R$ 20,50')
+  expect(await within(balanceCard).findByText('R$ 25.020,50')).toBeInTheDocument()
+
+  // When ela fecha o modal
+  fireEvent.click(within(modal).getByRole('button', { name: 'Fechar' }))
+
+  // Then o modal some e o foco volta para o atalho
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(shortcut).toHaveFocus()
+})
+
+it('closes the Adicionar saldo modal with Cancelar without crediting anything', async () => {
+  // Given o modal aberto pela proprietária
+  givenSession(sessionUser('OWNER'))
+  const fetcher = vi.fn(async (url: string) => reply(url))
+  vi.stubGlobal('fetch', fetcher)
+  renderDashboard()
+  expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar saldo' }))
+  const modal = screen.getByRole('dialog', { name: 'Adicionar saldo' })
+
+  // When ela cancela
+  fireEvent.click(within(modal).getByRole('button', { name: 'Cancelar' }))
+
+  // Then o modal fecha e nenhum crédito é enviado
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(fetcher).not.toHaveBeenCalledWith('/v1/balance/mock-top-ups', expect.anything())
+})
+
+it.each(['OPERATOR', 'VIEWER'] as const)(
+  'shows the balance to the %s without the Adicionar shortcut, since only the owner can add funds',
   async (role) => {
-    // Given a empresa no Dashboard, com qualquer perfil
+    // Given um membro sem permissão de creditar
     givenSession(sessionUser(role))
     vi.stubGlobal(
       'fetch',
@@ -382,7 +455,7 @@ it.each(['OWNER', 'OPERATOR', 'VIEWER'] as const)(
     )
     renderDashboard()
 
-    // Then o saldo aparece, sem o botão de crédito no card
+    // Then o saldo aparece sem o atalho
     expect(await screen.findByText('R$ 25.000,00')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Adicionar saldo' })).not.toBeInTheDocument()
   },
@@ -564,7 +637,7 @@ it('names the chart series, flags incomplete data and formats the value axis in 
   expect(chartProps.Bar.at(-1)).toMatchObject({ name: 'Volume', dataKey: 'value' })
   // Só o mês mais recente fica em destaque, como no Figma.
   expect(chartProps.Cell.slice(-2).map((cell) => cell.fill)).toEqual([
-    'var(--color-sky-600)',
+    'var(--color-emerald-200)',
     'var(--color-primary)',
   ])
   expect(chartProps.Area.at(-1)).toMatchObject({ name: 'Economia', dataKey: 'value' })

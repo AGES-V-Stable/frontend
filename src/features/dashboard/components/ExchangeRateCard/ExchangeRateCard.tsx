@@ -57,6 +57,7 @@ export function ExchangeRateCard({ state, onRetry }: ExchangeRateCardProps) {
     <MetricCard
       title="Câmbio Atual"
       accent="neutral"
+      barAccent="emerald"
       state={cardState}
       action={
         selected && (

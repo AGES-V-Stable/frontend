@@ -1,5 +1,7 @@
+import { useNavigate } from 'react-router'
 import { Button } from '@/shared/components/Button'
 import { Input } from '@/shared/components/Input'
+import { PATHS } from '@/shared/navigation/paths'
 
 interface FormData {
   tipoBeneficiario: string
@@ -7,6 +9,11 @@ interface FormData {
   documentoFiscal: string
   pais: string
   endereco: string
+  paymentRail: string
+  countryCode: string
+  bankCountryCode: string
+  city: string
+  postalCode: string
   banco: string
   swiftBic: string
   ibanNumeroConta: string
@@ -31,6 +38,7 @@ interface TextField {
   placeholder: string
   /** Campos longos ocupam a linha inteira da grade. */
   fullWidth?: boolean
+  required?: boolean
 }
 
 const identificationFields: TextField[] = [
@@ -81,6 +89,7 @@ const SELECT_CLASS =
 import { useBeneficiaryCreate } from '@/features/beneficiaries/hooks/useBeneficiaryCreate'
 
 export function BeneficiaryCreate() {
+  const navigate = useNavigate()
   const {
     data,
     method,
@@ -99,12 +108,12 @@ export function BeneficiaryCreate() {
     handleSubmit,
   } = useBeneficiaryCreate()
 
-  const textField = ({ name, label, placeholder, fullWidth }: TextField) => (
+  const textField = ({ name, label, placeholder, fullWidth, required = true }: TextField) => (
     <div key={name} className={fullWidth ? 'md:col-span-2' : undefined}>
       <Input
         id={`beneficiary-${name}`}
         name={name}
-        label={`${label} *`}
+        label={required ? `${label} *` : `${label} (opcional)`}
         placeholder={placeholder}
         disabled={saving}
         value={data[name]}
@@ -218,7 +227,60 @@ export function BeneficiaryCreate() {
 
           <div className={FIELD_GRID}>
             {method === 'conta_bancaria' ? (
-              bankFields.map(textField)
+              <>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="beneficiary-paymentRail" className="text-[14px] text-sage-800">
+                    Tipo de transferência *
+                  </label>
+                  <select
+                    id="beneficiary-paymentRail"
+                    name="paymentRail"
+                    value={data.paymentRail}
+                    disabled={saving}
+                    onChange={(event) => change('paymentRail', event.target.value)}
+                    className={`${SELECT_CLASS} border-sage-500`}
+                  >
+                    <option value="international_swift">SWIFT internacional</option>
+                    <option value="sepa">SEPA (EUR)</option>
+                  </select>
+                </div>
+                {textField({
+                  name: 'countryCode',
+                  label: `País do beneficiário (código de ${data.paymentRail === 'sepa' ? 3 : 2} letras)`,
+                  placeholder: data.paymentRail === 'sepa' ? 'DEU' : 'DE',
+                })}
+                {textField({
+                  name: 'city',
+                  label: 'Cidade do beneficiário',
+                  placeholder: 'Berlin',
+                })}
+                {data.paymentRail === 'sepa' &&
+                  textField({
+                    name: 'postalCode',
+                    label: 'Código postal do beneficiário',
+                    placeholder: '10115',
+                  })}
+                {data.paymentRail !== 'sepa' && (
+                  <>
+                    {textField({
+                      name: 'bankCountryCode',
+                      label: 'País do banco (código de 2 letras)',
+                      placeholder: 'DE',
+                    })}
+                  </>
+                )}
+                {bankFields
+                  .filter((field) => data.paymentRail !== 'sepa' || field.name !== 'banco')
+                  .map((field) =>
+                    textField(
+                      data.paymentRail === 'sepa' && field.name === 'ibanNumeroConta'
+                        ? { ...field, label: 'IBAN', placeholder: 'DE89370400440532013000' }
+                        : data.paymentRail === 'sepa' && field.name === 'swiftBic'
+                          ? { ...field, required: false }
+                          : field,
+                    ),
+                  )}
+              </>
             ) : (
               <>
                 {textField(WALLET_ADDRESS_FIELD)}
@@ -363,7 +425,10 @@ export function BeneficiaryCreate() {
               type="button"
               variant="neutral"
               label="Cancelar"
-              onClick={handleCancel}
+              onClick={() => {
+                handleCancel()
+                void navigate(PATHS.BENEFICIARIES)
+              }}
               disabled={saving}
               className="h-12 font-medium"
             />

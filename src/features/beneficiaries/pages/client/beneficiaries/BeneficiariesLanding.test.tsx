@@ -55,6 +55,9 @@ describe('BeneficiariesLanding', () => {
 
     expect(await screen.findByRole('heading', { name: 'Beneficiários' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Novo beneficiário' })).toBeInTheDocument()
+    expect(screen.queryByText('Meus beneficiários')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Todos os beneficiários/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Filtros' })).not.toBeInTheDocument()
   })
 
   it('navigates to the create screen when the button is clicked', async () => {

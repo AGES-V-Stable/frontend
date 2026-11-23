@@ -7,6 +7,8 @@ export type InputType = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'o
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
   error?: string
+  /** Destaca o campo como inválido sem renderizar uma mensagem de erro abaixo dele. */
+  invalid?: boolean
   /** Texto fixo exibido dentro do campo, à esquerda do valor (ex.: símbolo da moeda). */
   prefix?: string
 }

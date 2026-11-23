@@ -11,6 +11,8 @@ export type MetricCardState =
 export interface MetricCardProps {
   title: string
   accent: MetricAccent
+  /** Cor da faixa superior do card; quando omitida, usa `accent`. */
+  barAccent?: MetricAccent
   state: MetricCardState
   /** Contexto exibido abaixo do valor (período, observações). */
   footnote?: ReactNode
@@ -30,7 +32,7 @@ const VALUE_COLOR: Record<MetricAccent, string> = {
 }
 
 /** Card da linha de métricas do dashboard, com a faixa de destaque do Figma. */
-export function MetricCard({ title, accent, state, footnote, action }: MetricCardProps) {
+export function MetricCard({ title, accent, barAccent, state, footnote, action }: MetricCardProps) {
   const titleId = useId()
   return (
     <section
@@ -38,7 +40,10 @@ export function MetricCard({ title, accent, state, footnote, action }: MetricCar
       aria-busy={state.status === 'loading'}
       className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-sage-300 bg-white px-4 pt-5 pb-4"
     >
-      <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-1 ${ACCENT_BAR[accent]}`} />
+      <span
+        aria-hidden="true"
+        className={`absolute inset-x-0 top-0 h-1 ${ACCENT_BAR[barAccent ?? accent]}`}
+      />
       <div className="flex items-center justify-between gap-2">
         <h2 id={titleId} className="text-sm font-medium text-slate-500">
           {title}

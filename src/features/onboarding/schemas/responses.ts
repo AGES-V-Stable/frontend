@@ -31,9 +31,9 @@ export const DocumentUploadSchema = z.object({
 })
 export const StartLivenessSchema = z.object({
   id: z.string().min(1),
-  sessionId: z.string().min(1),
+  sessionId: z.string().min(1).nullable(),
   livenessUrl: z.url(),
-  validateLivenessToken: z.string().min(1),
+  validateLivenessToken: z.string().min(1).nullable(),
 })
 export const LivenessStatusSchema = z.object({ ready: z.boolean(), status: z.string() })
 

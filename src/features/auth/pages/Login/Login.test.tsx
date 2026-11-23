@@ -150,7 +150,7 @@ describe('Login Page Component', () => {
     expect(await screen.findByText('Home page')).toBeInTheDocument()
   })
 
-  it('shows an error when credentials are rejected', async () => {
+  it('shows a single error when credentials are rejected', async () => {
     const user = userEvent.setup()
     vi.mocked(authService.login).mockRejectedValueOnce(new Error('E-mail ou senha inválidos.'))
     renderLogin()
@@ -159,7 +159,11 @@ describe('Login Page Component', () => {
     await user.type(screen.getByLabelText('Senha'), 'senha-errada')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findAllByText('E-mail ou senha inválidos.')).toHaveLength(2)
+    expect(await screen.findAllByText('E-mail ou senha inválidos.')).toHaveLength(1)
+    expect(screen.getByLabelText('E-mail')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('E-mail')).toHaveClass('border-red-700')
+    expect(screen.getByLabelText('Senha')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText('Senha')).toHaveClass('border-red-700')
   })
 
   it('shows a specific error when the user is locked', async () => {
@@ -172,9 +176,10 @@ describe('Login Page Component', () => {
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
     expect(await screen.findByText('Usuário bloqueado.')).toBeInTheDocument()
+    expect(screen.queryByText('E-mail ou senha inválidos.')).not.toBeInTheDocument()
   })
 
-  it('clears credential errors when either input changes', async () => {
+  it('clears credential error when either input changes', async () => {
     const user = userEvent.setup()
     vi.mocked(authService.login).mockRejectedValue(new Error('E-mail ou senha inválidos.'))
     renderLogin()
@@ -183,9 +188,12 @@ describe('Login Page Component', () => {
     await user.type(screen.getByLabelText('Senha'), 'senha-errada')
     await user.click(screen.getByRole('button', { name: 'Entrar' }))
 
-    expect(await screen.findAllByText('E-mail ou senha inválidos.')).toHaveLength(2)
+    expect(await screen.findAllByText('E-mail ou senha inválidos.')).toHaveLength(1)
     await user.type(screen.getByLabelText('E-mail'), 'x')
-    expect(screen.getAllByText('E-mail ou senha inválidos.')).toHaveLength(1)
+    expect(screen.queryByText('E-mail ou senha inválidos.')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Entrar' }))
+    expect(await screen.findAllByText('E-mail ou senha inválidos.')).toHaveLength(1)
     await user.type(screen.getByLabelText('Senha'), 'x')
     expect(screen.queryByText('E-mail ou senha inválidos.')).not.toBeInTheDocument()
   })
