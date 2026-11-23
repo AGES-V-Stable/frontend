@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { saveAccessToken } from '@/shared/http/authToken'
+import { startInteraction } from '@/shared/observability/browserTelemetry'
 
 import {
   startDocumentUpload,
@@ -9,6 +11,7 @@ import {
 describe('compliance service', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    sessionStorage.clear()
   })
 
   describe('startDocumentUpload', () => {
@@ -59,6 +62,32 @@ describe('compliance service', () => {
   })
 
   describe('uploadFileToS3', () => {
+    it.each(['network', 'http'])(
+      'reports a %s storage failure without disclosing document or signed URL',
+      async (failure) => {
+        saveAccessToken('synthetic-onboarding-token')
+        startInteraction()
+        const mock = vi.fn().mockImplementation((url: string) => {
+          if (url === '/v1/observability/browser-events')
+            return Promise.resolve(new Response(null, { status: 202 }))
+          return failure === 'network'
+            ? Promise.reject(new TypeError('private-detail'))
+            : Promise.resolve(new Response(null, { status: 403 }))
+        })
+        vi.stubGlobal('fetch', mock)
+        const signedUrl = 'https://storage.example.test/upload?signature=private-signature'
+        await expect(
+          uploadFileToS3(signedUrl, new File(['private-document'], 'private-name.pdf')),
+        ).rejects.toThrow()
+        expect(mock).toHaveBeenCalledTimes(2)
+        const [url, options] = mock.mock.calls[1]
+        expect(url).toBe('/v1/observability/browser-events')
+        expect(JSON.parse(options.body)).toMatchObject({ kind: 'UI_ERROR', module: 'ONBOARDING' })
+        expect(options.body).not.toMatch(/private|storage|signature|synthetic-onboarding-token/)
+        expect(mock.mock.calls[0][1].headers).not.toHaveProperty('Authorization')
+        expect(mock.mock.calls[0][1].headers).not.toHaveProperty('X-Request-ID')
+      },
+    )
     it('PUTs the file directly to the presigned url with the conditional-write header', async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         json: async () => null,

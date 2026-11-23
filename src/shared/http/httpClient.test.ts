@@ -28,6 +28,7 @@ it('merges Headers and authenticates JSON requests', async () => {
     Accept: 'application/json',
     Authorization: 'Bearer login',
     'Content-Type': 'application/json',
+    'X-Request-ID': expect.any(String),
   })
 })
 it('distinguishes onboarding and login credentials', async () => {

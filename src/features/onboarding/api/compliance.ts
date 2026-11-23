@@ -6,6 +6,7 @@ import type {
 } from '@/features/onboarding/types/compliance'
 
 import { httpRequest } from '@/shared/http/httpClient'
+import { correlationId, reportBrowserEvent } from '@/shared/observability/browserTelemetry'
 
 /**
  * Inicia o upload do documento de identidade do representante. O backend assina
@@ -40,14 +41,20 @@ export async function startDocumentUpload(
  * com 403 SignatureDoesNotMatch.
  */
 export async function uploadFileToS3(url: string, file: File): Promise<void> {
-  const response = await fetch(url, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': file.type || 'application/octet-stream', 'If-None-Match': '*' },
-  })
+  const id = correlationId()
+  try {
+    const response = await fetch(url, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type || 'application/octet-stream', 'If-None-Match': '*' },
+    })
 
-  if (!response.ok) {
-    throw new Error(`Falha ao enviar arquivo para o storage (status ${response.status})`)
+    if (!response.ok) {
+      throw new Error(`Falha ao enviar arquivo para o storage (status ${response.status})`)
+    }
+  } catch (error) {
+    reportBrowserEvent('UI_ERROR', 'ONBOARDING', id, error)
+    throw error
   }
 }
 

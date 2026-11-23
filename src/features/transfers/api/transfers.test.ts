@@ -47,7 +47,9 @@ describe('admin history contracts', () => {
     })
     expect(mock).toHaveBeenCalledWith(
       '/v1/transfers?page=1&size=12&status=SETTLED&direction=PAYMENT&search=Empresa',
-      expect.objectContaining({ headers: { Authorization: 'Bearer token' } }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer token' }),
+      }),
     )
   })
   it('loads encoded administrator transfer details', async () => {

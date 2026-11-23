@@ -28,7 +28,9 @@ it('loads authenticated administrator beneficiaries', async () => {
   await expect(getBeneficiaries()).resolves.toEqual(page)
   expect(mock).toHaveBeenCalledWith(
     '/v1/beneficiaries?page=0&size=20',
-    expect.objectContaining({ headers: { Authorization: 'Bearer login' } }),
+    expect.objectContaining({
+      headers: expect.objectContaining({ Authorization: 'Bearer login' }),
+    }),
   )
 })
 it('encodes company scope and sends only supported filters', async () => {
@@ -76,7 +78,10 @@ it('creates a company beneficiary with JSON content type', async () => {
     expect.objectContaining({
       method: 'POST',
       body: JSON.stringify(payload),
-      headers: { 'Content-Type': 'application/json' },
+      headers: expect.objectContaining({
+        'Content-Type': 'application/json',
+        'X-Request-ID': expect.any(String),
+      }),
     }),
   )
 })

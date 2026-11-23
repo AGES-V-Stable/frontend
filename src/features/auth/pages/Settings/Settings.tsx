@@ -13,12 +13,15 @@ export interface SettingsProps {
   onReconfigureSuccess?: () => void
   /** Bloco de verificação injetado pela camada da aplicação para contas de usuário. */
   blindPayAccess?: ReactNode
+  /** Acesso administrativo injetado pela aplicação, conforme o perfil autenticado. */
+  securityRequestsAccess?: ReactNode
 }
 
 export function Settings({
   twoFactorEnabled,
   onReconfigureSuccess,
   blindPayAccess,
+  securityRequestsAccess,
 }: SettingsProps) {
   const { user } = useSession()
   const [twoFactorActive, setTwoFactorActive] = useState<boolean>(
@@ -274,6 +277,7 @@ export function Settings({
             <RecoveryCodesContainer codes={newRecoveryCodes} onComplete={handleCompleteRecovery} />
           </div>
         )}
+        {securityRequestsAccess}
       </section>
     </div>
   )

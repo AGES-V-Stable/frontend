@@ -21,7 +21,9 @@ describe('getTransactionVolume', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/v1/dashboard/transaction-volume',
-      expect.objectContaining({ headers: { Authorization: 'Bearer login' } }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer login' }),
+      }),
     )
   })
 
