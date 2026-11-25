@@ -182,6 +182,7 @@ describe('AdminTransfers page', () => {
 
     const detailButtons = screen.getAllByRole('button', { name: /^Ver detalhes: .+ para .+$/ })
     expect(detailButtons.length).toBeGreaterThan(0)
+    const table = screen.getByRole('table')
 
     await user.click(detailButtons[0])
 
@@ -192,6 +193,15 @@ describe('AdminTransfers page', () => {
     // Check if correct data is inside drawer by waiting for it to load
     expect(await within(dialog).findByText('Tech Corp')).toBeInTheDocument()
     expect(within(dialog).getByText('t1')).toBeInTheDocument()
+    expect(screen.getByRole('table')).toBe(table)
+    expect(getTransfers).toHaveBeenCalledTimes(1)
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('table')).toBe(table)
+    expect(detailButtons[0]).toHaveFocus()
+    expect(getTransfers).toHaveBeenCalledTimes(1)
   })
 
   it('opens the details of the transfer given in the URL and clears it on close', async () => {

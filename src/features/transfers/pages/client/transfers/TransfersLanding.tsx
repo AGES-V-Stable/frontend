@@ -200,7 +200,10 @@ export function TransfersLanding() {
               actions={[
                 {
                   label: 'Ver detalhes',
-                  onClick: (item) => navigate(transferDetailsPath((item as Transfer).id)),
+                  onClick: (item) =>
+                    navigate(transferDetailsPath((item as Transfer).id), {
+                      state: { fromTransferList: true },
+                    }),
                 },
               ]}
               pagination={{

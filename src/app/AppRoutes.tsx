@@ -173,12 +173,35 @@ function PermissionGuard({
     </div>
   )
 }
-/** Quem só consulta transferências volta ao dashboard ao fechar, e não ao formulário de criação. */
-function TransferDetailsRoute() {
+/** Mantém a mesma lista montada enquanto o detalhe ocupa o Outlet. */
+function TransferHistoryLayout() {
   const { user } = useSession()
   return (
+    <>
+      {hasCompanyPermission(user, 'TRANSFER_READ') && <TransfersLanding />}
+      <Outlet />
+    </>
+  )
+}
+
+function TransferDetailsRoute() {
+  const { user } = useSession()
+  const navigate = useNavigate()
+  const state: unknown = useLocation().state
+  const openedFromList =
+    typeof state === 'object' &&
+    state !== null &&
+    'fromTransferList' in state &&
+    state.fromTransferList === true
+  const canRead = hasCompanyPermission(user, 'TRANSFER_READ')
+  const closeTo = canRead ? PATHS.TRANSFERS : PATHS.DASHBOARD
+  return (
     <TransferDetails
-      closeTo={hasCompanyPermission(user, 'TRANSFER_READ') ? PATHS.TRANSFERS : PATHS.DASHBOARD}
+      showPageHeading={!canRead}
+      onClose={() => {
+        if (canRead && openedFromList) void navigate(-1)
+        else void navigate(closeTo, { replace: true })
+      }}
     />
   )
 }
@@ -427,15 +450,17 @@ export default function AppRoutes() {
           >
             <Route path={PATHS.BENEFICIARIES_NEW} element={<BeneficiaryCreate />} />
           </Route>
-          <Route
-            element={
-              <PermissionGuard
-                permission="TRANSFER_READ"
-                message="Seu perfil de acesso não permite consultar transferências."
-              />
-            }
-          >
-            <Route path={PATHS.TRANSFERS} element={<TransfersLanding />} />
+          <Route element={<TransferHistoryLayout />}>
+            <Route
+              path={PATHS.TRANSFERS}
+              element={
+                <PermissionGuard
+                  permission="TRANSFER_READ"
+                  message="Seu perfil de acesso não permite consultar transferências."
+                />
+              }
+            />
+            <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetailsRoute />} />
           </Route>
           <Route
             element={
@@ -447,7 +472,6 @@ export default function AppRoutes() {
           >
             <Route path={PATHS.TRANSFERS_NEW} element={<TransferCreate />} />
           </Route>
-          <Route path={PATHS.TRANSFER_DETAILS} element={<TransferDetailsRoute />} />
           <Route path={PATHS.MEMBERS} element={<Members />} />
         </Route>
       </Route>

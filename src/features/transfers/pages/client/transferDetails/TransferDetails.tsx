@@ -127,9 +127,15 @@ const costLine = (cost: TransferCost) => {
 export interface TransferDetailsProps {
   /** Destino ao fechar; quem não cria transferências volta para outra página. */
   closeTo?: string
+  onClose?: () => void
+  showPageHeading?: boolean
 }
 
-export function TransferDetails({ closeTo = PATHS.TRANSFERS }: TransferDetailsProps = {}) {
+export function TransferDetails({
+  closeTo = PATHS.TRANSFERS,
+  onClose,
+  showPageHeading = true,
+}: TransferDetailsProps = {}) {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [reloadCount, setReloadCount] = useState(0)
@@ -163,7 +169,7 @@ export function TransferDetails({ closeTo = PATHS.TRANSFERS }: TransferDetailsPr
     return () => controller.abort()
   }, [id, requestKey])
 
-  const handleClose = () => navigate(closeTo)
+  const handleClose = onClose ?? (() => navigate(closeTo))
 
   async function handleDownload(details: TransferDetailsData) {
     if (downloadInFlight.current) return
@@ -210,11 +216,15 @@ export function TransferDetails({ closeTo = PATHS.TRANSFERS }: TransferDetailsPr
     : []
 
   return (
-    <div className="mx-auto flex w-full max-w-[1684px] flex-col gap-1 px-4 py-8 md:px-12">
-      <h1 className="text-xl font-bold text-slate-900">Transferências</h1>
-      <p className="text-xs text-slate-600">
-        Consulta dos detalhes de uma transferência da empresa.
-      </p>
+    <>
+      {showPageHeading && (
+        <div className="mx-auto flex w-full max-w-[1684px] flex-col gap-1 px-4 py-8 md:px-12">
+          <h1 className="text-xl font-bold text-slate-900">Transferências</h1>
+          <p className="text-xs text-slate-600">
+            Consulta dos detalhes de uma transferência da empresa.
+          </p>
+        </div>
+      )}
 
       <Drawer open title="Detalhes da transferência" onClose={handleClose} actions={actions}>
         {failure ? (
@@ -252,7 +262,7 @@ export function TransferDetails({ closeTo = PATHS.TRANSFERS }: TransferDetailsPr
           />
         )}
       </Drawer>
-    </div>
+    </>
   )
 }
 
