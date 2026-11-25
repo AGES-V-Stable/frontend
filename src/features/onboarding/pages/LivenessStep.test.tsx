@@ -6,6 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as livenessService from '@/features/onboarding/api/liveness'
 import * as onboardingService from '@/features/onboarding/api/onboarding'
 
+import {
+  getAccessToken,
+  getLoginToken,
+  saveAccessToken,
+  saveLoginToken,
+} from '@/shared/http/authToken'
+
 import LivenessStep from '@/features/onboarding/pages/LivenessStep'
 
 vi.mock('@/features/onboarding/api/liveness', async () => {
@@ -64,6 +71,13 @@ describe('LivenessStep Page Component', () => {
   it('given the liveness step is rendered, when no verification has happened yet, then the Continuar button should be disabled', () => {
     renderLivenessStep()
 
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Cadastro Institucional' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Verificação facial' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Passo 5 de 5')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
   })
 
@@ -217,6 +231,7 @@ describe('LivenessStep Page Component', () => {
   })
 
   it('given a verified session, a progresso de cadastro id and saved personal data, when the KYC comes back UNDER_REVIEW, then it should submit the liveness result, finalize the KYC and call onContinue', async () => {
+    saveAccessToken('onboarding-jwt')
     livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
     onboardingService.saveRepresentativePersonalData(personalData)
     vi.mocked(livenessService.submitLivenessResult).mockResolvedValue(undefined)
@@ -235,6 +250,9 @@ describe('LivenessStep Page Component', () => {
     expect(onboardingService.submitKyc).toHaveBeenCalledWith('cadastro-1', personalData)
     expect(onboardingService.getRepresentativePersonalData()).toBeNull()
     expect(onContinue).toHaveBeenCalled()
+    expect(getAccessToken()).toBe('onboarding-jwt')
+    expect(getLoginToken()).toBe('onboarding-jwt')
+    expect(livenessService.getLivenessId('cadastro-1')).toBeNull()
   })
 
   it('given the KYC comes back APPROVED (already approved on a previous attempt), when the user clicks Continuar, then it should call onContinue', async () => {
@@ -251,6 +269,25 @@ describe('LivenessStep Page Component', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
 
     await waitFor(() => expect(onContinue).toHaveBeenCalled())
+  })
+
+  it('preserves a newer login made while the final KYC submission is in flight', async () => {
+    saveAccessToken('onboarding-jwt')
+    livenessService.saveLivenessSession('liveness-1', 'success', 'cadastro-1')
+    onboardingService.saveRepresentativePersonalData(personalData)
+    vi.mocked(livenessService.submitLivenessResult).mockResolvedValue(undefined)
+    vi.mocked(onboardingService.submitKyc).mockImplementation(async () => {
+      saveLoginToken('newer-login-jwt')
+      return { aveniaProcessId: 'kyc-process-1', status: 'UNDER_REVIEW' }
+    })
+    const onContinue = vi.fn()
+
+    renderLivenessStep({ progressoCadastroId: 'cadastro-1', onContinue })
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    await waitFor(() => expect(onContinue).toHaveBeenCalled())
+    expect(getLoginToken()).toBe('newer-login-jwt')
+    expect(getAccessToken()).toBe('newer-login-jwt')
   })
 
   it('given the KYC comes back REJECTED, when the user clicks Continuar, then it should show the rejection reason and not call onContinue', async () => {

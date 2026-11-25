@@ -1,7 +1,7 @@
 import { Stepper } from '@/shared/components/Stepper'
 import logo from '@/shared/assets/navigation/logo.png'
 
-const steps = ['Acesso', 'Empresa', 'Representante', 'Compliance', 'Conclusão']
+const steps = ['Acesso', 'Empresa', 'Representante', 'Compliance', 'Verificação facial']
 
 interface RegistrationHeaderProps {
   activeStep: 0 | 1 | 2 | 3 | 4
@@ -22,7 +22,7 @@ export function RegistrationHeader({
         <p className="mt-1 flex min-h-7 items-center text-xs text-slate-600">{description}</p>
       </header>
 
-      <Stepper steps={steps} activeStep={activeStep} className="max-w-[1070px]" />
+      <Stepper steps={steps} activeStep={activeStep} className="max-w-[1070px]" wrapLabels />
       <hr className="border-sage-300" />
     </>
   )

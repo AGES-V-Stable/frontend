@@ -15,11 +15,12 @@ import {
 } from '@/features/onboarding/api/liveness'
 import {
   ApiError,
-  clearAccessToken,
   clearRepresentativePersonalData,
   getRepresentativePersonalData,
   submitKyc,
 } from '@/features/onboarding/api/onboarding'
+import { getAccessToken, getLoginToken, saveLoginToken } from '@/shared/http/authToken'
+import { RegistrationHeader } from '@/features/onboarding/pages/Register/RegistrationHeader'
 import type { LivenessStatus } from '@/features/onboarding/types/liveness'
 
 export interface LivenessStepProps {
@@ -145,6 +146,8 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
 
     setErrorMessage(null)
     setIsSubmitting(true)
+    const accessToken = getAccessToken()
+    const loginToken = getLoginToken()
     try {
       await submitLivenessResult(progressoCadastroId, livenessId)
       // O documento e o liveness já estão salvos na verificação de KYC no
@@ -165,13 +168,17 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
 
       // APPROVED ou UNDER_REVIEW: o cadastro segue — a análise de UNDER_REVIEW
       // continua em segundo plano do lado da Avenia/compliance.
+      // O JWT do cadastro também autentica a sessão da aplicação. Um login feito
+      // durante o envio tem prioridade sobre a sessão que iniciou esta operação.
+      if (accessToken && getLoginToken() === loginToken && getAccessToken() === accessToken) {
+        saveLoginToken(accessToken)
+      }
       clearRepresentativePersonalData()
-      clearAccessToken()
       clearLivenessSession()
       if (onContinue) {
         onContinue()
       } else {
-        void navigate(PATHS.HOME)
+        void navigate(PATHS.REGISTER_STATUS)
       }
     } catch (error) {
       // 422 (rejeição de negócio da Avenia, ex.: "CPF já usado em outro cadastro") traz uma
@@ -191,75 +198,80 @@ function LivenessStep({ progressoCadastroId, onContinue }: LivenessStepProps) {
   const isPending = status === 'pending'
 
   return (
-    <div className="p-8 flex flex-col items-center gap-6 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold">Verificação facial</h1>
-      <p className="text-sm text-slate-600 text-center">
-        Para concluir a etapa de compliance, precisamos confirmar sua identidade com uma verificação
-        facial rápida.
-      </p>
+    <main className="min-h-screen bg-slate-100 px-4 py-8 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-5 rounded-xl border border-sage-300 bg-white px-4 py-[30px] md:px-10">
+        <RegistrationHeader activeStep={4} />
+        <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-6 py-2">
+          <h2 className="text-xl font-semibold text-gray-800">Verificação facial</h2>
+          <p className="text-sm text-slate-600 text-center">
+            Para concluir a etapa de compliance, precisamos confirmar sua identidade com uma
+            verificação facial rápida.
+          </p>
 
-      {isPending && !isVerified && (
-        <p className="text-sm text-slate-600 text-center">
-          Complete a verificação na aba que abrimos e depois clique em "Verificar conclusão".
-        </p>
-      )}
+          {isPending && !isVerified && (
+            <p className="text-sm text-slate-600 text-center">
+              Complete a verificação na aba que abrimos e depois clique em "Verificar conclusão".
+            </p>
+          )}
 
-      {checkMessage && (
-        <p role="status" className="text-sm text-amber-700">
-          {checkMessage}
-        </p>
-      )}
+          {checkMessage && (
+            <p role="status" className="text-sm text-amber-700">
+              {checkMessage}
+            </p>
+          )}
 
-      {errorMessage && (
-        <p role="alert" className="text-sm text-red-700">
-          {errorMessage}
-        </p>
-      )}
+          {errorMessage && (
+            <p role="alert" className="text-sm text-red-700">
+              {errorMessage}
+            </p>
+          )}
 
-      {manualLivenessUrl && (
-        <a
-          href={manualLivenessUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm font-medium text-primary underline"
-        >
-          Abrir verificação facial manualmente
-        </a>
-      )}
+          {manualLivenessUrl && (
+            <a
+              href={manualLivenessUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-medium text-primary underline"
+            >
+              Abrir verificação facial manualmente
+            </a>
+          )}
 
-      {isVerified ? (
-        <p className="text-sm text-green-700">Verificação concluída com sucesso.</p>
-      ) : isPending ? (
-        <div className="flex flex-col gap-2 w-full">
+          {isVerified ? (
+            <p className="text-sm text-green-700">Verificação concluída com sucesso.</p>
+          ) : isPending ? (
+            <div className="flex flex-col gap-2 w-full">
+              <Button
+                label={isChecking ? 'Verificando...' : 'Verificar conclusão'}
+                variant="secondary"
+                onClick={handleCheck}
+                disabled={isChecking}
+              />
+              <Button
+                label="Recomeçar verificação"
+                variant="secondary"
+                onClick={handleRetry}
+                disabled={isChecking}
+              />
+            </div>
+          ) : (
+            <Button
+              label={isStarting ? 'Redirecionando...' : 'Iniciar verificação facial'}
+              variant="secondary"
+              onClick={handleStart}
+              disabled={isStarting}
+            />
+          )}
+
           <Button
-            label={isChecking ? 'Verificando...' : 'Verificar conclusão'}
-            variant="secondary"
-            onClick={handleCheck}
-            disabled={isChecking}
-          />
-          <Button
-            label="Recomeçar verificação"
-            variant="secondary"
-            onClick={handleRetry}
-            disabled={isChecking}
+            label={isSubmitting ? 'Enviando...' : 'Continuar'}
+            variant="primary"
+            onClick={handleContinue}
+            disabled={!isVerified || isSubmitting}
           />
         </div>
-      ) : (
-        <Button
-          label={isStarting ? 'Redirecionando...' : 'Iniciar verificação facial'}
-          variant="secondary"
-          onClick={handleStart}
-          disabled={isStarting}
-        />
-      )}
-
-      <Button
-        label={isSubmitting ? 'Enviando...' : 'Continuar'}
-        variant="primary"
-        onClick={handleContinue}
-        disabled={!isVerified || isSubmitting}
-      />
-    </div>
+      </div>
+    </main>
   )
 }
 
